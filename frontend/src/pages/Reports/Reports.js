@@ -58,24 +58,23 @@ const Reports = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [reportRes, statsRes] = await Promise.all([
+          reportsApi.getWeekly(weekOffset),
+          logsApi.getStats(period),
+        ]);
+        setReport(reportRes.data.report);
+        setStats(statsRes.data);
+      } catch (err) {
+        setError('Failed to load reports');
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchData();
   }, [period, weekOffset]);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [reportRes, statsRes] = await Promise.all([
-        reportsApi.getWeekly(weekOffset),
-        logsApi.getStats(period),
-      ]);
-      setReport(reportRes.data.report);
-      setStats(statsRes.data);
-    } catch (err) {
-      setError('Failed to load reports');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getTrendIcon = (trend) => {
     switch (trend) {

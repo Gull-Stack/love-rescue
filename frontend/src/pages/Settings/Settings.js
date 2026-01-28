@@ -9,7 +9,6 @@ import {
   TextField,
   Switch,
   FormControlLabel,
-  Divider,
   Alert,
   Chip,
   CircularProgress,
@@ -43,6 +42,7 @@ const Settings = () => {
   useEffect(() => {
     fetchSettings();
     handleUrlParams();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleUrlParams = () => {

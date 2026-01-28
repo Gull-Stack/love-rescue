@@ -9,9 +9,7 @@ import {
   CircularProgress,
   Grid,
   Chip,
-  LinearProgress,
   Alert,
-  Divider,
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
