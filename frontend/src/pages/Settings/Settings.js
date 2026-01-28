@@ -33,11 +33,13 @@ const Settings = () => {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [inviteLink, setInviteLink] = useState('');
+  const [partnerEmail, setPartnerEmail] = useState('');
   const [copied, setCopied] = useState(false);
   const [calendarStatus, setCalendarStatus] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [therapistConsent, setTherapistConsent] = useState(false);
   const [cancelDialog, setCancelDialog] = useState(false);
+  const [legalDialog, setLegalDialog] = useState(null); // 'privacy' or 'terms'
 
   useEffect(() => {
     fetchSettings();
@@ -81,11 +83,13 @@ const Settings = () => {
 
   const handleInvite = async () => {
     setLoading({ ...loading, invite: true });
+    setError('');
     try {
-      const response = await invitePartner();
+      const response = await invitePartner(partnerEmail || undefined);
       setInviteLink(response.inviteLink);
+      setSuccess('Invite link generated! Share it with your partner.');
     } catch (err) {
-      setError('Failed to generate invite link');
+      setError(err.response?.data?.error || 'Failed to generate invite link');
     } finally {
       setLoading({ ...loading, invite: false });
     }
@@ -240,28 +244,53 @@ const Settings = () => {
                 Invite your partner to unlock full features
               </Typography>
               {inviteLink ? (
-                <Box display="flex" alignItems="center" gap={1}>
-                  <TextField
-                    value={inviteLink}
+                <Box>
+                  <Typography variant="body2" sx={{ mb: 1 }} fontWeight="bold">
+                    Share this link with your partner:
+                  </Typography>
+                  <Box display="flex" alignItems="center" gap={1} mb={2}>
+                    <TextField
+                      value={inviteLink}
+                      size="small"
+                      fullWidth
+                      InputProps={{ readOnly: true }}
+                    />
+                    <Tooltip title={copied ? 'Copied!' : 'Copy'}>
+                      <IconButton onClick={handleCopyLink}>
+                        <ContentCopyIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                  <Button
+                    variant="text"
                     size="small"
-                    fullWidth
-                    InputProps={{ readOnly: true }}
-                  />
-                  <Tooltip title={copied ? 'Copied!' : 'Copy'}>
-                    <IconButton onClick={handleCopyLink}>
-                      <ContentCopyIcon />
-                    </IconButton>
-                  </Tooltip>
+                    onClick={() => setInviteLink('')}
+                  >
+                    Generate New Link
+                  </Button>
                 </Box>
               ) : (
-                <Button
-                  variant="contained"
-                  startIcon={<PersonAddIcon />}
-                  onClick={handleInvite}
-                  disabled={loading.invite}
-                >
-                  {loading.invite ? <CircularProgress size={20} /> : 'Generate Invite Link'}
-                </Button>
+                <Box>
+                  <TextField
+                    label="Partner's Email (optional)"
+                    type="email"
+                    size="small"
+                    fullWidth
+                    value={partnerEmail}
+                    onChange={(e) => setPartnerEmail(e.target.value)}
+                    sx={{ mb: 2 }}
+                    placeholder="partner@email.com"
+                    helperText="We'll include their email on the invite, or leave blank to just generate a link"
+                  />
+                  <Button
+                    variant="contained"
+                    startIcon={<PersonAddIcon />}
+                    onClick={handleInvite}
+                    disabled={loading.invite}
+                  >
+                    {loading.invite ? <CircularProgress size={20} /> : 'Generate Invite Link'}
+                  </Button>
+                </Box>
               )}
             </>
           )}
@@ -285,7 +314,7 @@ const Settings = () => {
                   : 'error'
               }
             />
-            {subscription?.trialDaysRemaining !== null && (
+            {subscription?.trialDaysRemaining !== null && subscription?.trialDaysRemaining !== undefined && (
               <Typography variant="body2" color="text.secondary">
                 {subscription.trialDaysRemaining} days remaining in trial
               </Typography>
@@ -381,8 +410,12 @@ const Settings = () => {
             Legal
           </Typography>
           <Box display="flex" gap={2}>
-            <Button variant="text">Privacy Policy</Button>
-            <Button variant="text">Terms of Service</Button>
+            <Button variant="text" onClick={() => setLegalDialog('privacy')}>
+              Privacy Policy
+            </Button>
+            <Button variant="text" onClick={() => setLegalDialog('terms')}>
+              Terms of Service
+            </Button>
           </Box>
         </CardContent>
       </Card>
@@ -404,6 +437,139 @@ const Settings = () => {
             disabled={loading.cancel}
           >
             {loading.cancel ? <CircularProgress size={20} /> : 'Cancel Subscription'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Privacy Policy Dialog */}
+      <Dialog
+        open={legalDialog === 'privacy'}
+        onClose={() => setLegalDialog(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Privacy Policy</DialogTitle>
+        <DialogContent>
+          <Typography variant="h6" gutterBottom sx={{ mt: 1 }}>
+            Marriage Rescue App - Privacy Policy
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>Last Updated:</strong> January 2026
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>1. Information We Collect</strong><br />
+            We collect information you provide directly, including your name, email address,
+            assessment responses, daily log entries, and journal entries. We also collect
+            usage data such as login times and feature interaction patterns.
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>2. How We Use Your Information</strong><br />
+            Your data is used to provide personalized relationship assessments, generate
+            matchup scores, create tailored strategy plans, and produce progress reports.
+            We do not sell your personal information to third parties.
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>3. Data Security</strong><br />
+            We implement industry-standard security measures including encryption at rest
+            and in transit, secure authentication via JWT and optional biometrics (WebAuthn),
+            and HIPAA-compliant audit logging for all data access.
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>4. Shared Data Within Relationships</strong><br />
+            Matchup scores and strategy plans are shared between both partners in a
+            relationship unit. Individual assessment responses and journal entries remain
+            private unless you explicitly choose to share them.
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>5. Third-Party Integrations</strong><br />
+            If you connect Google Calendar, we access only calendar event creation
+            permissions. If you enable therapist integration, your therapist can view
+            shared relationship data and assign tasks with your explicit consent.
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>6. Data Retention and Deletion</strong><br />
+            Your data is retained as long as your account is active. You may request
+            complete deletion of your data by contacting support. Upon account deletion,
+            all personal data is permanently removed within 30 days.
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>7. Contact</strong><br />
+            For privacy inquiries, contact us at privacy@marriagerescue.app.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLegalDialog(null)} variant="contained">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Terms of Service Dialog */}
+      <Dialog
+        open={legalDialog === 'terms'}
+        onClose={() => setLegalDialog(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Terms of Service</DialogTitle>
+        <DialogContent>
+          <Typography variant="h6" gutterBottom sx={{ mt: 1 }}>
+            Marriage Rescue App - Terms of Service
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>Last Updated:</strong> January 2026
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>1. Acceptance of Terms</strong><br />
+            By creating an account and using Marriage Rescue App, you agree to these
+            Terms of Service. If you do not agree, do not use the application.
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>2. Service Description</strong><br />
+            Marriage Rescue App provides relationship assessment tools, daily interaction
+            tracking, personalized strategy plans, and progress reports. The app is
+            designed for educational and informational purposes only.
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>3. Not Professional Therapy</strong><br />
+            This app is NOT a substitute for professional therapy, counseling, or medical
+            advice. The assessments, strategies, and recommendations are based on general
+            relationship science principles. If you are experiencing serious relationship
+            difficulties, domestic issues, or mental health concerns, please consult a
+            licensed professional.
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>4. Subscription and Payments</strong><br />
+            After a 14-day free trial, a subscription of $9.99/month per couple is
+            required to continue using the app. Payments are processed securely via
+            Stripe. You may cancel at any time; access continues until the end of the
+            current billing period.
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>5. User Responsibilities</strong><br />
+            You are responsible for maintaining the confidentiality of your account
+            credentials. You agree to provide accurate information and to use the app
+            in good faith for its intended purpose.
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>6. Limitation of Liability</strong><br />
+            Marriage Rescue App and its creators are not liable for any relationship
+            outcomes, emotional distress, or decisions made based on app recommendations.
+            Use of the app is at your own risk.
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>7. Modifications</strong><br />
+            We reserve the right to modify these terms at any time. Continued use of
+            the app after changes constitutes acceptance of the updated terms.
+          </Typography>
+          <Typography paragraph variant="body2">
+            <strong>8. Contact</strong><br />
+            For questions about these terms, contact us at legal@marriagerescue.app.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLegalDialog(null)} variant="contained">
+            Close
           </Button>
         </DialogActions>
       </Dialog>

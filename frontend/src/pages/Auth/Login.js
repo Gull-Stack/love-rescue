@@ -11,6 +11,7 @@ import {
   Alert,
   Divider,
   CircularProgress,
+  Snackbar,
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
@@ -25,6 +26,7 @@ const Login = () => {
     password: '',
   });
   const [formError, setFormError] = useState('');
+  const [biometricSnack, setBiometricSnack] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -121,7 +123,7 @@ const Login = () => {
             variant="outlined"
             startIcon={<FingerprintIcon />}
             sx={{ mb: 3 }}
-            disabled
+            onClick={() => setBiometricSnack(true)}
           >
             Sign in with Biometrics
           </Button>
@@ -136,6 +138,14 @@ const Login = () => {
           </Box>
         </Paper>
       </Box>
+
+      <Snackbar
+        open={biometricSnack}
+        autoHideDuration={4000}
+        onClose={() => setBiometricSnack(false)}
+        message="Biometric login can be set up after signing in via Settings."
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Container>
   );
 };
