@@ -1,0 +1,345 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  CircularProgress,
+  LinearProgress,
+  Chip,
+  Alert,
+  IconButton,
+  Tooltip,
+} from '@mui/material';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { useAuth } from '../../contexts/AuthContext';
+import { logsApi, matchupApi, strategiesApi, assessmentsApi } from '../../services/api';
+
+const Dashboard = () => {
+  const navigate = useNavigate();
+  const { user, relationship, invitePartner } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState({
+    prompt: null,
+    stats: null,
+    matchup: null,
+    strategy: null,
+    assessments: null,
+  });
+  const [inviteLink, setInviteLink] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const [promptRes, statsRes, assessRes] = await Promise.all([
+        logsApi.getPrompt().catch(() => ({ data: { prompt: null } })),
+        logsApi.getStats('7d').catch(() => ({ data: { stats: null } })),
+        assessmentsApi.getResults().catch(() => ({ data: { completed: [], pending: [] } })),
+      ]);
+
+      let matchupData = null;
+      let strategyData = null;
+
+      if (relationship?.hasPartner) {
+        [matchupData, strategyData] = await Promise.all([
+          matchupApi.getCurrent().catch(() => ({ data: { matchup: null } })),
+          strategiesApi.getCurrent().catch(() => ({ data: { strategy: null } })),
+        ]);
+      }
+
+      setData({
+        prompt: promptRes.data.prompt,
+        hasLoggedToday: promptRes.data.hasLoggedToday,
+        stats: statsRes.data.stats,
+        matchup: matchupData?.data?.matchup,
+        strategy: strategyData?.data?.strategy,
+        assessments: assessRes.data,
+      });
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInvite = async () => {
+    try {
+      const response = await invitePartner();
+      setInviteLink(response.inviteLink);
+    } catch (error) {
+      console.error('Failed to create invite:', error);
+    }
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  const assessmentProgress = data.assessments
+    ? (data.assessments.completed.length / 4) * 100
+    : 0;
+
+  return (
+    <Box>
+      <Typography variant="h4" fontWeight="bold" gutterBottom>
+        Welcome, {user?.firstName || 'there'}!
+      </Typography>
+
+      {/* Partner Status */}
+      {!relationship?.hasPartner && (
+        <Alert
+          severity="info"
+          sx={{ mb: 3 }}
+          action={
+            <Button color="inherit" size="small" onClick={handleInvite}>
+              Invite Partner
+            </Button>
+          }
+        >
+          Your partner hasn't joined yet. Invite them to unlock full features!
+        </Alert>
+      )}
+
+      {inviteLink && (
+        <Alert severity="success" sx={{ mb: 3 }}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+              {inviteLink}
+            </Typography>
+            <Tooltip title={copied ? 'Copied!' : 'Copy link'}>
+              <IconButton size="small" onClick={handleCopyLink}>
+                <ContentCopyIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Alert>
+      )}
+
+      <Grid container spacing={3}>
+        {/* Daily Prompt Card */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={1} mb={2}>
+                <TipsAndUpdatesIcon color="primary" />
+                <Typography variant="h6">Today's Prompt</Typography>
+                {data.hasLoggedToday && (
+                  <Chip label="Completed" color="success" size="small" />
+                )}
+              </Box>
+              {data.prompt ? (
+                <>
+                  <Typography variant="body1" sx={{ mb: 2 }}>
+                    {data.prompt.prompt}
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    onClick={() => navigate('/daily')}
+                  >
+                    {data.hasLoggedToday ? 'Update Log' : 'Log Now'}
+                  </Button>
+                </>
+              ) : (
+                <Typography color="text.secondary">
+                  Complete your assessments to unlock daily prompts
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Stats Card */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={1} mb={2}>
+                <TrendingUpIcon color="primary" />
+                <Typography variant="h6">This Week</Typography>
+              </Box>
+              {data.stats && data.stats.daysLogged > 0 ? (
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Typography variant="h4" color="primary">
+                      {data.stats.avgRatio === 999 ? '∞' : data.stats.avgRatio}:1
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Avg Ratio
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="h4" color="success.main">
+                      {data.stats.daysLogged}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Days Logged
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Chip
+                      label={`Trend: ${data.stats.trend}`}
+                      color={
+                        data.stats.trend === 'improving'
+                          ? 'success'
+                          : data.stats.trend === 'declining'
+                          ? 'warning'
+                          : 'default'
+                      }
+                      size="small"
+                    />
+                  </Grid>
+                </Grid>
+              ) : (
+                <Typography color="text.secondary">
+                  Start logging to see your stats
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Assessments Card */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={1} mb={2}>
+                <AssignmentIcon color="primary" />
+                <Typography variant="h6">Assessments</Typography>
+              </Box>
+              <Box mb={2}>
+                <Box display="flex" justifyContent="space-between" mb={1}>
+                  <Typography variant="body2">Progress</Typography>
+                  <Typography variant="body2">
+                    {data.assessments?.completed.length || 0}/4
+                  </Typography>
+                </Box>
+                <LinearProgress
+                  variant="determinate"
+                  value={assessmentProgress}
+                  sx={{ height: 8, borderRadius: 4 }}
+                />
+              </Box>
+              {data.assessments?.allCompleted ? (
+                <Chip label="All Complete" color="success" />
+              ) : (
+                <Button variant="outlined" onClick={() => navigate('/assessments')}>
+                  Continue Assessments
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Matchup Card */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={1} mb={2}>
+                <FavoriteIcon color="primary" />
+                <Typography variant="h6">Matchup Score</Typography>
+              </Box>
+              {data.matchup ? (
+                <>
+                  <Typography variant="h3" color="primary" gutterBottom>
+                    {data.matchup.score}%
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {data.matchup.alignments?.length || 0} alignments,{' '}
+                    {data.matchup.misses?.length || 0} areas to work on
+                  </Typography>
+                  <Button
+                    variant="text"
+                    onClick={() => navigate('/matchup')}
+                    sx={{ mt: 1 }}
+                  >
+                    View Details
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Typography color="text.secondary" gutterBottom>
+                    {relationship?.hasPartner
+                      ? 'Complete all assessments to see your matchup'
+                      : 'Invite your partner to see your matchup'}
+                  </Typography>
+                  {!relationship?.hasPartner && (
+                    <Button
+                      variant="outlined"
+                      startIcon={<PersonAddIcon />}
+                      onClick={handleInvite}
+                    >
+                      Invite Partner
+                    </Button>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Current Strategy Card */}
+        {data.strategy && (
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={1} mb={2}>
+                  <TipsAndUpdatesIcon color="primary" />
+                  <Typography variant="h6">
+                    Current Strategy - Week {data.strategy.week}
+                  </Typography>
+                </Box>
+                <Box mb={2}>
+                  <Box display="flex" justifyContent="space-between" mb={1}>
+                    <Typography variant="body2">Progress</Typography>
+                    <Typography variant="body2">{data.strategy.progress}%</Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={data.strategy.progress}
+                    sx={{ height: 8, borderRadius: 4 }}
+                  />
+                </Box>
+                <Typography variant="subtitle2" gutterBottom>
+                  Weekly Goals:
+                </Typography>
+                <Box component="ul" sx={{ pl: 2, mb: 2 }}>
+                  {data.strategy.weeklyGoals.slice(0, 3).map((goal, idx) => (
+                    <li key={idx}>
+                      <Typography variant="body2">{goal}</Typography>
+                    </li>
+                  ))}
+                </Box>
+                <Button variant="outlined" onClick={() => navigate('/strategies')}>
+                  View Full Strategy
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+      </Grid>
+    </Box>
+  );
+};
+
+export default Dashboard;
