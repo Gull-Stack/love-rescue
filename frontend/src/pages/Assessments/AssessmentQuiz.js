@@ -15,6 +15,8 @@ import {
   Stepper,
   Step,
   StepLabel,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -39,6 +41,8 @@ const assessmentTitles = {
 const AssessmentQuiz = () => {
   const { type } = useParams();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [questions, setQuestions] = useState([]);
@@ -213,10 +217,11 @@ const AssessmentQuiz = () => {
                 control={<Radio />}
                 label={option.label}
                 sx={{
-                  py: 1,
+                  py: 1.5,
                   px: 2,
                   my: 0.5,
                   borderRadius: 2,
+                  width: '100%',
                   bgcolor: currentResponse === option.value ? 'primary.light' : 'transparent',
                   color: currentResponse === option.value ? 'primary.contrastText' : 'inherit',
                   '&:hover': {
@@ -229,7 +234,12 @@ const AssessmentQuiz = () => {
         </CardContent>
       </Card>
 
-      <Box display="flex" justifyContent="space-between" mt={3}>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        mt={3}
+        sx={{ '& .MuiButton-root': { minHeight: { xs: 48, md: 'auto' } } }}
+      >
         <Button
           variant="outlined"
           startIcon={<ArrowBackIcon />}
@@ -260,15 +270,17 @@ const AssessmentQuiz = () => {
         )}
       </Box>
 
-      <Box mt={4}>
-        <Stepper activeStep={currentIndex} alternativeLabel>
-          {questions.map((_, index) => (
-            <Step key={index} completed={!!responses[questions[index]?.id]}>
-              <StepLabel />
-            </Step>
-          ))}
-        </Stepper>
-      </Box>
+      {!isMobile && (
+        <Box mt={4}>
+          <Stepper activeStep={currentIndex} alternativeLabel>
+            {questions.map((_, index) => (
+              <Step key={index} completed={!!responses[questions[index]?.id]}>
+                <StepLabel />
+              </Step>
+            ))}
+          </Stepper>
+        </Box>
+      )}
     </Box>
   );
 };

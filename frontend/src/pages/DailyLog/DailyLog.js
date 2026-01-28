@@ -11,6 +11,8 @@ import {
   CircularProgress,
   Alert,
   Chip,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -18,6 +20,8 @@ import SaveIcon from '@mui/icons-material/Save';
 import { logsApi } from '../../services/api';
 
 const DailyLog = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [prompt, setPrompt] = useState(null);
@@ -119,7 +123,7 @@ const DailyLog = () => {
   }
 
   return (
-    <Box>
+    <Box sx={{ pb: isMobile ? '80px' : 0 }}>
       <Typography variant="h4" fontWeight="bold" gutterBottom>
         Daily Log
       </Typography>
@@ -149,7 +153,7 @@ const DailyLog = () => {
         </Card>
       )}
 
-      <Grid container spacing={3}>
+      <Grid container spacing={{ xs: 2, md: 3 }}>
         {/* Interaction Counter */}
         <Grid item xs={12} md={6}>
           <Card>
@@ -169,6 +173,7 @@ const DailyLog = () => {
                     color="success"
                     onClick={() => handleCountChange('positiveCount', -1)}
                     disabled={formData.positiveCount === 0}
+                    sx={{ minWidth: 48, minHeight: 48, p: 0 }}
                   >
                     <RemoveIcon />
                   </Button>
@@ -179,6 +184,7 @@ const DailyLog = () => {
                     variant="contained"
                     color="success"
                     onClick={() => handleCountChange('positiveCount', 1)}
+                    sx={{ minWidth: 48, minHeight: 48, p: 0 }}
                   >
                     <AddIcon />
                   </Button>
@@ -196,6 +202,7 @@ const DailyLog = () => {
                     color="error"
                     onClick={() => handleCountChange('negativeCount', -1)}
                     disabled={formData.negativeCount === 0}
+                    sx={{ minWidth: 48, minHeight: 48, p: 0 }}
                   >
                     <RemoveIcon />
                   </Button>
@@ -206,6 +213,7 @@ const DailyLog = () => {
                     variant="contained"
                     color="error"
                     onClick={() => handleCountChange('negativeCount', 1)}
+                    sx={{ minWidth: 48, minHeight: 48, p: 0 }}
                   >
                     <AddIcon />
                   </Button>
@@ -281,7 +289,8 @@ const DailyLog = () => {
               </Typography>
               <TextField
                 multiline
-                rows={4}
+                minRows={3}
+                maxRows={6}
                 fullWidth
                 placeholder="Reflect on your day together..."
                 value={formData.journalEntry}
@@ -292,10 +301,26 @@ const DailyLog = () => {
         </Grid>
       </Grid>
 
-      <Box mt={3} textAlign="center">
+      <Box
+        sx={{
+          mt: 3,
+          textAlign: 'center',
+          ...(isMobile && {
+            position: 'fixed',
+            bottom: 56,
+            left: 0,
+            right: 0,
+            p: 2,
+            bgcolor: 'background.paper',
+            boxShadow: '0 -2px 8px rgba(0,0,0,0.1)',
+            zIndex: 1099,
+          }),
+        }}
+      >
         <Button
           variant="contained"
           size="large"
+          fullWidth={isMobile}
           startIcon={saving ? <CircularProgress size={20} /> : <SaveIcon />}
           onClick={handleSubmit}
           disabled={saving}

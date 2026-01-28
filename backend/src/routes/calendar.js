@@ -5,6 +5,19 @@ const logger = require('../utils/logger');
 
 const router = express.Router();
 
+// Check if Google OAuth credentials are properly configured
+function isCalendarConfigured() {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const placeholders = ['placeholder', 'your-google-client-id', 'your-google-client-secret', ''];
+  return (
+    clientId &&
+    clientSecret &&
+    !placeholders.includes(clientId) &&
+    !placeholders.includes(clientSecret)
+  );
+}
+
 // Google OAuth2 client
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -18,6 +31,13 @@ const oauth2Client = new google.auth.OAuth2(
  */
 router.get('/auth-url', authenticate, async (req, res, next) => {
   try {
+    if (!isCalendarConfigured()) {
+      return res.status(503).json({
+        error: 'Google Calendar integration is not yet configured. Please set up Google Cloud OAuth credentials.',
+        code: 'CALENDAR_NOT_CONFIGURED'
+      });
+    }
+
     const scopes = ['https://www.googleapis.com/auth/calendar.events'];
 
     const url = oauth2Client.generateAuthUrl({
@@ -244,7 +264,8 @@ router.get('/status', authenticate, async (req, res, next) => {
 
     res.json({
       connected: !!tokenRecord,
-      expiresAt: tokenRecord?.expiresAt || null
+      expiresAt: tokenRecord?.expiresAt || null,
+      calendarAvailable: isCalendarConfigured()
     });
   } catch (error) {
     next(error);

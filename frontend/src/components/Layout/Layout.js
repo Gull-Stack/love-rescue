@@ -31,6 +31,7 @@ import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import { useAuth } from '../../contexts/AuthContext';
 
 const navItems = [
@@ -48,6 +49,7 @@ const bottomNavItems = [
   { label: 'Log', path: '/daily', icon: <EditNoteIcon /> },
   { label: 'Matchup', path: '/matchup', icon: <FavoriteIcon /> },
   { label: 'Reports', path: '/reports', icon: <AssessmentIcon /> },
+  { label: 'More', path: null, icon: <MoreHorizIcon /> },
 ];
 
 const Layout = () => {
@@ -71,8 +73,10 @@ const Layout = () => {
   };
 
   const getCurrentNavIndex = () => {
-    const index = bottomNavItems.findIndex(item => location.pathname.startsWith(item.path));
-    return index >= 0 ? index : 0;
+    const index = bottomNavItems.findIndex(
+      item => item.path && location.pathname.startsWith(item.path)
+    );
+    return index >= 0 ? index : -1;
   };
 
   const userInitials = user
@@ -83,7 +87,7 @@ const Layout = () => {
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       {/* App Bar */}
       <AppBar position="fixed" color="inherit" elevation={0}>
-        <Toolbar>
+        <Toolbar variant={isMobile ? 'dense' : 'regular'}>
           {isMobile && (
             <IconButton
               edge="start"
@@ -137,8 +141,8 @@ const Layout = () => {
           '& .MuiDrawer-paper': {
             width: 240,
             boxSizing: 'border-box',
-            mt: '64px',
-            height: 'calc(100% - 64px)',
+            mt: { xs: '48px', md: '64px' },
+            height: { xs: 'calc(100% - 48px)', md: 'calc(100% - 64px)' },
             borderRight: '1px solid',
             borderColor: 'divider',
           },
@@ -175,12 +179,12 @@ const Layout = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          mt: '64px',
+          p: { xs: 1.5, sm: 2, md: 3 },
+          mt: { xs: '48px', md: '64px' },
           mb: isMobile ? '56px' : 0,
           ml: isMobile ? 0 : '240px',
           bgcolor: 'background.default',
-          minHeight: 'calc(100vh - 64px)',
+          minHeight: { xs: 'calc(100vh - 48px)', md: 'calc(100vh - 64px)' },
         }}
       >
         <Outlet />
@@ -194,7 +198,14 @@ const Layout = () => {
         >
           <BottomNavigation
             value={getCurrentNavIndex()}
-            onChange={(_, newValue) => handleNavigation(bottomNavItems[newValue].path)}
+            onChange={(_, newValue) => {
+              const item = bottomNavItems[newValue];
+              if (item.path === null) {
+                setDrawerOpen(true);
+              } else {
+                handleNavigation(item.path);
+              }
+            }}
             showLabels
           >
             {bottomNavItems.map((item) => (

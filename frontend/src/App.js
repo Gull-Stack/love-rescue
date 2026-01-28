@@ -3,24 +3,24 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box, CircularProgress } from '@mui/material';
 import { useAuth } from './contexts/AuthContext';
 
-// Layout
+// Layout (static - needed immediately)
 import Layout from './components/Layout/Layout';
 import Disclaimer from './components/common/Disclaimer';
 
-// Auth pages
-import Login from './pages/Auth/Login';
-import Signup from './pages/Auth/Signup';
-import JoinRelationship from './pages/Auth/JoinRelationship';
+// Auth pages (lazy loaded)
+const Login = React.lazy(() => import('./pages/Auth/Login'));
+const Signup = React.lazy(() => import('./pages/Auth/Signup'));
+const JoinRelationship = React.lazy(() => import('./pages/Auth/JoinRelationship'));
 
-// Main pages
-import Dashboard from './pages/Dashboard/Dashboard';
-import Assessments from './pages/Assessments/Assessments';
-import AssessmentQuiz from './pages/Assessments/AssessmentQuiz';
-import Matchup from './pages/Matchup/Matchup';
-import DailyLog from './pages/DailyLog/DailyLog';
-import Strategies from './pages/Strategies/Strategies';
-import Reports from './pages/Reports/Reports';
-import Settings from './pages/Settings/Settings';
+// Main pages (lazy loaded)
+const Dashboard = React.lazy(() => import('./pages/Dashboard/Dashboard'));
+const Assessments = React.lazy(() => import('./pages/Assessments/Assessments'));
+const AssessmentQuiz = React.lazy(() => import('./pages/Assessments/AssessmentQuiz'));
+const Matchup = React.lazy(() => import('./pages/Matchup/Matchup'));
+const DailyLog = React.lazy(() => import('./pages/DailyLog/DailyLog'));
+const Strategies = React.lazy(() => import('./pages/Strategies/Strategies'));
+const Reports = React.lazy(() => import('./pages/Reports/Reports'));
+const Settings = React.lazy(() => import('./pages/Settings/Settings'));
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -64,6 +64,13 @@ function App() {
   return (
     <>
       <Disclaimer />
+      <React.Suspense
+        fallback={
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+            <CircularProgress />
+          </Box>
+        }
+      >
       <Routes>
         {/* Public routes */}
         <Route
@@ -110,6 +117,7 @@ function App() {
         {/* Catch all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </React.Suspense>
     </>
   );
 }

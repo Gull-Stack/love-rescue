@@ -107,7 +107,12 @@ const Settings = () => {
       const response = await calendarApi.getAuthUrl();
       window.location.href = response.data.authUrl;
     } catch (err) {
-      setError('Failed to connect calendar');
+      const code = err.response?.data?.code;
+      if (code === 'CALENDAR_NOT_CONFIGURED') {
+        setError('Google Calendar integration is not yet configured. Please set up Google Cloud OAuth credentials.');
+      } else {
+        setError('Failed to connect calendar');
+      }
       setLoading({ ...loading, calendar: false });
     }
   };
@@ -368,6 +373,18 @@ const Settings = () => {
                 Disconnect
               </Button>
             </Box>
+          ) : calendarStatus?.calendarAvailable === false ? (
+            <Tooltip title="Google Calendar integration is not yet configured by the administrator.">
+              <span>
+                <Button
+                  variant="outlined"
+                  startIcon={<CalendarTodayIcon />}
+                  disabled
+                >
+                  Connect Calendar
+                </Button>
+              </span>
+            </Tooltip>
           ) : (
             <Button
               variant="outlined"
