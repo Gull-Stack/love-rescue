@@ -43,6 +43,10 @@ import FacebookIcon from '@mui/icons-material/Facebook';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import YouTubeIcon from '@mui/icons-material/YouTube';
 import LinkedInIcon from '@mui/icons-material/LinkedIn';
+import XIcon from '@mui/icons-material/X';
+import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import PodcastsIcon from '@mui/icons-material/Podcasts';
+import MicIcon from '@mui/icons-material/Mic';
 
 // ─── CONSTANTS ───────────────────────────────────────────────
 const DARK_BG = '#0d0221';
@@ -170,6 +174,7 @@ const navLinks = [
   { label: 'How It Works', href: '#how-it-works' },
   { label: 'Results', href: '#results' },
   { label: 'Pricing', href: '#pricing' },
+  { label: 'Blog', href: '#blog' },
 ];
 
 // ─── LANDING PAGE ────────────────────────────────────────────
@@ -1426,6 +1431,9 @@ const Landing = () => {
                 { icon: <InstagramIcon />, label: 'Instagram' },
                 { icon: <YouTubeIcon />, label: 'YouTube' },
                 { icon: <LinkedInIcon />, label: 'LinkedIn' },
+                { icon: <XIcon />, label: 'X' },
+                { icon: <MusicNoteIcon />, label: 'TikTok' },
+                { icon: <PodcastsIcon />, label: 'Spotify' },
               ].map((social) => (
                 <IconButton
                   key={social.label}
@@ -1446,7 +1454,7 @@ const Landing = () => {
             <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: '0.85rem', mb: 2, letterSpacing: '0.05em' }}>
               PLATFORM
             </Typography>
-            {['Assessments', 'Daily Insights', 'Daily Videos', 'Matchup', 'Strategies', 'Meetings'].map(
+            {['Assessments', 'Daily Insights', 'Daily Videos', 'Matchup', 'Strategies', 'Meetings', 'Blog', 'Podcast'].map(
               (link) => (
                 <Typography
                   key={link}

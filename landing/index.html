@@ -3,6 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Google Tag Manager - Replace GTM-XXXXXXX with your GTM container ID -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-XXXXXXX');</script>
+  <!-- End Google Tag Manager -->
   <title>Marriage Rescue — Science-Backed Relationship Transformation</title>
   <meta name="description" content="The only relationship platform combining clinical assessments, daily micro-coaching, and guided facilitated meetings to help couples build lasting connection." />
   <meta property="og:title" content="Marriage Rescue — Transform Your Relationship" />
@@ -596,6 +603,121 @@
     }
 
     /* ═══════════════════════════════════════════
+       BLOG PREVIEW
+    ═══════════════════════════════════════════ */
+    .blog-preview {
+      padding: 96px 0;
+      background: linear-gradient(180deg, var(--dark-2) 0%, var(--dark-3) 100%);
+    }
+    .blog-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 56px;
+    }
+    .blog-card {
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border-dim);
+      border-radius: 20px; overflow: hidden; transition: all 0.4s ease;
+    }
+    .blog-card:hover {
+      transform: translateY(-6px); border-color: rgba(233,30,99,0.3);
+      box-shadow: 0 20px 60px rgba(233,30,99,0.08);
+    }
+    .blog-thumb {
+      width: 100%; height: 180px; object-fit: cover;
+      background: linear-gradient(135deg, rgba(233,30,99,0.2), rgba(156,39,176,0.2));
+      display: flex; align-items: center; justify-content: center;
+    }
+    .blog-thumb svg { width: 48px; height: 48px; fill: rgba(255,255,255,0.3); }
+    .blog-body { padding: 24px; }
+    .blog-category {
+      display: inline-block; padding: 4px 12px; border-radius: 20px;
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 12px;
+    }
+    .blog-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; line-height: 1.4; }
+    .blog-card .blog-excerpt {
+      color: var(--text-dim); font-size: 0.88rem; line-height: 1.6; margin-bottom: 16px;
+    }
+    .blog-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      color: rgba(255,255,255,0.35); font-size: 0.78rem;
+    }
+    .blog-read-more {
+      color: var(--pink); font-weight: 600; font-size: 0.85rem;
+      display: inline-flex; align-items: center; gap: 4px; transition: gap 0.2s;
+    }
+    .blog-card:hover .blog-read-more { gap: 8px; }
+    .blog-cta-row { text-align: center; margin-top: 48px; }
+    @media (max-width: 900px) { .blog-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .blog-grid { grid-template-columns: 1fr; } }
+
+    /* ═══════════════════════════════════════════
+       PODCAST SECTION
+    ═══════════════════════════════════════════ */
+    .podcast {
+      padding: 96px 0;
+      background: var(--dark-1);
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .podcast-inner {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center;
+    }
+    .podcast-art {
+      width: 100%; aspect-ratio: 1; border-radius: 24px; overflow: hidden;
+      background: linear-gradient(135deg, rgba(233,30,99,0.25), rgba(156,39,176,0.25));
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+    }
+    .podcast-art svg { width: 96px; height: 96px; fill: rgba(255,255,255,0.5); }
+    .podcast-text h2 {
+      font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 800;
+      letter-spacing: -0.02em; margin-bottom: 16px;
+    }
+    .podcast-text p { color: var(--text-mid); font-size: 1.05rem; line-height: 1.7; margin-bottom: 28px; }
+    .podcast-platforms { display: flex; gap: 12px; flex-wrap: wrap; }
+    .podcast-platforms a {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 20px; border-radius: 50px; font-size: 0.85rem; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.15); color: #fff; transition: all 0.2s;
+    }
+    .podcast-platforms a:hover { border-color: var(--pink); background: rgba(233,30,99,0.08); }
+    .podcast-platforms a svg { width: 20px; height: 20px; fill: currentColor; }
+    @media (max-width: 768px) {
+      .podcast-inner { grid-template-columns: 1fr; }
+      .podcast-art { max-width: 320px; margin: 0 auto; }
+    }
+
+    /* ═══════════════════════════════════════════
+       SCHEDULE CONSULTATION
+    ═══════════════════════════════════════════ */
+    .consultation {
+      padding: 96px 0;
+      background: linear-gradient(180deg, var(--dark-3) 0%, var(--dark-2) 100%);
+    }
+    .consult-inner {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center;
+    }
+    .consult-text h2 {
+      font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 800;
+      letter-spacing: -0.02em; margin-bottom: 16px;
+    }
+    .consult-text > p { color: var(--text-mid); font-size: 1.05rem; line-height: 1.7; margin-bottom: 28px; }
+    .consult-benefits { display: flex; flex-direction: column; gap: 16px; margin-bottom: 32px; }
+    .consult-benefit { display: flex; align-items: flex-start; gap: 12px; }
+    .consult-benefit svg { width: 22px; height: 22px; fill: var(--pink); flex-shrink: 0; margin-top: 2px; }
+    .consult-benefit span { color: var(--text-mid); font-size: 0.95rem; line-height: 1.5; }
+    .consult-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 24px; padding: 40px; text-align: center;
+    }
+    .consult-card h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; }
+    .consult-card .consult-sub { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 24px; }
+    .consult-card .consult-time { color: var(--pink); font-weight: 600; font-size: 0.9rem; margin-bottom: 20px; }
+    .consult-card .btn { width: 100%; justify-content: center; }
+    .consult-card .consult-note { color: rgba(255,255,255,0.3); font-size: 0.78rem; margin-top: 16px; }
+    @media (max-width: 768px) {
+      .consult-inner { grid-template-columns: 1fr; }
+    }
+
+    /* ═══════════════════════════════════════════
        COOKIE CONSENT BANNER
     ═══════════════════════════════════════════ */
     .cookie-banner {
@@ -661,6 +783,9 @@
   </style>
 </head>
 <body>
+<!-- Google Tag Manager (noscript) - Replace GTM-XXXXXXX with your GTM container ID -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-XXXXXXX" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
 
 <!-- ═══════════ ANNOUNCEMENT BAR ═══════════ -->
 <div class="announcement-bar" id="announcementBar">
@@ -686,6 +811,7 @@
       <a href="#how-it-works">How It Works</a>
       <a href="#results">Results</a>
       <a href="#pricing">Pricing</a>
+      <a href="#blog">Blog</a>
       <a href="#faq">FAQ</a>
     </nav>
     <div class="header-cta">
@@ -708,6 +834,7 @@
   <a href="#how-it-works" onclick="document.getElementById('mobileMenu').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')">How It Works</a>
   <a href="#results" onclick="document.getElementById('mobileMenu').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')">Results</a>
   <a href="#pricing" onclick="document.getElementById('mobileMenu').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')">Pricing</a>
+  <a href="#blog" onclick="document.getElementById('mobileMenu').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')">Blog</a>
   <a href="#faq" onclick="document.getElementById('mobileMenu').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')">FAQ</a>
   <a href="https://marriage-rescue-app.vercel.app/login">Log In</a>
   <a href="https://marriage-rescue-app.vercel.app/signup" class="btn btn-primary">Start Free Trial</a>
@@ -1076,6 +1203,134 @@
   </div>
 </section>
 
+<!-- ═══════════ BLOG PREVIEW ═══════════ -->
+<section class="blog-preview" id="blog">
+  <div class="container" style="text-align:center;">
+    <span class="chip chip-pink fade-up">BLOG</span>
+    <h2 class="section-title fade-up">Insights &amp; <span class="gradient-text">Inspiration</span></h2>
+    <p class="section-sub fade-up">Science-backed articles on communication, attachment, and building a thriving relationship.</p>
+    <div class="blog-grid" style="text-align:left;">
+
+      <div class="blog-card fade-up">
+        <div class="blog-thumb">
+          <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </div>
+        <div class="blog-body">
+          <span class="blog-category" style="background:rgba(233,30,99,0.15);color:#e91e63;">Relationships</span>
+          <h3>The 5:1 Ratio: Why Positive Interactions Are the Secret to Lasting Love</h3>
+          <p class="blog-excerpt">Dr. Gottman's research shows that stable couples maintain at least five positive interactions for every negative one. Here's how to track and improve yours.</p>
+          <div class="blog-meta">
+            <span>5 min read</span>
+            <span class="blog-read-more">Read More <svg width="16" height="16" viewBox="0 0 24 24" fill="#e91e63"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="blog-card fade-up fade-up-delay-1">
+        <div class="blog-thumb" style="background:linear-gradient(135deg, rgba(255,152,0,0.2), rgba(233,30,99,0.2));">
+          <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        </div>
+        <div class="blog-body">
+          <span class="blog-category" style="background:rgba(255,152,0,0.15);color:#ff9800;">Attachment</span>
+          <h3>Understanding Your Attachment Style: Anxious, Avoidant, or Secure?</h3>
+          <p class="blog-excerpt">Your attachment style shapes how you connect, argue, and love. Learn which pattern drives your relationship and what you can do about it.</p>
+          <div class="blog-meta">
+            <span>7 min read</span>
+            <span class="blog-read-more">Read More <svg width="16" height="16" viewBox="0 0 24 24" fill="#e91e63"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="blog-card fade-up fade-up-delay-2">
+        <div class="blog-thumb" style="background:linear-gradient(135deg, rgba(76,175,80,0.2), rgba(0,188,212,0.2));">
+          <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
+        </div>
+        <div class="blog-body">
+          <span class="blog-category" style="background:rgba(76,175,80,0.15);color:#4caf50;">Communication</span>
+          <h3>The Four Horsemen: How to Spot and Stop the Behaviors That Destroy Marriages</h3>
+          <p class="blog-excerpt">Criticism, contempt, defensiveness, and stonewalling predict divorce with over 90% accuracy. Here are the antidotes to each.</p>
+          <div class="blog-meta">
+            <span>6 min read</span>
+            <span class="blog-read-more">Read More <svg width="16" height="16" viewBox="0 0 24 24" fill="#e91e63"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="blog-cta-row fade-up">
+      <a href="#" class="btn btn-outline" style="padding:14px 36px;">View All Articles <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ PODCAST ═══════════ -->
+<section class="podcast" id="podcast">
+  <div class="container">
+    <div class="podcast-inner">
+      <div class="podcast-art fade-up">
+        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
+      </div>
+      <div class="podcast-text fade-up">
+        <span class="chip chip-purple">PODCAST</span>
+        <h2>The <span class="gradient-text">Marriage Rescue</span> Podcast</h2>
+        <p>Weekly conversations with relationship scientists, therapists, and real couples sharing what works. Deep dives into attachment theory, communication patterns, and the science of lasting love.</p>
+        <div class="podcast-platforms">
+          <a href="#">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+            Spotify
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            Apple Podcasts
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33-.22 2.65-.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73z"/></svg>
+            YouTube
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ SCHEDULE CONSULTATION ═══════════ -->
+<section class="consultation">
+  <div class="container">
+    <div class="consult-inner">
+      <div class="consult-text fade-up">
+        <span class="chip chip-pink">TALK TO US</span>
+        <h2>Not Sure Where to <span class="gradient-text">Start?</span></h2>
+        <p>Schedule a free 15-minute consultation with one of our Relationship Specialists. They'll help you understand which plan is right for you and your partner.</p>
+        <div class="consult-benefits">
+          <div class="consult-benefit">
+            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            <span>Learn which assessments to start with based on your situation</span>
+          </div>
+          <div class="consult-benefit">
+            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            <span>Understand the difference between Standard and Premium plans</span>
+          </div>
+          <div class="consult-benefit">
+            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            <span>Get answers to any questions about how Marriage Rescue works</span>
+          </div>
+          <div class="consult-benefit">
+            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            <span>100% free, no pressure, no obligation</span>
+          </div>
+        </div>
+      </div>
+      <div class="consult-card fade-up">
+        <h3>Free Consultation</h3>
+        <p class="consult-sub">Speak with a Relationship Specialist</p>
+        <div class="consult-time">15 minutes &bull; Video or Phone Call</div>
+        <a href="#" class="btn btn-primary" id="scheduleCallBtn">Schedule a Free Call</a>
+        <p class="consult-note">Available Monday - Friday, 9am - 6pm EST</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ═══════════ EMAIL CAPTURE ═══════════ -->
 <section class="email-capture">
   <div class="container">
@@ -1119,9 +1374,12 @@
           <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24"><path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8C4 18.39 5.61 20 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6C20 5.61 18.39 4 16.4 4H7.6m9.65 1.5a1.25 1.25 0 0 1 1.25 1.25A1.25 1.25 0 0 1 17.25 8 1.25 1.25 0 0 1 16 6.75a1.25 1.25 0 0 1 1.25-1.25M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg></a>
           <a href="#" aria-label="YouTube"><svg viewBox="0 0 24 24"><path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33-.22 2.65-.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73z"/></svg></a>
           <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/></svg></a>
+          <a href="#" aria-label="TikTok"><svg viewBox="0 0 24 24"><path d="M16.6 5.82s.51.5 0 0A4.278 4.278 0 0 1 15.54 3h-3.09v12.4a2.592 2.592 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg></a>
+          <a href="#" aria-label="X"><svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+          <a href="#" aria-label="Spotify"><svg viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 0 1-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 1 1-.277-1.215c3.809-.87 7.077-.496 9.713 1.115a.623.623 0 0 1 .206.857zm1.223-2.722a.78.78 0 0 1-1.072.257c-2.687-1.652-6.786-2.131-9.965-1.166a.78.78 0 1 1-.453-1.493c3.628-1.102 8.136-.568 11.234 1.33a.78.78 0 0 1 .256 1.072zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 1 1-.543-1.79c3.533-1.072 9.405-.865 13.115 1.338a.935.935 0 0 1-1.955 1.013z"/></svg></a>
         </div>
       </div>
-      <div class="footer-col"><h4>PLATFORM</h4><a href="#">Assessments</a><a href="#">Daily Insights</a><a href="#">Daily Videos</a><a href="#">Matchup</a><a href="#">Strategies</a><a href="#">Meetings</a></div>
+      <div class="footer-col"><h4>PLATFORM</h4><a href="#">Assessments</a><a href="#">Daily Insights</a><a href="#">Daily Videos</a><a href="#">Matchup</a><a href="#">Strategies</a><a href="#">Meetings</a><a href="#blog">Blog</a><a href="#podcast">Podcast</a></div>
       <div class="footer-col"><h4>COMPANY</h4><a href="#">About Us</a><a href="#">Our Research</a><a href="#">Blog</a><a href="#">Careers</a><a href="#">Press</a></div>
       <div class="footer-col"><h4>SUPPORT</h4><a href="#">Help Center</a><a href="#">Contact Us</a><a href="#">FAQs</a><a href="#">Community</a></div>
       <div class="footer-col"><h4>LEGAL</h4><a href="#">Privacy Policy</a><a href="#">Terms of Service</a><a href="#">HIPAA Notice</a><a href="#">Cookie Policy</a></div>
