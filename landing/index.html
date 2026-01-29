@@ -7,9 +7,14 @@
   <meta name="description" content="The only relationship platform combining clinical assessments, daily micro-coaching, and guided facilitated meetings to help couples build lasting connection." />
   <meta property="og:title" content="Marriage Rescue — Transform Your Relationship" />
   <meta property="og:description" content="Science-backed tools for couples: assessments, daily insights, curated videos, and mediated meetings." />
+  <meta property="og:image" content="/images/og-share.jpg" />
   <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Marriage Rescue — Transform Your Relationship" />
+  <meta name="twitter:description" content="Science-backed tools for couples: assessments, daily insights, curated videos, and mediated meetings." />
   <meta name="theme-color" content="#0d0221" />
   <link rel="icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
@@ -102,6 +107,34 @@
       color: var(--text-dim); font-size: 1.05rem; max-width: 600px;
       margin: 0 auto; font-weight: 300;
     }
+
+    /* ═══════════════════════════════════════════
+       ANNOUNCEMENT BAR
+    ═══════════════════════════════════════════ */
+    .announcement-bar {
+      background: var(--gradient);
+      text-align: center; padding: 10px 24px;
+      font-size: 0.85rem; font-weight: 600;
+      position: relative; z-index: 101;
+    }
+    .announcement-bar a {
+      color: #fff; text-decoration: underline; text-underline-offset: 2px;
+      margin-left: 8px;
+    }
+    .announcement-bar .countdown {
+      display: inline-flex; gap: 4px; margin-left: 12px;
+    }
+    .announcement-bar .countdown-unit {
+      background: rgba(0,0,0,0.25); padding: 2px 8px;
+      border-radius: 4px; font-variant-numeric: tabular-nums;
+      font-weight: 700; min-width: 28px; text-align: center;
+    }
+    .announcement-bar .close-announcement {
+      position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: rgba(255,255,255,0.7);
+      cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 4px;
+    }
+    .announcement-bar .close-announcement:hover { color: #fff; }
 
     /* ═══════════════════════════════════════════
        HEADER
@@ -440,9 +473,206 @@
     @media (max-width: 480px) {
       .footer-grid { grid-template-columns: 1fr; }
     }
+
+    /* ═══════════════════════════════════════════
+       AS SEEN IN / SOCIAL PROOF LOGOS
+    ═══════════════════════════════════════════ */
+    .seen-in {
+      padding: 56px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      background: var(--dark-1);
+    }
+    .seen-in-label {
+      text-align: center; color: var(--text-dim); font-size: 0.75rem;
+      font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+    .seen-in-logos {
+      display: flex; align-items: center; justify-content: center;
+      gap: 48px; flex-wrap: wrap; opacity: 0.4;
+    }
+    .seen-in-logos .logo-placeholder {
+      font-size: 1.1rem; font-weight: 700; color: #fff;
+      letter-spacing: 0.05em; white-space: nowrap;
+    }
+    .seen-in-logos .logo-placeholder img {
+      height: 28px; width: auto; filter: brightness(0) invert(1); opacity: 0.7;
+    }
+
+    /* ═══════════════════════════════════════════
+       EMAIL CAPTURE / LEAD GEN
+    ═══════════════════════════════════════════ */
+    .email-capture {
+      padding: 80px 0;
+      background:
+        radial-gradient(ellipse at 30% 50%, rgba(156,39,176,0.1) 0%, transparent 60%),
+        var(--dark-2);
+    }
+    .capture-box {
+      max-width: 640px; margin: 0 auto; text-align: center;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 24px; padding: 48px 40px;
+    }
+    .capture-box h2 {
+      font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 800;
+      margin-bottom: 12px;
+    }
+    .capture-box p {
+      color: var(--text-dim); font-size: 0.95rem; margin-bottom: 28px;
+      line-height: 1.6;
+    }
+    .capture-form {
+      display: flex; gap: 12px; max-width: 460px; margin: 0 auto;
+    }
+    .capture-form input {
+      flex: 1; padding: 14px 20px; border-radius: 50px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.05); color: #fff;
+      font-family: inherit; font-size: 0.95rem;
+      outline: none; transition: border-color 0.3s;
+    }
+    .capture-form input::placeholder { color: rgba(255,255,255,0.35); }
+    .capture-form input:focus { border-color: var(--pink); }
+    .capture-form .btn { white-space: nowrap; }
+    .capture-fine {
+      color: rgba(255,255,255,0.3); font-size: 0.75rem;
+      margin-top: 16px;
+    }
+    @media (max-width: 500px) {
+      .capture-form { flex-direction: column; }
+      .capture-box { padding: 32px 24px; }
+    }
+
+    /* ═══════════════════════════════════════════
+       GUARANTEE BADGE
+    ═══════════════════════════════════════════ */
+    .guarantee {
+      display: flex; align-items: center; gap: 16px;
+      background: rgba(76,175,80,0.08); border: 1px solid rgba(76,175,80,0.2);
+      border-radius: 16px; padding: 20px 24px; margin-top: 40px;
+      max-width: 800px; margin-left: auto; margin-right: auto;
+    }
+    .guarantee-icon {
+      width: 48px; height: 48px; flex-shrink: 0;
+      fill: #4caf50;
+    }
+    .guarantee-text h4 { font-size: 0.95rem; font-weight: 700; color: #4caf50; margin-bottom: 4px; }
+    .guarantee-text p { color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; }
+
+    /* ═══════════════════════════════════════════
+       FAQ ACCORDION
+    ═══════════════════════════════════════════ */
+    .faq {
+      padding: 96px 0;
+      background: var(--dark-2);
+    }
+    .faq-grid {
+      max-width: 720px; margin: 48px auto 0;
+    }
+    .faq-item {
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .faq-question {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%; padding: 20px 0; background: none; border: none;
+      color: #fff; font-family: inherit; font-size: 1rem; font-weight: 600;
+      text-align: left; cursor: pointer; gap: 16px;
+      transition: color 0.2s;
+    }
+    .faq-question:hover { color: var(--pink); }
+    .faq-question svg {
+      width: 24px; height: 24px; fill: var(--text-dim); flex-shrink: 0;
+      transition: transform 0.3s ease;
+    }
+    .faq-item.open .faq-question svg { transform: rotate(180deg); }
+    .faq-answer {
+      max-height: 0; overflow: hidden; transition: max-height 0.4s ease, padding 0.3s ease;
+    }
+    .faq-item.open .faq-answer {
+      max-height: 300px; padding-bottom: 20px;
+    }
+    .faq-answer p {
+      color: var(--text-dim); font-size: 0.9rem; line-height: 1.7;
+    }
+
+    /* ═══════════════════════════════════════════
+       COOKIE CONSENT BANNER
+    ═══════════════════════════════════════════ */
+    .cookie-banner {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 300;
+      background: rgba(13,2,33,0.97); backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding: 16px 24px;
+      display: flex; align-items: center; justify-content: center;
+      gap: 24px; flex-wrap: wrap;
+      transform: translateY(100%); transition: transform 0.4s ease;
+    }
+    .cookie-banner.visible { transform: translateY(0); }
+    .cookie-banner p {
+      color: var(--text-mid); font-size: 0.85rem; max-width: 600px;
+    }
+    .cookie-banner p a { color: var(--pink); text-decoration: underline; }
+    .cookie-btns { display: flex; gap: 10px; flex-shrink: 0; }
+    .cookie-btns .btn { padding: 10px 20px; font-size: 0.8rem; }
+    .btn-ghost {
+      background: transparent; color: var(--text-mid); border: 1px solid rgba(255,255,255,0.15);
+      font-family: inherit; font-weight: 600; border-radius: 50px; cursor: pointer;
+      padding: 10px 20px; font-size: 0.8rem; transition: all 0.2s;
+    }
+    .btn-ghost:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
+
+    /* ═══════════════════════════════════════════
+       BACK TO TOP
+    ═══════════════════════════════════════════ */
+    .back-to-top {
+      position: fixed; bottom: 32px; right: 32px; z-index: 200;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--gradient); border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 20px rgba(233,30,99,0.4);
+      opacity: 0; transform: translateY(20px);
+      transition: all 0.3s ease; pointer-events: none;
+    }
+    .back-to-top.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .back-to-top:hover { transform: translateY(-3px); box-shadow: 0 6px 30px rgba(233,30,99,0.6); }
+    .back-to-top svg { width: 24px; height: 24px; fill: #fff; }
+
+    /* ═══════════════════════════════════════════
+       SCROLL ANIMATIONS
+    ═══════════════════════════════════════════ */
+    .fade-up {
+      opacity: 0; transform: translateY(40px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .fade-up.visible {
+      opacity: 1; transform: translateY(0);
+    }
+    .fade-up-delay-1 { transition-delay: 0.1s; }
+    .fade-up-delay-2 { transition-delay: 0.2s; }
+    .fade-up-delay-3 { transition-delay: 0.3s; }
+    .fade-up-delay-4 { transition-delay: 0.4s; }
+    .fade-up-delay-5 { transition-delay: 0.5s; }
+    .fade-up-delay-6 { transition-delay: 0.6s; }
+
+    /* Announcement bar shifts header down */
+    .header { top: 0; }
+    body.has-announcement .header { top: 42px; }
+    body.has-announcement .hero { padding-top: 42px; }
   </style>
 </head>
 <body>
+
+<!-- ═══════════ ANNOUNCEMENT BAR ═══════════ -->
+<div class="announcement-bar" id="announcementBar">
+  <span>Limited Time — Start your <strong>14-day free trial</strong> today.</span>
+  <span class="countdown" id="countdown">
+    <span class="countdown-unit" id="cd-hours">00</span>:
+    <span class="countdown-unit" id="cd-mins">00</span>:
+    <span class="countdown-unit" id="cd-secs">00</span>
+  </span>
+  <a href="https://marriage-rescue-app.vercel.app/signup">Claim Now</a>
+  <button class="close-announcement" onclick="document.getElementById('announcementBar').style.display='none';document.body.classList.remove('has-announcement');" aria-label="Close">&times;</button>
+</div>
 
 <!-- ═══════════ HEADER ═══════════ -->
 <header class="header" id="header">
@@ -456,10 +686,11 @@
       <a href="#how-it-works">How It Works</a>
       <a href="#results">Results</a>
       <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
     </nav>
     <div class="header-cta">
-      <button class="btn-login" onclick="window.location.href='/login'">Log In</button>
-      <a href="/signup" class="btn btn-primary">Start Free Trial</a>
+      <button class="btn-login" onclick="window.location.href='https://marriage-rescue-app.vercel.app/login'">Log In</button>
+      <a href="https://marriage-rescue-app.vercel.app/signup" class="btn btn-primary">Start Free Trial</a>
       <button class="menu-toggle" onclick="document.getElementById('mobileMenu').classList.add('open');document.getElementById('mobileOverlay').classList.add('open')">
         <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
       </button>
@@ -477,8 +708,9 @@
   <a href="#how-it-works" onclick="document.getElementById('mobileMenu').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')">How It Works</a>
   <a href="#results" onclick="document.getElementById('mobileMenu').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')">Results</a>
   <a href="#pricing" onclick="document.getElementById('mobileMenu').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')">Pricing</a>
-  <a href="/login">Log In</a>
-  <a href="/signup" class="btn btn-primary">Start Free Trial</a>
+  <a href="#faq" onclick="document.getElementById('mobileMenu').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')">FAQ</a>
+  <a href="https://marriage-rescue-app.vercel.app/login">Log In</a>
+  <a href="https://marriage-rescue-app.vercel.app/signup" class="btn btn-primary">Start Free Trial</a>
 </div>
 
 <!-- ═══════════ HERO ═══════════ -->
@@ -491,7 +723,7 @@
     <h1>Welcome Back <span class="gradient-text">Marriage Rescue</span></h1>
     <p>The only relationship platform that combines clinical assessments, daily micro-coaching, and guided facilitated meetings to help couples build lasting connection. Start your 14-day free trial today.</p>
     <div class="hero-btns">
-      <a href="/signup" class="btn btn-primary btn-large">
+      <a href="https://marriage-rescue-app.vercel.app/signup" class="btn btn-primary btn-large">
         Yes! Start My Free Trial
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
       </a>
@@ -524,12 +756,26 @@
   </div>
 </section>
 
+<!-- ═══════════ AS SEEN IN ═══════════ -->
+<section class="seen-in">
+  <div class="container">
+    <div class="seen-in-label">Research Foundations &amp; Featured In</div>
+    <div class="seen-in-logos">
+      <div class="logo-placeholder"><img src="/images/logo-gottman.png" alt="The Gottman Institute" onerror="this.parentElement.textContent='THE GOTTMAN INSTITUTE'" /></div>
+      <div class="logo-placeholder"><img src="/images/logo-psychology-today.png" alt="Psychology Today" onerror="this.parentElement.textContent='PSYCHOLOGY TODAY'" /></div>
+      <div class="logo-placeholder"><img src="/images/logo-eft.png" alt="EFT - Sue Johnson" onerror="this.parentElement.textContent='EFT'" /></div>
+      <div class="logo-placeholder"><img src="/images/logo-apa.png" alt="APA" onerror="this.parentElement.textContent='APA'" /></div>
+      <div class="logo-placeholder"><img src="/images/logo-ted.png" alt="TED" onerror="this.parentElement.textContent='TED'" /></div>
+    </div>
+  </div>
+</section>
+
 <!-- ═══════════ PROGRAMS ═══════════ -->
 <section class="programs" id="programs">
   <div class="container" style="text-align:center;">
-    <span class="chip chip-purple">PROGRAMS</span>
-    <h2 class="section-title">Everything You Need to <span class="gradient-text">Transform Your Relationship</span></h2>
-    <p class="section-sub">Six integrated tools designed by relationship scientists, delivered through a platform that fits into your daily life.</p>
+    <span class="chip chip-purple fade-up">PROGRAMS</span>
+    <h2 class="section-title fade-up">Everything You Need to <span class="gradient-text">Transform Your Relationship</span></h2>
+    <p class="section-sub fade-up">Six integrated tools designed by relationship scientists, delivered through a platform that fits into your daily life.</p>
     <div class="programs-grid" style="text-align:left;">
 
       <div class="program-card" style="--c:#e91e63;" onmouseenter="this.style.borderColor='rgba(233,30,99,0.4)';this.style.boxShadow='0 20px 60px rgba(233,30,99,0.1)'" onmouseleave="this.style.borderColor='';this.style.boxShadow=''">
@@ -606,8 +852,8 @@
 <section class="how-it-works" id="how-it-works">
   <div class="bg-glow"></div>
   <div class="container" style="text-align:center;">
-    <span class="chip chip-pink">HOW IT WORKS</span>
-    <h2 class="section-title">Your Journey to a <span class="gradient-text">Stronger Marriage</span></h2>
+    <span class="chip chip-pink fade-up">HOW IT WORKS</span>
+    <h2 class="section-title fade-up">Your Journey to a <span class="gradient-text">Stronger Marriage</span></h2>
     <div class="steps-grid" style="text-align:left;">
       <div class="step">
         <div class="step-number">01</div>
@@ -668,8 +914,8 @@
 <!-- ═══════════ TESTIMONIALS ═══════════ -->
 <section class="testimonials" id="results">
   <div class="container" style="text-align:center;">
-    <span class="chip chip-green">RESULTS</span>
-    <h2 class="section-title">Real Couples. <span class="gradient-text">Real Results.</span></h2>
+    <span class="chip chip-green fade-up">RESULTS</span>
+    <h2 class="section-title fade-up">Real Couples. <span class="gradient-text">Real Results.</span></h2>
     <div class="test-grid" style="text-align:left;">
 
       <div class="test-card">
@@ -707,9 +953,9 @@
 <!-- ═══════════ PRICING ═══════════ -->
 <section class="pricing" id="pricing">
   <div class="container" style="text-align:center;">
-    <span class="chip chip-pink">PRICING</span>
-    <h2 class="section-title">Invest in Your <span class="gradient-text">Most Important Relationship</span></h2>
-    <p class="section-sub">Start with a 14-day free trial. No credit card required.</p>
+    <span class="chip chip-pink fade-up">PRICING</span>
+    <h2 class="section-title fade-up">Invest in Your <span class="gradient-text">Most Important Relationship</span></h2>
+    <p class="section-sub fade-up">Start with a 14-day free trial. No credit card required.</p>
     <div class="pricing-grid" style="text-align:left;">
 
       <div class="price-card">
@@ -725,7 +971,7 @@
         <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Weekly &amp; Monthly Reports</span></div>
         <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Daily Interaction Logging</span></div>
         <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Therapist Integration</span></div>
-        <a href="/signup" class="btn btn-white-outline">Start Free Trial</a>
+        <a href="https://marriage-rescue-app.vercel.app/signup" class="btn btn-white-outline">Start Free Trial</a>
       </div>
 
       <div class="price-card featured">
@@ -742,9 +988,105 @@
         <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Calendar Integration</span></div>
         <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Session Notes &amp; History</span></div>
         <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Priority Support</span></div>
-        <a href="/signup" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:28px;">Start Free Trial</a>
+        <a href="https://marriage-rescue-app.vercel.app/signup" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:28px;">Start Free Trial</a>
       </div>
 
+    </div>
+
+    <!-- Guarantee Badge -->
+    <div class="guarantee fade-up">
+      <svg class="guarantee-icon" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+      <div class="guarantee-text">
+        <h4>14-Day Money-Back Guarantee</h4>
+        <p>Try Marriage Rescue risk-free. If you don't see improvement in your relationship within the first 14 days, we'll refund your payment — no questions asked.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════ FAQ ═══════════ -->
+<section class="faq" id="faq">
+  <div class="container" style="text-align:center;">
+    <span class="chip chip-purple fade-up">FAQ</span>
+    <h2 class="section-title fade-up">Frequently Asked <span class="gradient-text">Questions</span></h2>
+    <div class="faq-grid" style="text-align:left;">
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+          <span>Is Marriage Rescue a substitute for therapy?</span>
+          <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+        </button>
+        <div class="faq-answer">
+          <p>No. Marriage Rescue is a relationship growth platform, not therapy. It provides science-backed tools for daily practice — assessments, insights, videos, and facilitated discussions — but is not a replacement for professional counseling. If you're in crisis, please seek a licensed therapist.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+          <span>Does my partner need to sign up too?</span>
+          <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+        </button>
+        <div class="faq-answer">
+          <p>You can start on your own — all assessments, daily insights, and videos work individually. However, the full power unlocks when both partners join: matchup analysis, shared strategies, and mediated meetings all require both partners.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+          <span>What happens during a mediated meeting?</span>
+          <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+        </button>
+        <div class="faq-answer">
+          <p>A 30-minute video call on Google Meet with a neutral facilitator who guides your conversation. They help structure the discussion, ensure both partners feel heard, and keep things productive. It's included in the Premium plan at no extra cost.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+          <span>What research is Marriage Rescue based on?</span>
+          <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+        </button>
+        <div class="faq-answer">
+          <p>Our platform draws from Dr. John Gottman's research on the "magic ratio" (5:1 positive-to-negative interactions), Dr. Sue Johnson's Emotionally Focused Therapy (EFT), attachment theory, and the Big Five personality model. Every assessment and insight is grounded in peer-reviewed research.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+          <span>Can I cancel anytime?</span>
+          <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+        </button>
+        <div class="faq-answer">
+          <p>Absolutely. There are no contracts or commitments. You can cancel your subscription at any time from your account settings. Your 14-day trial is completely free — no credit card required to start.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+          <span>Is my data private and secure?</span>
+          <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+        </button>
+        <div class="faq-answer">
+          <p>Yes. Marriage Rescue is HIPAA-compliant with full audit logging, encrypted data at rest and in transit, and strict access controls. Your partner can only see shared features (matchup scores, strategies) — they never see your individual assessment answers or daily logs.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ EMAIL CAPTURE ═══════════ -->
+<section class="email-capture">
+  <div class="container">
+    <div class="capture-box fade-up">
+      <h2>Get a Free <span class="gradient-text">Relationship Health Check</span></h2>
+      <p>Enter your email and we'll send you a free mini-assessment to discover your relationship strengths and growth areas — based on the same science used in our platform.</p>
+      <form class="capture-form" onsubmit="event.preventDefault();this.querySelector('button').textContent='Sent!';this.querySelector('input').value='';">
+        <input type="email" placeholder="Enter your email address" required aria-label="Email address" />
+        <button type="submit" class="btn btn-primary">Send It</button>
+      </form>
+      <div class="capture-fine">No spam, ever. Unsubscribe anytime.</div>
     </div>
   </div>
 </section>
@@ -754,7 +1096,7 @@
   <div class="container">
     <h2>Your Relationship Deserves <span class="gradient-text">This Investment</span></h2>
     <p>Join thousands of couples who are building stronger, healthier relationships with daily practice and science-backed guidance.</p>
-    <a href="/signup" class="btn btn-primary btn-large">
+    <a href="https://marriage-rescue-app.vercel.app/signup" class="btn btn-primary btn-large">
       Start Your Free 14-Day Trial
       <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
     </a>
@@ -791,11 +1133,89 @@
   </div>
 </footer>
 
-<!-- Sticky header scroll effect -->
+<!-- ═══════════ COOKIE CONSENT ═══════════ -->
+<div class="cookie-banner" id="cookieBanner">
+  <p>We use cookies to improve your experience and analyze site traffic. By continuing, you agree to our <a href="#">Cookie Policy</a>.</p>
+  <div class="cookie-btns">
+    <button class="btn-ghost" onclick="document.getElementById('cookieBanner').classList.remove('visible');localStorage.setItem('cookies','rejected')">Decline</button>
+    <button class="btn btn-primary" onclick="document.getElementById('cookieBanner').classList.remove('visible');localStorage.setItem('cookies','accepted')">Accept</button>
+  </div>
+</div>
+
+<!-- ═══════════ BACK TO TOP ═══════════ -->
+<button class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">
+  <svg viewBox="0 0 24 24"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+</button>
+
 <script>
+  // ── Sticky header ──
+  var header = document.getElementById('header');
   window.addEventListener('scroll', function() {
-    document.getElementById('header').classList.toggle('scrolled', window.scrollY > 60);
+    header.classList.toggle('scrolled', window.scrollY > 60);
   }, { passive: true });
+
+  // ── Announcement bar ──
+  document.body.classList.add('has-announcement');
+
+  // ── Countdown timer (resets every 24h) ──
+  function updateCountdown() {
+    var now = new Date();
+    var end = new Date();
+    end.setHours(23, 59, 59, 999);
+    var diff = end - now;
+    if (diff <= 0) diff = 86400000;
+    var h = Math.floor(diff / 3600000);
+    var m = Math.floor((diff % 3600000) / 60000);
+    var s = Math.floor((diff % 60000) / 1000);
+    var he = document.getElementById('cd-hours');
+    var me = document.getElementById('cd-mins');
+    var se = document.getElementById('cd-secs');
+    if (he) he.textContent = h < 10 ? '0' + h : h;
+    if (me) me.textContent = m < 10 ? '0' + m : m;
+    if (se) se.textContent = s < 10 ? '0' + s : s;
+  }
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+
+  // ── Back to top ──
+  var btt = document.getElementById('backToTop');
+  window.addEventListener('scroll', function() {
+    btt.classList.toggle('visible', window.scrollY > 600);
+  }, { passive: true });
+
+  // ── Cookie consent ──
+  if (!localStorage.getItem('cookies')) {
+    setTimeout(function() {
+      document.getElementById('cookieBanner').classList.add('visible');
+    }, 2000);
+  }
+
+  // ── Scroll-triggered animations ──
+  var fadeEls = document.querySelectorAll('.fade-up');
+  if ('IntersectionObserver' in window) {
+    var obs = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          obs.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+    fadeEls.forEach(function(el) { obs.observe(el); });
+  } else {
+    fadeEls.forEach(function(el) { el.classList.add('visible'); });
+  }
+
+  // ── Smooth scroll for anchor links ──
+  document.querySelectorAll('a[href^="#"]').forEach(function(a) {
+    a.addEventListener('click', function(e) {
+      var target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
 </script>
 </body>
 </html>
