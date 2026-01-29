@@ -30,7 +30,6 @@ const steps = ['Choose a Facilitator', 'Pick a Time', 'Confirm'];
 
 const ScheduleMeeting = () => {
   const [activeStep, setActiveStep] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 

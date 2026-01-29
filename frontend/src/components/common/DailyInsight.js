@@ -16,8 +16,6 @@ const DailyInsight = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [insight, setInsight] = useState(null);
-  const [position, setPosition] = useState(null);
-
   useEffect(() => {
     fetchInsight();
   }, []);
@@ -26,7 +24,6 @@ const DailyInsight = () => {
     try {
       const res = await insightsApi.getDaily();
       setInsight(res.data.insight);
-      setPosition(res.data.position);
     } catch (err) {
       // Silently fail — component just won't render
     } finally {
