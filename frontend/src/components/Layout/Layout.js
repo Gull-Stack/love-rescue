@@ -32,6 +32,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import VideocamIcon from '@mui/icons-material/Videocam';
 import { useAuth } from '../../contexts/AuthContext';
 
 const navItems = [
@@ -41,6 +42,7 @@ const navItems = [
   { label: 'Daily Log', path: '/daily', icon: <EditNoteIcon /> },
   { label: 'Strategies', path: '/strategies', icon: <TipsAndUpdatesIcon /> },
   { label: 'Reports', path: '/reports', icon: <AssessmentIcon /> },
+  { label: 'Meetings', path: '/meetings', icon: <VideocamIcon /> },
   { label: 'Settings', path: '/settings', icon: <SettingsIcon /> },
 ];
 

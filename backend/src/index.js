@@ -14,6 +14,10 @@ const reportsRoutes = require('./routes/reports');
 const calendarRoutes = require('./routes/calendar');
 const therapistRoutes = require('./routes/therapist');
 const paymentsRoutes = require('./routes/payments');
+const insightsRoutes = require('./routes/insights');
+const videosRoutes = require('./routes/videos');
+const mediatorsRoutes = require('./routes/mediators');
+const meetingsRoutes = require('./routes/meetings');
 
 const { auditLogger } = require('./middleware/auditLogger');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -66,6 +70,10 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/therapist', therapistRoutes);
 app.use('/api/payments', paymentsRoutes);
+app.use('/api/insights', insightsRoutes);
+app.use('/api/videos', videosRoutes);
+app.use('/api/mediators', mediatorsRoutes);
+app.use('/api/meetings', meetingsRoutes);
 
 // Error handling
 app.use(errorHandler);

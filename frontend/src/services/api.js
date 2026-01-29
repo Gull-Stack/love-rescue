@@ -90,8 +90,30 @@ export const therapistApi = {
 };
 
 export const paymentsApi = {
-  createCheckout: () => api.post('/payments/create-checkout'),
+  createCheckout: (tier) => api.post('/payments/create-checkout', { tier }),
   getSubscription: () => api.get('/payments/subscription'),
   cancel: () => api.post('/payments/cancel'),
   getPortal: () => api.post('/payments/portal'),
+};
+
+export const insightsApi = {
+  getDaily: () => api.get('/insights/daily'),
+};
+
+export const videosApi = {
+  getDaily: () => api.get('/videos/daily'),
+  markComplete: (videoId) => api.post('/videos/complete', { videoId }),
+  getStreak: () => api.get('/videos/streak'),
+};
+
+export const mediatorsApi = {
+  getAvailable: () => api.get('/mediators/available'),
+};
+
+export const meetingsApi = {
+  checkAvailability: (mediatorId, date) => api.post('/meetings/check-availability', { mediatorId, date }),
+  schedule: (mediatorId, startTime) => api.post('/meetings/schedule', { mediatorId, startTime }),
+  getUpcoming: () => api.get('/meetings/upcoming'),
+  cancel: (id) => api.post(`/meetings/${id}/cancel`),
+  consent: (id) => api.post(`/meetings/${id}/consent`),
 };

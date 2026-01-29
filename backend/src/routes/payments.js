@@ -30,19 +30,27 @@ router.post('/create-checkout', authenticate, async (req, res, next) => {
       });
     }
 
+    // Determine tier
+    const { tier } = req.body || {};
+    const isPremiumTier = tier === 'premium';
+    const priceId = isPremiumTier
+      ? process.env.STRIPE_PREMIUM_PRICE_ID
+      : process.env.STRIPE_PRICE_ID;
+
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
       line_items: [{
-        price: process.env.STRIPE_PRICE_ID,
+        price: priceId,
         quantity: 1
       }],
       mode: 'subscription',
       success_url: `${process.env.FRONTEND_URL}/settings?payment=success`,
       cancel_url: `${process.env.FRONTEND_URL}/settings?payment=cancelled`,
       metadata: {
-        userId: req.user.id
+        userId: req.user.id,
+        tier: isPremiumTier ? 'premium' : 'standard'
       }
     });
 
@@ -78,17 +86,19 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       case 'checkout.session.completed': {
         const session = event.data.object;
         const userId = session.metadata?.userId;
+        const tier = session.metadata?.tier;
 
         if (userId) {
+          const status = tier === 'premium' ? 'premium' : 'paid';
           await req.prisma.user.update({
             where: { id: userId },
             data: {
-              subscriptionStatus: 'paid',
+              subscriptionStatus: status,
               stripeCustomerId: session.customer
             }
           });
 
-          logger.info('Subscription activated', { userId });
+          logger.info('Subscription activated', { userId, tier: status });
         }
         break;
       }
@@ -99,7 +109,15 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const userId = customer.metadata?.userId;
 
         if (userId) {
-          const status = subscription.status === 'active' ? 'paid' : 'expired';
+          let status = 'expired';
+          if (subscription.status === 'active') {
+            // Detect premium by checking if any item matches the premium price
+            const premiumPriceId = process.env.STRIPE_PREMIUM_PRICE_ID;
+            const hasPremium = subscription.items?.data?.some(
+              (item) => item.price?.id === premiumPriceId
+            );
+            status = hasPremium ? 'premium' : 'paid';
+          }
           await req.prisma.user.update({
             where: { id: userId },
             data: { subscriptionStatus: status }
@@ -165,7 +183,8 @@ router.get('/subscription', authenticate, async (req, res, next) => {
     });
 
     let subscription = null;
-    if (user.stripeCustomerId && user.subscriptionStatus === 'paid') {
+    const isPaidOrPremium = user.subscriptionStatus === 'paid' || user.subscriptionStatus === 'premium';
+    if (user.stripeCustomerId && isPaidOrPremium) {
       try {
         const subscriptions = await stripe.subscriptions.list({
           customer: user.stripeCustomerId,
@@ -189,6 +208,7 @@ router.get('/subscription', authenticate, async (req, res, next) => {
 
     res.json({
       status: user.subscriptionStatus,
+      isPremium: user.subscriptionStatus === 'premium',
       trialEndsAt: user.trialEndsAt,
       subscription,
       trialDaysRemaining: user.subscriptionStatus === 'trial' && user.trialEndsAt

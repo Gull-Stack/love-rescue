@@ -14,7 +14,21 @@ datasource db {
 enum SubscriptionStatus {
   trial
   paid
+  premium
   expired
+}
+
+// Mediator status
+enum MediatorStatus {
+  active
+  inactive
+}
+
+// Meeting status
+enum MeetingStatus {
+  scheduled
+  completed
+  cancelled
 }
 
 // Assessment types
@@ -44,6 +58,7 @@ model User {
   assessments        Assessment[]
   dailyLogs          DailyLog[]
   auditLogs          AuditLog[]
+  videoCompletions   VideoCompletion[]
   relationshipsAsUser1 Relationship[] @relation("User1Relationship")
   relationshipsAsUser2 Relationship[] @relation("User2Relationship")
 
@@ -69,6 +84,7 @@ model Relationship {
   matchups       Matchup[]
   strategies     Strategy[]
   therapistTasks TherapistTask[]
+  meetings       Meeting[]
 
   @@map("relationships")
   @@index([user1Id])
@@ -219,4 +235,96 @@ model Token {
   @@index([email])
   @@index([token])
   @@index([type])
+}
+
+// Daily insight content (14-week course, 98 total)
+model DailyInsight {
+  id                  String @id @default(uuid()) @db.Uuid
+  week                Int    @db.SmallInt
+  day                 Int    @db.SmallInt
+  baseText            String @map("base_text") @db.Text
+  personalizationTags Json?  @map("personalization_tags") @db.JsonB
+
+  @@unique([week, day])
+  @@map("daily_insights")
+}
+
+// Daily video content (14-week course, 98 total)
+model DailyVideo {
+  id          String @id @default(uuid()) @db.Uuid
+  week        Int    @db.SmallInt
+  day         Int    @db.SmallInt
+  youtubeId   String @map("youtube_id") @db.VarChar(20)
+  title       String @db.VarChar(255)
+  description String @db.Text
+
+  // Relations
+  completions VideoCompletion[]
+
+  @@unique([week, day])
+  @@map("daily_videos")
+}
+
+// Track user video watching
+model VideoCompletion {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  videoId   String   @map("video_id") @db.Uuid
+  watchedAt DateTime @default(now()) @map("watched_at")
+
+  // Relations
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video DailyVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+  @@map("video_completions")
+  @@index([userId])
+  @@index([videoId])
+}
+
+// Neutral facilitators for mediated meetings
+model Mediator {
+  id                String         @id @default(uuid()) @db.Uuid
+  name              String         @db.VarChar(200)
+  bio               String         @db.Text
+  googleCalendarId  String         @unique @map("google_calendar_id") @db.VarChar(255)
+  availabilityRules Json           @map("availability_rules") @db.JsonB
+  rate              Float          @default(0)
+  status            MediatorStatus @default(active)
+  createdAt         DateTime       @default(now()) @map("created_at")
+
+  // Relations
+  meetings Meeting[]
+
+  @@map("mediators")
+  @@index([status])
+}
+
+// Scheduled mediation sessions
+model Meeting {
+  id              String        @id @default(uuid()) @db.Uuid
+  relationshipId  String        @map("relationship_id") @db.Uuid
+  mediatorId      String        @map("mediator_id") @db.Uuid
+  scheduledAt     DateTime      @map("scheduled_at")
+  duration        Int           @default(30) @db.SmallInt
+  meetLink        String?       @map("meet_link") @db.VarChar(255)
+  calendarEventId String?       @map("calendar_event_id") @db.VarChar(255)
+  status          MeetingStatus @default(scheduled)
+  week            Int           @db.SmallInt
+  notes           String?       @db.Text
+  createdBy       String        @map("created_by") @db.Uuid
+  partnerConsent  Boolean       @default(false) @map("partner_consent")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  relationship Relationship @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+  mediator     Mediator     @relation(fields: [mediatorId], references: [id])
+
+  @@unique([relationshipId, week])
+  @@map("meetings")
+  @@index([relationshipId])
+  @@index([mediatorId])
+  @@index([status])
+  @@index([scheduledAt])
 }

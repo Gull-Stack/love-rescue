@@ -20,8 +20,11 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import VideocamIcon from '@mui/icons-material/Videocam';
 import { useAuth } from '../../contexts/AuthContext';
-import { logsApi, matchupApi, strategiesApi, assessmentsApi } from '../../services/api';
+import { logsApi, matchupApi, strategiesApi, assessmentsApi, meetingsApi, paymentsApi } from '../../services/api';
+import DailyInsight from '../../components/common/DailyInsight';
+import DailyVideo from '../../components/common/DailyVideo';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -33,6 +36,8 @@ const Dashboard = () => {
     matchup: null,
     strategy: null,
     assessments: null,
+    meetings: [],
+    subscription: null,
   });
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
@@ -44,10 +49,12 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [promptRes, statsRes, assessRes] = await Promise.all([
+      const [promptRes, statsRes, assessRes, meetingsRes, subRes] = await Promise.all([
         logsApi.getPrompt().catch(() => ({ data: { prompt: null } })),
         logsApi.getStats('7d').catch(() => ({ data: { stats: null } })),
         assessmentsApi.getResults().catch(() => ({ data: { completed: [], pending: [] } })),
+        meetingsApi.getUpcoming().catch(() => ({ data: { meetings: [] } })),
+        paymentsApi.getSubscription().catch(() => ({ data: null })),
       ]);
 
       let matchupData = null;
@@ -67,6 +74,8 @@ const Dashboard = () => {
         matchup: matchupData?.data?.matchup,
         strategy: strategyData?.data?.strategy,
         assessments: assessRes.data,
+        meetings: meetingsRes.data.meetings || [],
+        subscription: subRes.data,
       });
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -139,6 +148,80 @@ const Dashboard = () => {
       )}
 
       <Grid container spacing={3}>
+        {/* Daily Insight */}
+        <Grid item xs={12}>
+          <DailyInsight />
+        </Grid>
+
+        {/* Daily Video */}
+        <Grid item xs={12} md={6}>
+          <DailyVideo />
+        </Grid>
+
+        {/* Meetings Card */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={1} mb={2}>
+                <VideocamIcon color="primary" />
+                <Typography variant="h6">Mediated Meetings</Typography>
+              </Box>
+              {data.meetings.length > 0 ? (
+                <>
+                  {data.meetings.slice(0, 1).map((m) => (
+                    <Box key={m.id}>
+                      <Typography variant="body1" fontWeight="bold">
+                        {m.mediator.name}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        {new Date(m.scheduledAt).toLocaleString()}
+                      </Typography>
+                      {m.meetLink && (
+                        <Button
+                          variant="contained"
+                          size="small"
+                          startIcon={<VideocamIcon />}
+                          href={m.meetLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ mr: 1 }}
+                        >
+                          Join
+                        </Button>
+                      )}
+                      <Button
+                        variant="text"
+                        size="small"
+                        onClick={() => navigate('/meetings')}
+                      >
+                        View All
+                      </Button>
+                    </Box>
+                  ))}
+                </>
+              ) : data.subscription?.isPremium ? (
+                <>
+                  <Typography color="text.secondary" gutterBottom>
+                    Schedule a guided conversation with a neutral facilitator
+                  </Typography>
+                  <Button variant="outlined" onClick={() => navigate('/meetings')}>
+                    Schedule Meeting
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Typography color="text.secondary" gutterBottom>
+                    Upgrade to Premium for mediated video meetings
+                  </Typography>
+                  <Button variant="outlined" onClick={() => navigate('/settings')}>
+                    Upgrade
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
         {/* Daily Prompt Card */}
         <Grid item xs={12} md={6}>
           <Card>

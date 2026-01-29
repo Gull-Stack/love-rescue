@@ -37,6 +37,9 @@
     "prisma": "^5.7.0",
     "supertest": "^6.3.3"
   },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
   "engines": {
     "node": ">=18.0.0"
   }

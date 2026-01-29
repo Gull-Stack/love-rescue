@@ -18,6 +18,8 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import SaveIcon from '@mui/icons-material/Save';
 import { logsApi } from '../../services/api';
+import DailyInsight from '../../components/common/DailyInsight';
+import DailyVideo from '../../components/common/DailyVideo';
 
 const DailyLog = () => {
   const theme = useTheme();
@@ -152,6 +154,14 @@ const DailyLog = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Daily Insight & Video */}
+      <Box sx={{ mb: 3 }}>
+        <DailyInsight />
+      </Box>
+      <Box sx={{ mb: 3 }}>
+        <DailyVideo />
+      </Box>
 
       <Grid container spacing={{ xs: 2, md: 3 }}>
         {/* Interaction Counter */}

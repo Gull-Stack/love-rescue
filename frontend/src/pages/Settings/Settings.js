@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Grid,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -130,10 +131,10 @@ const Settings = () => {
     }
   };
 
-  const handleSubscribe = async () => {
+  const handleSubscribe = async (tier = 'standard') => {
     setLoading({ ...loading, payment: true });
     try {
-      const response = await paymentsApi.createCheckout();
+      const response = await paymentsApi.createCheckout(tier);
       window.location.href = response.data.url;
     } catch (err) {
       setError('Failed to start checkout');
@@ -312,7 +313,9 @@ const Settings = () => {
             <Chip
               label={user?.subscriptionStatus?.toUpperCase() || 'UNKNOWN'}
               color={
-                user?.subscriptionStatus === 'paid'
+                user?.subscriptionStatus === 'premium'
+                  ? 'secondary'
+                  : user?.subscriptionStatus === 'paid'
                   ? 'success'
                   : user?.subscriptionStatus === 'trial'
                   ? 'primary'
@@ -326,28 +329,91 @@ const Settings = () => {
             )}
           </Box>
 
-          {user?.subscriptionStatus === 'paid' ? (
-            <Box display="flex" gap={2}>
-              <Button variant="outlined" onClick={handleManageSubscription}>
-                Manage Subscription
-              </Button>
-              <Button color="error" onClick={() => setCancelDialog(true)}>
-                Cancel
-              </Button>
+          {user?.subscriptionStatus === 'paid' || user?.subscriptionStatus === 'premium' ? (
+            <Box>
+              {user?.subscriptionStatus === 'paid' && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  <Typography variant="body2">
+                    <strong>Upgrade to Premium</strong> for mediated video meetings with neutral
+                    facilitators, included at no extra per-session cost.
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    size="small"
+                    sx={{ mt: 1 }}
+                    onClick={() => handleSubscribe('premium')}
+                    disabled={loading.payment}
+                  >
+                    {loading.payment ? <CircularProgress size={20} /> : 'Upgrade to Premium - $19.99/month'}
+                  </Button>
+                </Alert>
+              )}
+              <Box display="flex" gap={2}>
+                <Button variant="outlined" onClick={handleManageSubscription}>
+                  Manage Subscription
+                </Button>
+                <Button color="error" onClick={() => setCancelDialog(true)}>
+                  Cancel
+                </Button>
+              </Box>
             </Box>
           ) : (
-            <Button
-              variant="contained"
-              startIcon={<PaymentIcon />}
-              onClick={handleSubscribe}
-              disabled={loading.payment}
-            >
-              {loading.payment ? (
-                <CircularProgress size={20} />
-              ) : (
-                'Subscribe - $9.99/month'
-              )}
-            </Button>
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Choose a plan to continue using Marriage Rescue:
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>Standard</Typography>
+                      <Typography variant="h4" color="primary" gutterBottom>
+                        $9.99<Typography component="span" variant="body2" color="text.secondary">/mo</Typography>
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" paragraph>
+                        Assessments, daily logs, insights, videos, strategies, and reports.
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        startIcon={<PaymentIcon />}
+                        onClick={() => handleSubscribe('standard')}
+                        disabled={loading.payment}
+                      >
+                        {loading.payment ? <CircularProgress size={20} /> : 'Subscribe'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Card variant="outlined" sx={{ borderColor: 'secondary.main', borderWidth: 2 }}>
+                    <CardContent>
+                      <Box display="flex" alignItems="center" gap={1} mb={1}>
+                        <Typography variant="h6">Premium</Typography>
+                        <Chip label="Recommended" size="small" color="secondary" />
+                      </Box>
+                      <Typography variant="h4" color="secondary" gutterBottom>
+                        $19.99<Typography component="span" variant="body2" color="text.secondary">/mo</Typography>
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" paragraph>
+                        Everything in Standard, plus weekly mediated video meetings with neutral facilitators.
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        color="secondary"
+                        fullWidth
+                        startIcon={<PaymentIcon />}
+                        onClick={() => handleSubscribe('premium')}
+                        disabled={loading.payment}
+                      >
+                        {loading.payment ? <CircularProgress size={20} /> : 'Subscribe'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            </Box>
           )}
         </CardContent>
       </Card>

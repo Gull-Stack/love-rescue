@@ -7,6 +7,9 @@ import { useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout/Layout';
 import Disclaimer from './components/common/Disclaimer';
 
+// Landing page (lazy loaded)
+const Landing = React.lazy(() => import('./pages/Landing/Landing'));
+
 // Auth pages (lazy loaded)
 const Login = React.lazy(() => import('./pages/Auth/Login'));
 const Signup = React.lazy(() => import('./pages/Auth/Signup'));
@@ -21,6 +24,7 @@ const DailyLog = React.lazy(() => import('./pages/DailyLog/DailyLog'));
 const Strategies = React.lazy(() => import('./pages/Strategies/Strategies'));
 const Reports = React.lazy(() => import('./pages/Reports/Reports'));
 const Settings = React.lazy(() => import('./pages/Settings/Settings'));
+const ScheduleMeeting = React.lazy(() => import('./pages/Meetings/ScheduleMeeting'));
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -72,6 +76,16 @@ function App() {
         }
       >
       <Routes>
+        {/* Landing page — unauthenticated users see this at root */}
+        <Route
+          path="/welcome"
+          element={
+            <PublicRoute>
+              <Landing />
+            </PublicRoute>
+          }
+        />
+
         {/* Public routes */}
         <Route
           path="/login"
@@ -112,14 +126,30 @@ function App() {
           <Route path="strategies" element={<Strategies />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="meetings" element={<ScheduleMeeting />} />
         </Route>
 
-        {/* Catch all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Catch all — send unauthenticated to landing, authenticated to dashboard */}
+        <Route path="*" element={<CatchAll />} />
       </Routes>
       </React.Suspense>
     </>
   );
 }
+
+// Catch-all route that directs based on auth state
+const CatchAll = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return user ? <Navigate to="/dashboard" replace /> : <Navigate to="/welcome" replace />;
+};
 
 export default App;

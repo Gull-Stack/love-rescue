@@ -24,7 +24,9 @@ const authenticate = async (req, res, next) => {
         email: true,
         firstName: true,
         lastName: true,
-        subscriptionStatus: true
+        subscriptionStatus: true,
+        stripeCustomerId: true,
+        createdAt: true
       }
     });
 
@@ -97,4 +99,22 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
-module.exports = { authenticate, requireSubscription, optionalAuth };
+/**
+ * Check premium subscription status middleware
+ */
+const requirePremium = async (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  if (req.user.subscriptionStatus !== 'premium') {
+    return res.status(403).json({
+      error: 'Premium subscription required',
+      code: 'PREMIUM_REQUIRED'
+    });
+  }
+
+  next();
+};
+
+module.exports = { authenticate, requireSubscription, requirePremium, optionalAuth };
