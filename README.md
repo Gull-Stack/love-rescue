@@ -1,4 +1,4 @@
-# Marriage Rescue App
+# Marriage Rescue
 
 A mobile-friendly web application to help married or committed couples monitor and improve their relationship health.
 
