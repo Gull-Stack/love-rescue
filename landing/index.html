@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Marriage Rescue — Science-Backed Relationship Transformation</title>
+  <meta name="description" content="The only relationship platform combining clinical assessments, daily micro-coaching, and guided facilitated meetings to help couples build lasting connection." />
+  <meta property="og:title" content="Marriage Rescue — Transform Your Relationship" />
+  <meta property="og:description" content="Science-backed tools for couples: assessments, daily insights, curated videos, and mediated meetings." />
+  <meta property="og:type" content="website" />
+  <meta name="theme-color" content="#0d0221" />
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d0221;
+      color: #fff;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    a { text-decoration: none; color: inherit; }
+    img { max-width: 100%; display: block; }
+    ul { list-style: none; }
+
+    /* ── Variables ── */
+    :root {
+      --pink: #e91e63;
+      --purple: #9c27b0;
+      --dark-1: #0d0221;
+      --dark-2: #1a0a2e;
+      --dark-3: #140720;
+      --text-dim: rgba(255,255,255,0.5);
+      --text-mid: rgba(255,255,255,0.7);
+      --border-dim: rgba(255,255,255,0.06);
+      --gradient: linear-gradient(135deg, #e91e63 0%, #9c27b0 100%);
+      --gradient-hover: linear-gradient(135deg, #f4407a 0%, #b040d0 100%);
+      --max-w: 1140px;
+    }
+
+    .container { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
+    .gradient-text {
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: inherit; font-weight: 600; font-size: 0.95rem;
+      border: none; border-radius: 50px; cursor: pointer;
+      padding: 14px 32px; transition: all 0.3s ease;
+    }
+    .btn-primary {
+      background: var(--gradient); color: #fff;
+      box-shadow: 0 4px 30px rgba(233,30,99,0.35);
+    }
+    .btn-primary:hover {
+      background: var(--gradient-hover);
+      box-shadow: 0 6px 40px rgba(233,30,99,0.5);
+      transform: translateY(-2px);
+    }
+    .btn-outline {
+      background: transparent; color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+    .btn-outline:hover {
+      border-color: rgba(255,255,255,0.6);
+      background: rgba(255,255,255,0.05);
+    }
+    .btn-large { font-size: 1.1rem; padding: 18px 44px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    .btn-white-outline {
+      background: transparent; color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 16px 32px; font-weight: 600; border-radius: 50px;
+    }
+    .btn-white-outline:hover { border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.05); }
+
+    /* ── Section Chip ── */
+    .chip {
+      display: inline-block; padding: 6px 16px; border-radius: 50px;
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.15em;
+      margin-bottom: 16px;
+    }
+    .chip-pink { background: rgba(233,30,99,0.15); color: var(--pink); border: 1px solid rgba(233,30,99,0.3); }
+    .chip-purple { background: rgba(156,39,176,0.15); color: var(--purple); border: 1px solid rgba(156,39,176,0.3); }
+    .chip-green { background: rgba(76,175,80,0.15); color: #4caf50; border: 1px solid rgba(76,175,80,0.3); }
+
+    .section-title {
+      font-size: clamp(2rem, 5vw, 3rem); font-weight: 800;
+      letter-spacing: -0.02em; margin-bottom: 16px;
+    }
+    .section-sub {
+      color: var(--text-dim); font-size: 1.05rem; max-width: 600px;
+      margin: 0 auto; font-weight: 300;
+    }
+
+    /* ═══════════════════════════════════════════
+       HEADER
+    ═══════════════════════════════════════════ */
+    .header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      transition: all 0.3s ease;
+    }
+    .header.scrolled {
+      background: rgba(13,2,33,0.95); backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .header-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px; max-width: var(--max-w); margin: 0 auto;
+      transition: padding 0.3s ease;
+    }
+    .header.scrolled .header-inner { padding: 12px 24px; }
+    .logo { display: flex; align-items: center; gap: 8px; }
+    .logo svg { width: 28px; height: 28px; fill: var(--pink); }
+    .logo span { font-weight: 700; font-size: 1.15rem; }
+    .nav-links { display: flex; align-items: center; gap: 32px; }
+    .nav-links a {
+      color: rgba(255,255,255,0.7); font-size: 0.9rem; font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: #fff; }
+    .header-cta { display: flex; align-items: center; gap: 12px; }
+    .header-cta .btn-login {
+      color: rgba(255,255,255,0.85); background: none; border: none;
+      font-family: inherit; font-size: 0.9rem; font-weight: 500; cursor: pointer;
+      padding: 8px 16px; border-radius: 8px; transition: all 0.2s;
+    }
+    .header-cta .btn-login:hover { color: #fff; background: rgba(255,255,255,0.08); }
+    .header-cta .btn { padding: 10px 24px; font-size: 0.9rem; }
+
+    /* Mobile menu */
+    .menu-toggle { display: none; background: none; border: none; cursor: pointer; padding: 8px; }
+    .menu-toggle svg { width: 24px; height: 24px; fill: #fff; }
+    .mobile-menu {
+      display: none; position: fixed; top: 0; right: 0; bottom: 0;
+      width: 280px; background: var(--dark-1); z-index: 200;
+      padding: 24px; transform: translateX(100%); transition: transform 0.3s ease;
+    }
+    .mobile-menu.open { transform: translateX(0); }
+    .mobile-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 199;
+    }
+    .mobile-overlay.open { display: block; }
+    .mobile-menu .close-btn {
+      display: flex; justify-content: flex-end; margin-bottom: 24px;
+      background: none; border: none; cursor: pointer; width: 100%;
+    }
+    .mobile-menu .close-btn svg { width: 24px; height: 24px; fill: #fff; }
+    .mobile-menu a {
+      display: block; padding: 14px 0; color: #fff; font-weight: 500;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .mobile-menu .btn { width: 100%; justify-content: center; margin-top: 16px; }
+
+    @media (max-width: 768px) {
+      .nav-links, .header-cta .btn-login { display: none; }
+      .menu-toggle { display: block; }
+      .mobile-menu { display: block; }
+    }
+
+    /* ═══════════════════════════════════════════
+       HERO
+    ═══════════════════════════════════════════ */
+    .hero {
+      position: relative; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center; overflow: hidden;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(233,30,99,0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(156,39,176,0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 80%, rgba(233,30,99,0.08) 0%, transparent 50%),
+        linear-gradient(180deg, var(--dark-1) 0%, var(--dark-2) 50%, var(--dark-3) 100%);
+    }
+    .hero-bg {
+      position: absolute; inset: 0;
+      background: url('/images/hero-bg.jpg') center/cover no-repeat;
+      opacity: 0.12;
+    }
+    .hero-bg::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(180deg, var(--dark-1) 0%, transparent 30%, transparent 70%, var(--dark-2) 100%);
+    }
+    .hero-glow-1, .hero-glow-2 {
+      position: absolute; border-radius: 50%;
+      background: radial-gradient(circle, rgba(233,30,99,0.06) 0%, transparent 70%);
+    }
+    .hero-glow-1 { width: 600px; height: 600px; top: -10%; right: -10%; animation: float 20s ease-in-out infinite; }
+    .hero-glow-2 { width: 400px; height: 400px; bottom: -5%; left: -5%; background: radial-gradient(circle, rgba(156,39,176,0.06) 0%, transparent 70%); animation: float 15s ease-in-out infinite reverse; }
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(30px, -30px); }
+    }
+
+    .hero-content { position: relative; z-index: 2; padding: 120px 24px 80px; max-width: 900px; }
+    .hero .chip { padding: 8px 20px; font-size: 0.65rem; }
+    .hero h1 {
+      font-size: clamp(2.5rem, 7vw, 5.5rem); font-weight: 800;
+      line-height: 1.05; margin-bottom: 24px; letter-spacing: -0.03em;
+    }
+    .hero p {
+      color: rgba(255,255,255,0.65); font-size: clamp(1rem, 2vw, 1.3rem);
+      max-width: 680px; margin: 0 auto 40px; font-weight: 300; line-height: 1.6;
+    }
+    .hero-btns { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 48px; }
+    .trust-row { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; opacity: 0.6; }
+    .trust-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: rgba(255,255,255,0.7); font-weight: 500; }
+    .trust-item svg { width: 16px; height: 16px; fill: #4caf50; flex-shrink: 0; }
+
+    .scroll-indicator {
+      position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+      animation: bounce 2s infinite;
+    }
+    .scroll-indicator svg { width: 36px; height: 36px; fill: rgba(255,255,255,0.25); }
+    @keyframes bounce {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(10px); }
+    }
+
+    /* ═══════════════════════════════════════════
+       STATS BAR
+    ═══════════════════════════════════════════ */
+    .stats {
+      background: var(--dark-3); padding: 56px 0;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; text-align: center; }
+    .stat-value {
+      font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; line-height: 1; margin-bottom: 8px;
+      background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .stat-label { color: var(--text-dim); font-size: 0.85rem; }
+    @media (max-width: 600px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    /* ═══════════════════════════════════════════
+       PROGRAMS
+    ═══════════════════════════════════════════ */
+    .programs {
+      padding: 96px 0;
+      background: linear-gradient(180deg, var(--dark-3) 0%, var(--dark-1) 100%);
+    }
+    .programs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 56px; }
+    .program-card {
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border-dim);
+      border-radius: 20px; padding: 32px; transition: all 0.4s ease; cursor: default;
+    }
+    .program-card:hover {
+      transform: translateY(-8px);
+      background: rgba(255,255,255,0.05);
+    }
+    .program-bar { width: 50px; height: 4px; border-radius: 2px; margin-bottom: 24px; }
+    .program-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+    .program-icon { width: 40px; height: 40px; }
+    .program-tag {
+      padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600;
+    }
+    .program-card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
+    .program-card .subtitle { font-size: 0.85rem; font-weight: 500; margin-bottom: 16px; }
+    .program-card .desc { color: var(--text-dim); font-size: 0.9rem; line-height: 1.6; }
+
+    @media (max-width: 900px) { .programs-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .programs-grid { grid-template-columns: 1fr; } }
+
+    /* ═══════════════════════════════════════════
+       HOW IT WORKS
+    ═══════════════════════════════════════════ */
+    .how-it-works { padding: 96px 0; background: var(--dark-2); position: relative; overflow: hidden; }
+    .how-it-works .bg-glow {
+      position: absolute; right: -200px; top: 50%; transform: translateY(-50%);
+      width: 500px; height: 500px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(233,30,99,0.04) 0%, transparent 70%);
+    }
+    .steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; margin-top: 56px; position: relative; z-index: 2; }
+    .step-number {
+      font-size: 3.5rem; font-weight: 900; line-height: 1; margin-bottom: 16px; opacity: 0.4;
+      background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .step h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 12px; }
+    .step p { color: var(--text-dim); font-size: 0.9rem; line-height: 1.7; }
+    @media (max-width: 900px) { .steps-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .steps-grid { grid-template-columns: 1fr; } }
+
+    /* ═══════════════════════════════════════════
+       VIDEO SPOTLIGHT
+    ═══════════════════════════════════════════ */
+    .spotlight {
+      padding: 96px 0;
+      background: linear-gradient(180deg, var(--dark-2) 0%, var(--dark-1) 100%);
+    }
+    .spotlight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+    .spotlight-text h2 {
+      font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 800;
+      letter-spacing: -0.02em; margin-bottom: 24px;
+    }
+    .spotlight-text p {
+      color: rgba(255,255,255,0.6); font-size: 1.05rem; line-height: 1.8; margin-bottom: 32px;
+    }
+    .spotlight-features { display: flex; flex-direction: column; gap: 16px; }
+    .spotlight-feature { display: flex; align-items: center; gap: 12px; }
+    .spotlight-feature svg { width: 22px; height: 22px; fill: var(--pink); flex-shrink: 0; }
+    .spotlight-feature span { color: var(--text-mid); font-size: 0.95rem; }
+    .video-wrap {
+      border-radius: 16px; overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .video-ratio { position: relative; padding-bottom: 56.25%; height: 0; background: #000; }
+    .video-ratio iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+
+    @media (max-width: 768px) {
+      .spotlight-grid { grid-template-columns: 1fr; }
+      .video-wrap { order: -1; }
+    }
+
+    /* ═══════════════════════════════════════════
+       TESTIMONIALS
+    ═══════════════════════════════════════════ */
+    .testimonials { padding: 96px 0; background: var(--dark-3); }
+    .test-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 56px; }
+    .test-card {
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border-dim);
+      border-radius: 20px; padding: 28px; transition: all 0.3s;
+    }
+    .test-card:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); }
+    .test-card .quote-icon { width: 28px; height: 28px; fill: var(--pink); opacity: 0.5; margin-bottom: 12px; }
+    .test-card blockquote {
+      color: rgba(255,255,255,0.75); font-size: 0.9rem; line-height: 1.7;
+      font-style: italic; margin-bottom: 24px;
+    }
+    .stars { display: flex; gap: 2px; margin-bottom: 12px; }
+    .stars svg { width: 16px; height: 16px; fill: #ff9800; }
+    .test-author { display: flex; align-items: center; gap: 12px; }
+    .test-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--gradient); display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 700; flex-shrink: 0;
+    }
+    .test-name { font-weight: 600; font-size: 0.85rem; }
+    .test-loc { color: rgba(255,255,255,0.4); font-size: 0.75rem; }
+
+    @media (max-width: 900px) { .test-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .test-grid { grid-template-columns: 1fr; } }
+
+    /* ═══════════════════════════════════════════
+       PRICING
+    ═══════════════════════════════════════════ */
+    .pricing {
+      padding: 96px 0;
+      background: linear-gradient(180deg, var(--dark-3) 0%, var(--dark-1) 100%);
+    }
+    .pricing-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px; max-width: 800px; margin: 56px auto 0; }
+    .price-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px; padding: 36px; position: relative;
+    }
+    .price-card.featured {
+      background: linear-gradient(135deg, rgba(233,30,99,0.08) 0%, rgba(156,39,176,0.08) 100%);
+      border: 1px solid rgba(233,30,99,0.3);
+    }
+    .popular-badge {
+      position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+      background: var(--gradient); color: #fff; padding: 6px 20px;
+      border-radius: 50px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+      white-space: nowrap;
+    }
+    .price-tier { color: var(--text-dim); font-weight: 600; font-size: 0.85rem; letter-spacing: 0.1em; margin-bottom: 8px; }
+    .price-tier.gradient { background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .price-amount { font-size: 3.5rem; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+    .price-amount .per { font-size: 1rem; font-weight: 400; color: rgba(255,255,255,0.4); margin-left: 4px; }
+    .price-note { color: rgba(255,255,255,0.4); font-size: 0.85rem; margin-bottom: 24px; }
+    .price-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin-bottom: 24px; }
+    .feature-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .feature-row svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .feature-row.green svg { fill: #4caf50; }
+    .feature-row.pink svg { fill: var(--pink); }
+    .feature-row span { color: var(--text-mid); font-size: 0.9rem; }
+    .feature-row.bold span { color: #fff; font-weight: 600; }
+    .price-card .btn { width: 100%; justify-content: center; margin-top: 28px; }
+
+    @media (max-width: 600px) { .pricing-grid { grid-template-columns: 1fr; } }
+
+    /* ═══════════════════════════════════════════
+       FINAL CTA
+    ═══════════════════════════════════════════ */
+    .final-cta {
+      padding: 96px 0; text-align: center;
+      background:
+        radial-gradient(ellipse at 50% 50%, rgba(233,30,99,0.15) 0%, transparent 60%),
+        var(--dark-2);
+    }
+    .final-cta h2 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px; }
+    .final-cta p {
+      color: rgba(255,255,255,0.6); font-size: clamp(1rem, 2vw, 1.2rem);
+      max-width: 550px; margin: 0 auto 40px; font-weight: 300; line-height: 1.7;
+    }
+    .final-cta .fine { color: rgba(255,255,255,0.35); font-size: 0.85rem; margin-top: 16px; }
+
+    /* ═══════════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════════ */
+    .footer {
+      background: var(--dark-1); border-top: 1px solid rgba(255,255,255,0.05);
+      padding: 64px 0 32px;
+    }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 40px; }
+    .footer-brand p { color: rgba(255,255,255,0.4); font-size: 0.9rem; line-height: 1.7; max-width: 320px; margin: 16px 0 24px; }
+    .social-links { display: flex; gap: 8px; }
+    .social-links a {
+      width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .social-links a svg { width: 18px; height: 18px; fill: rgba(255,255,255,0.3); transition: fill 0.2s; }
+    .social-links a:hover svg { fill: var(--pink); }
+    .social-links a:hover { background: rgba(233,30,99,0.08); }
+    .footer-col h4 { font-size: 0.85rem; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 16px; }
+    .footer-col a { display: block; color: rgba(255,255,255,0.4); font-size: 0.85rem; margin-bottom: 10px; transition: color 0.2s; }
+    .footer-col a:hover { color: rgba(255,255,255,0.7); }
+    .footer-bottom {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 16px; margin-top: 48px; padding-top: 24px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .footer-bottom span { color: rgba(255,255,255,0.25); font-size: 0.8rem; }
+    .footer-bottom .disclaimer { font-style: italic; font-size: 0.75rem; }
+
+    @media (max-width: 768px) {
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+      .footer-brand { grid-column: 1 / -1; }
+    }
+    @media (max-width: 480px) {
+      .footer-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<header class="header" id="header">
+  <div class="header-inner">
+    <a href="#" class="logo">
+      <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+      <span>Marriage Rescue</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#programs">Programs</a>
+      <a href="#how-it-works">How It Works</a>
+      <a href="#results">Results</a>
+      <a href="#pricing">Pricing</a>
+    </nav>
+    <div class="header-cta">
+      <button class="btn-login" onclick="window.location.href='/login'">Log In</button>
+      <a href="/signup" class="btn btn-primary">Start Free Trial</a>
+      <button class="menu-toggle" onclick="document.getElementById('mobileMenu').classList.add('open');document.getElementById('mobileOverlay').classList.add('open')">
+        <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Mobile Menu -->
+<div class="mobile-overlay" id="mobileOverlay" onclick="this.classList.remove('open');document.getElementById('mobileMenu').classList.remove('open')"></div>
+<div class="mobile-menu" id="mobileMenu">
+  <button class="close-btn" onclick="this.parentElement.classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')">
+    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#fff"/></svg>
+  </button>
+  <a href="#programs" onclick="document.getElementById('mobileMenu').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')">Programs</a>
+  <a href="#how-it-works" onclick="document.getElementById('mobileMenu').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')">How It Works</a>
+  <a href="#results" onclick="document.getElementById('mobileMenu').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')">Results</a>
+  <a href="#pricing" onclick="document.getElementById('mobileMenu').classList.remove('open');document.getElementById('mobileOverlay').classList.remove('open')">Pricing</a>
+  <a href="/login">Log In</a>
+  <a href="/signup" class="btn btn-primary">Start Free Trial</a>
+</div>
+
+<!-- ═══════════ HERO ═══════════ -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-glow-1"></div>
+  <div class="hero-glow-2"></div>
+  <div class="hero-content">
+    <span class="chip chip-pink">SCIENCE-BACKED RELATIONSHIP TRANSFORMATION</span>
+    <h1>Welcome Back <span class="gradient-text">Marriage Rescue</span></h1>
+    <p>The only relationship platform that combines clinical assessments, daily micro-coaching, and guided facilitated meetings to help couples build lasting connection. Start your 14-day free trial today.</p>
+    <div class="hero-btns">
+      <a href="/signup" class="btn btn-primary btn-large">
+        Yes! Start My Free Trial
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+      </a>
+      <a href="#programs" class="btn btn-outline" style="padding:18px 36px;font-size:1rem;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+        See How It Works
+      </a>
+    </div>
+    <div class="trust-row">
+      <div class="trust-item"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Based on Gottman Research</div>
+      <div class="trust-item"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> HIPAA Compliant</div>
+      <div class="trust-item"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> 14-Day Free Trial</div>
+      <div class="trust-item"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Cancel Anytime</div>
+    </div>
+  </div>
+  <div class="scroll-indicator">
+    <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+  </div>
+</section>
+
+<!-- ═══════════ STATS ═══════════ -->
+<section class="stats">
+  <div class="container">
+    <div class="stats-grid">
+      <div><div class="stat-value">94%</div><div class="stat-label">of couples report improved communication within 4 weeks</div></div>
+      <div><div class="stat-value">5:1</div><div class="stat-label">average positivity ratio achieved by active users</div></div>
+      <div><div class="stat-value">14</div><div class="stat-label">weeks of structured, science-backed content</div></div>
+      <div><div class="stat-value">10K+</div><div class="stat-label">couples building stronger relationships</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ PROGRAMS ═══════════ -->
+<section class="programs" id="programs">
+  <div class="container" style="text-align:center;">
+    <span class="chip chip-purple">PROGRAMS</span>
+    <h2 class="section-title">Everything You Need to <span class="gradient-text">Transform Your Relationship</span></h2>
+    <p class="section-sub">Six integrated tools designed by relationship scientists, delivered through a platform that fits into your daily life.</p>
+    <div class="programs-grid" style="text-align:left;">
+
+      <div class="program-card" style="--c:#e91e63;" onmouseenter="this.style.borderColor='rgba(233,30,99,0.4)';this.style.boxShadow='0 20px 60px rgba(233,30,99,0.1)'" onmouseleave="this.style.borderColor='';this.style.boxShadow=''">
+        <div class="program-bar" style="background:#e91e63;"></div>
+        <div class="program-header">
+          <svg class="program-icon" viewBox="0 0 24 24" fill="#e91e63"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+          <span class="program-tag" style="background:rgba(233,30,99,0.15);color:#e91e63;">Foundation</span>
+        </div>
+        <h3>Relationship Assessments</h3>
+        <div class="subtitle" style="color:#e91e63;">4 Scientific Assessments</div>
+        <div class="desc">Discover your attachment style, personality dynamics, wellness behaviors, and closeness patterns through research-backed questionnaires.</div>
+      </div>
+
+      <div class="program-card" onmouseenter="this.style.borderColor='rgba(255,152,0,0.4)';this.style.boxShadow='0 20px 60px rgba(255,152,0,0.1)'" onmouseleave="this.style.borderColor='';this.style.boxShadow=''">
+        <div class="program-bar" style="background:#ff9800;"></div>
+        <div class="program-header">
+          <svg class="program-icon" viewBox="0 0 24 24" fill="#ff9800"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/></svg>
+          <span class="program-tag" style="background:rgba(255,152,0,0.15);color:#ff9800;">Daily Growth</span>
+        </div>
+        <h3>Daily Insights</h3>
+        <div class="subtitle" style="color:#ff9800;">14-Week Guided Course</div>
+        <div class="desc">Receive personalized daily insights based on your unique assessment profile. 98 days of science-backed relationship wisdom delivered to you.</div>
+      </div>
+
+      <div class="program-card" onmouseenter="this.style.borderColor='rgba(33,150,243,0.4)';this.style.boxShadow='0 20px 60px rgba(33,150,243,0.1)'" onmouseleave="this.style.borderColor='';this.style.boxShadow=''">
+        <div class="program-bar" style="background:#2196f3;"></div>
+        <div class="program-header">
+          <svg class="program-icon" viewBox="0 0 24 24" fill="#2196f3"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12zm-5-6l-7 4V7z"/></svg>
+          <span class="program-tag" style="background:rgba(33,150,243,0.15);color:#2196f3;">Education</span>
+        </div>
+        <h3>Daily Videos</h3>
+        <div class="subtitle" style="color:#2196f3;">Curated Expert Content</div>
+        <div class="desc">Watch hand-picked educational videos from leading relationship scientists, therapists, and TED speakers. Track your streak and build consistency.</div>
+      </div>
+
+      <div class="program-card" onmouseenter="this.style.borderColor='rgba(76,175,80,0.4)';this.style.boxShadow='0 20px 60px rgba(76,175,80,0.1)'" onmouseleave="this.style.borderColor='';this.style.boxShadow=''">
+        <div class="program-bar" style="background:#4caf50;"></div>
+        <div class="program-header">
+          <svg class="program-icon" viewBox="0 0 24 24" fill="#4caf50"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+          <span class="program-tag" style="background:rgba(76,175,80,0.15);color:#4caf50;">Together</span>
+        </div>
+        <h3>Matchup Analysis</h3>
+        <div class="subtitle" style="color:#4caf50;">Compatibility Deep-Dive</div>
+        <div class="desc">See where you and your partner align and where you can grow together. Data-driven insights into your relationship dynamics.</div>
+      </div>
+
+      <div class="program-card" onmouseenter="this.style.borderColor='rgba(156,39,176,0.4)';this.style.boxShadow='0 20px 60px rgba(156,39,176,0.1)'" onmouseleave="this.style.borderColor='';this.style.boxShadow=''">
+        <div class="program-bar" style="background:#9c27b0;"></div>
+        <div class="program-header">
+          <svg class="program-icon" viewBox="0 0 24 24" fill="#9c27b0"><path d="M13 1.07V9h7c0-4.08-3.05-7.44-7-7.93zM4 15c0 4.42 3.58 8 8 8s8-3.58 8-8v-4H4v4zm7-13.93C7.05 1.56 4 4.92 4 9h7V1.07z"/></svg>
+          <span class="program-tag" style="background:rgba(156,39,176,0.15);color:#9c27b0;">Action</span>
+        </div>
+        <h3>Smart Strategies</h3>
+        <div class="subtitle" style="color:#9c27b0;">Personalized Action Plans</div>
+        <div class="desc">Weekly and cycle-based strategy plans tailored to your relationship profile. Actionable goals with progress tracking built in.</div>
+      </div>
+
+      <div class="program-card" onmouseenter="this.style.borderColor='rgba(0,188,212,0.4)';this.style.boxShadow='0 20px 60px rgba(0,188,212,0.1)'" onmouseleave="this.style.borderColor='';this.style.boxShadow=''">
+        <div class="program-bar" style="background:#00bcd4;"></div>
+        <div class="program-header">
+          <svg class="program-icon" viewBox="0 0 24 24" fill="#00bcd4"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+          <span class="program-tag" style="background:rgba(0,188,212,0.15);color:#00bcd4;">Premium</span>
+        </div>
+        <h3>Mediated Meetings</h3>
+        <div class="subtitle" style="color:#00bcd4;">Guided Video Sessions</div>
+        <div class="desc">Schedule weekly 30-minute facilitated discussions with neutral guides via Google Meet. Structured conversations, not therapy.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ HOW IT WORKS ═══════════ -->
+<section class="how-it-works" id="how-it-works">
+  <div class="bg-glow"></div>
+  <div class="container" style="text-align:center;">
+    <span class="chip chip-pink">HOW IT WORKS</span>
+    <h2 class="section-title">Your Journey to a <span class="gradient-text">Stronger Marriage</span></h2>
+    <div class="steps-grid" style="text-align:left;">
+      <div class="step">
+        <div class="step-number">01</div>
+        <h3>Take Your Assessments</h3>
+        <p>Complete four research-backed assessments to reveal your attachment style, personality dynamics, wellness behaviors, and closeness patterns.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">02</div>
+        <h3>Invite Your Partner</h3>
+        <p>Share a simple invite link. When both partners complete assessments, the full power of Marriage Rescue unlocks — matchup scores, shared strategies, and more.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">03</div>
+        <h3>Grow Every Day</h3>
+        <p>Log daily interactions, watch curated videos, receive personalized insights, and track your 5:1 positivity ratio. Small daily actions compound into lasting change.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">04</div>
+        <h3>See Real Progress</h3>
+        <p>Weekly and monthly reports show your trajectory. Relationship science meets daily practice — watch your connection strengthen over 14 weeks and beyond.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ VIDEO SPOTLIGHT ═══════════ -->
+<section class="spotlight">
+  <div class="container">
+    <div class="spotlight-grid">
+      <div class="spotlight-text">
+        <span class="chip chip-pink">FEATURED</span>
+        <h2>Built on Decades of <span class="gradient-text">Relationship Science</span></h2>
+        <p>Marriage Rescue is grounded in the research of Dr. John Gottman, Dr. Sue Johnson, and leading attachment theorists. Our assessments, insights, and strategies are drawn from peer-reviewed studies on what actually makes relationships thrive.</p>
+        <div class="spotlight-features">
+          <div class="spotlight-feature">
+            <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+            <span>HIPAA-compliant data security and audit logging</span>
+          </div>
+          <div class="spotlight-feature">
+            <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            <span>Designed for both partners with shared progress tracking</span>
+          </div>
+          <div class="spotlight-feature">
+            <svg viewBox="0 0 24 24"><path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"/></svg>
+            <span>Personalized insights based on your unique assessment profile</span>
+          </div>
+        </div>
+      </div>
+      <div class="video-wrap">
+        <div class="video-ratio">
+          <iframe src="https://www.youtube.com/embed/ioR7GKRSOS0" title="Making Marriage Work - Dr. John Gottman" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ TESTIMONIALS ═══════════ -->
+<section class="testimonials" id="results">
+  <div class="container" style="text-align:center;">
+    <span class="chip chip-green">RESULTS</span>
+    <h2 class="section-title">Real Couples. <span class="gradient-text">Real Results.</span></h2>
+    <div class="test-grid" style="text-align:left;">
+
+      <div class="test-card">
+        <svg class="quote-icon" viewBox="0 0 24 24"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
+        <blockquote>"After 12 years together, we'd lost our way. The daily insights and matchup analysis helped us see patterns we were blind to. Our ratio went from 2:1 to over 6:1 in two months."</blockquote>
+        <div class="stars"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></div>
+        <div class="test-author"><div class="test-avatar">SJ</div><div><div class="test-name">Sarah &amp; James</div><div class="test-loc">Portland, OR</div></div></div>
+      </div>
+
+      <div class="test-card">
+        <svg class="quote-icon" viewBox="0 0 24 24"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
+        <blockquote>"The mediated meetings were a game-changer. Having a neutral guide helped us have conversations we'd been avoiding for years. We actually look forward to our weekly sessions now."</blockquote>
+        <div class="stars"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></div>
+        <div class="test-author"><div class="test-avatar">PA</div><div><div class="test-name">Priya &amp; Arun</div><div class="test-loc">Austin, TX</div></div></div>
+      </div>
+
+      <div class="test-card">
+        <svg class="quote-icon" viewBox="0 0 24 24"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
+        <blockquote>"The assessment revealed I have an anxious attachment style and my partner is avoidant. Just understanding that transformed how we communicate. The personalized insights are spot-on."</blockquote>
+        <div class="stars"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></div>
+        <div class="test-author"><div class="test-avatar">MD</div><div><div class="test-name">Michael &amp; David</div><div class="test-loc">Chicago, IL</div></div></div>
+      </div>
+
+      <div class="test-card">
+        <svg class="quote-icon" viewBox="0 0 24 24"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
+        <blockquote>"We were skeptical about an app helping our marriage, but the science-backed approach won us over. The daily videos from actual relationship researchers are incredible."</blockquote>
+        <div class="stars"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></div>
+        <div class="test-author"><div class="test-avatar">EC</div><div><div class="test-name">Emily &amp; Carlos</div><div class="test-loc">Miami, FL</div></div></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ PRICING ═══════════ -->
+<section class="pricing" id="pricing">
+  <div class="container" style="text-align:center;">
+    <span class="chip chip-pink">PRICING</span>
+    <h2 class="section-title">Invest in Your <span class="gradient-text">Most Important Relationship</span></h2>
+    <p class="section-sub">Start with a 14-day free trial. No credit card required.</p>
+    <div class="pricing-grid" style="text-align:left;">
+
+      <div class="price-card">
+        <div class="price-tier">STANDARD</div>
+        <div class="price-amount">$9.99<span class="per">/month</span></div>
+        <div class="price-note">per couple</div>
+        <hr class="price-divider" />
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>4 Scientific Assessments</span></div>
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Daily Personalized Insights</span></div>
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Curated Video Course (98 days)</span></div>
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Matchup Compatibility Analysis</span></div>
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Smart Strategy Plans</span></div>
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Weekly &amp; Monthly Reports</span></div>
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Daily Interaction Logging</span></div>
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Therapist Integration</span></div>
+        <a href="/signup" class="btn btn-white-outline">Start Free Trial</a>
+      </div>
+
+      <div class="price-card featured">
+        <div class="popular-badge">MOST POPULAR</div>
+        <div class="price-tier gradient">PREMIUM</div>
+        <div class="price-amount">$19.99<span class="per">/month</span></div>
+        <div class="price-note">per couple</div>
+        <hr class="price-divider" />
+        <div class="feature-row pink bold"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Everything in Standard</span></div>
+        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Weekly Mediated Meetings</span></div>
+        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Neutral Facilitator (included)</span></div>
+        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Google Meet Video Sessions</span></div>
+        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Partner Consent Management</span></div>
+        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Calendar Integration</span></div>
+        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Session Notes &amp; History</span></div>
+        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Priority Support</span></div>
+        <a href="/signup" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:28px;">Start Free Trial</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ FINAL CTA ═══════════ -->
+<section class="final-cta">
+  <div class="container">
+    <h2>Your Relationship Deserves <span class="gradient-text">This Investment</span></h2>
+    <p>Join thousands of couples who are building stronger, healthier relationships with daily practice and science-backed guidance.</p>
+    <a href="/signup" class="btn btn-primary btn-large">
+      Start Your Free 14-Day Trial
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+    </a>
+    <div class="fine">No credit card required. Cancel anytime.</div>
+  </div>
+</section>
+
+<!-- ═══════════ FOOTER ═══════════ -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="logo">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="#e91e63"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <span>Marriage Rescue</span>
+        </div>
+        <p>Science-backed relationship tools designed to help couples build lasting connection through daily practice, expert insights, and guided support.</p>
+        <div class="social-links">
+          <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg></a>
+          <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24"><path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8C4 18.39 5.61 20 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6C20 5.61 18.39 4 16.4 4H7.6m9.65 1.5a1.25 1.25 0 0 1 1.25 1.25A1.25 1.25 0 0 1 17.25 8 1.25 1.25 0 0 1 16 6.75a1.25 1.25 0 0 1 1.25-1.25M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg></a>
+          <a href="#" aria-label="YouTube"><svg viewBox="0 0 24 24"><path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33-.22 2.65-.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73z"/></svg></a>
+          <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/></svg></a>
+        </div>
+      </div>
+      <div class="footer-col"><h4>PLATFORM</h4><a href="#">Assessments</a><a href="#">Daily Insights</a><a href="#">Daily Videos</a><a href="#">Matchup</a><a href="#">Strategies</a><a href="#">Meetings</a></div>
+      <div class="footer-col"><h4>COMPANY</h4><a href="#">About Us</a><a href="#">Our Research</a><a href="#">Blog</a><a href="#">Careers</a><a href="#">Press</a></div>
+      <div class="footer-col"><h4>SUPPORT</h4><a href="#">Help Center</a><a href="#">Contact Us</a><a href="#">FAQs</a><a href="#">Community</a></div>
+      <div class="footer-col"><h4>LEGAL</h4><a href="#">Privacy Policy</a><a href="#">Terms of Service</a><a href="#">HIPAA Notice</a><a href="#">Cookie Policy</a></div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2026 Marriage Rescue. All rights reserved.</span>
+      <span class="disclaimer">Not a substitute for professional therapy or counseling.</span>
+    </div>
+  </div>
+</footer>
+
+<!-- Sticky header scroll effect -->
+<script>
+  window.addEventListener('scroll', function() {
+    document.getElementById('header').classList.toggle('scrolled', window.scrollY > 60);
+  }, { passive: true });
+</script>
+</body>
+</html>
