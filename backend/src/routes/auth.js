@@ -439,6 +439,14 @@ router.post('/join/:code', authenticate, async (req, res, next) => {
       return res.status(400).json({ error: 'Cannot join your own relationship' });
     }
 
+    // Delete the joining user's auto-created solo relationship
+    await req.prisma.relationship.deleteMany({
+      where: {
+        user1Id: req.user.id,
+        user2Id: null
+      }
+    });
+
     await req.prisma.relationship.update({
       where: { id: relationship.id },
       data: {
