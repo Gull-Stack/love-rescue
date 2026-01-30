@@ -91,7 +91,8 @@ describe('Auth Routes', () => {
         findFirst: jest.fn(),
         findUnique: jest.fn(),
         create: jest.fn(),
-        update: jest.fn()
+        update: jest.fn(),
+        deleteMany: jest.fn()
       },
       token: {
         create: jest.fn(),
@@ -413,6 +414,7 @@ describe('Auth Routes', () => {
         createdAt: new Date()
       });
       mockPrisma.relationship.findUnique.mockResolvedValue(mockRelationship);
+      mockPrisma.relationship.deleteMany.mockResolvedValue({ count: 1 });
       mockPrisma.relationship.update.mockResolvedValue({
         ...mockRelationship,
         user2Id: 'user-2',
@@ -425,6 +427,9 @@ describe('Auth Routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe('Successfully joined relationship');
+      expect(mockPrisma.relationship.deleteMany).toHaveBeenCalledWith({
+        where: { user1Id: 'user-2', user2Id: null }
+      });
       expect(mockPrisma.relationship.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
