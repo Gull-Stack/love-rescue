@@ -501,4 +501,166 @@ router.get('/me', authenticate, async (req, res, next) => {
   }
 });
 
+/**
+ * POST /api/auth/change-password
+ * Change current user's password
+ */
+router.post('/change-password', authenticate, async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new passwords are required' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters' });
+    }
+
+    const user = await req.prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await req.prisma.user.update({
+      where: { id: req.user.id },
+      data: { passwordHash }
+    });
+
+    logger.info('Password changed', { userId: req.user.id });
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/auth/revoke-partner
+ * End relationship and revoke partner/therapist access
+ */
+router.post('/revoke-partner', authenticate, async (req, res, next) => {
+  try {
+    const relationship = await req.prisma.relationship.findFirst({
+      where: {
+        OR: [
+          { user1Id: req.user.id },
+          { user2Id: req.user.id }
+        ],
+        status: 'active',
+        user2Id: { not: null }
+      }
+    });
+
+    if (!relationship) {
+      return res.status(400).json({ error: 'No active paired relationship' });
+    }
+
+    await req.prisma.$transaction([
+      // End relationship
+      req.prisma.relationship.update({
+        where: { id: relationship.id },
+        data: {
+          status: 'ended',
+          sharedConsent: false,
+          user1TherapistConsent: false,
+          user2TherapistConsent: false
+        }
+      }),
+      // Revoke all therapist assignments
+      req.prisma.therapistAssignment.updateMany({
+        where: { relationshipId: relationship.id, status: 'active' },
+        data: { status: 'revoked', revokedAt: new Date() }
+      }),
+      // Log consent revocation
+      req.prisma.consentLog.create({
+        data: {
+          userId: req.user.id,
+          relationshipId: relationship.id,
+          consentType: 'partner_sharing',
+          granted: false,
+          ipAddress: req.ip
+        }
+      })
+    ]);
+
+    logger.info('Partner access revoked', {
+      userId: req.user.id,
+      relationshipId: relationship.id
+    });
+
+    res.json({ message: 'Relationship ended. Shared data is now archived.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * DELETE /api/auth/delete-account
+ * Delete user account with cascade handling
+ */
+router.delete('/delete-account', authenticate, async (req, res, next) => {
+  try {
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ error: 'Password required to confirm deletion' });
+    }
+
+    const user = await req.prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    const isValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Incorrect password' });
+    }
+
+    // End any active relationships first (don't cascade-delete partner's data)
+    const relationships = await req.prisma.relationship.findMany({
+      where: {
+        OR: [
+          { user1Id: req.user.id },
+          { user2Id: req.user.id }
+        ],
+        status: 'active'
+      }
+    });
+
+    for (const rel of relationships) {
+      await req.prisma.relationship.update({
+        where: { id: rel.id },
+        data: {
+          status: 'ended',
+          sharedConsent: false,
+          user1TherapistConsent: false,
+          user2TherapistConsent: false
+        }
+      });
+
+      // Revoke therapist assignments
+      await req.prisma.therapistAssignment.updateMany({
+        where: { relationshipId: rel.id, status: 'active' },
+        data: { status: 'revoked', revokedAt: new Date() }
+      });
+    }
+
+    // Delete user (cascades to personal data: logs, assessments, etc.)
+    await req.prisma.user.delete({
+      where: { id: req.user.id }
+    });
+
+    logger.info('Account deleted', { userId: req.user.id });
+
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

@@ -145,15 +145,7 @@ const DailyLog = () => {
         </Alert>
       )}
 
-      {/* Today's Prompt */}
-      {prompt && (
-        <Card sx={{ mb: 3, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-          <CardContent>
-            <Typography variant="overline">Today's Prompt</Typography>
-            <Typography variant="h6">{prompt.prompt}</Typography>
-          </CardContent>
-        </Card>
-      )}
+      {/* Today's Prompt - displayed above journal entry */}
 
       {/* Daily Insight & Video */}
       <Box sx={{ mb: 3 }}>
@@ -291,18 +283,28 @@ const DailyLog = () => {
             </CardContent>
           </Card>
 
-          {/* Journal Entry */}
+          {/* Journal Entry with Prompt */}
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Journal Entry
               </Typography>
+              {prompt && (
+                <Box sx={{ mb: 2, p: 2, bgcolor: 'primary.light', borderRadius: 2 }}>
+                  <Typography variant="overline" sx={{ color: 'primary.contrastText' }}>
+                    Today's Prompt
+                  </Typography>
+                  <Typography variant="body1" sx={{ color: 'primary.contrastText', fontWeight: 500 }}>
+                    {prompt.prompt}
+                  </Typography>
+                </Box>
+              )}
               <TextField
                 multiline
-                minRows={3}
-                maxRows={6}
+                minRows={4}
+                maxRows={8}
                 fullWidth
-                placeholder="Reflect on your day together..."
+                placeholder={prompt ? "Respond to today's prompt..." : "Reflect on your day together..."}
                 value={formData.journalEntry}
                 onChange={(e) => setFormData({ ...formData, journalEntry: e.target.value })}
               />

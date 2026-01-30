@@ -282,6 +282,103 @@ router.get('/progress', authenticate, async (req, res, next) => {
   }
 });
 
+/**
+ * GET /api/reports/couple-dashboard
+ * Combined couple metrics dashboard
+ */
+router.get('/couple-dashboard', authenticate, async (req, res, next) => {
+  try {
+    const relationship = await req.prisma.relationship.findFirst({
+      where: {
+        OR: [{ user1Id: req.user.id }, { user2Id: req.user.id }],
+        status: 'active'
+      }
+    });
+
+    if (!relationship || !relationship.user2Id) {
+      return res.status(400).json({ error: 'No active paired relationship' });
+    }
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    // Fetch both partners' logs (aggregated — no raw journals)
+    const [user1Logs, user2Logs] = await Promise.all([
+      req.prisma.dailyLog.findMany({
+        where: { userId: relationship.user1Id, date: { gte: thirtyDaysAgo } },
+        select: { date: true, mood: true, closenessScore: true, positiveCount: true, negativeCount: true }
+      }),
+      req.prisma.dailyLog.findMany({
+        where: { userId: relationship.user2Id, date: { gte: thirtyDaysAgo } },
+        select: { date: true, mood: true, closenessScore: true, positiveCount: true, negativeCount: true }
+      })
+    ]);
+
+    const avgMetric = (logs, field) => {
+      const valid = logs.filter(l => l[field] !== null && l[field] !== undefined);
+      if (valid.length === 0) return null;
+      return Math.round(valid.reduce((sum, l) => sum + l[field], 0) / valid.length * 10) / 10;
+    };
+
+    const user1AvgMood = avgMetric(user1Logs, 'mood');
+    const user2AvgMood = avgMetric(user2Logs, 'mood');
+    const user1AvgCloseness = avgMetric(user1Logs, 'closenessScore');
+    const user2AvgCloseness = avgMetric(user2Logs, 'closenessScore');
+
+    // Couple Happiness Score: average of both partners' mood + closeness
+    const scores = [user1AvgMood, user2AvgMood, user1AvgCloseness, user2AvgCloseness].filter(s => s !== null);
+    const coupleHappinessScore = scores.length > 0
+      ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10
+      : null;
+
+    // Shared goals
+    const sharedGoals = await req.prisma.sharedGoal.findMany({
+      where: { relationshipId: relationship.id, status: 'active' },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Latest matchup
+    const latestMatchup = await req.prisma.matchup.findFirst({
+      where: { relationshipId: relationship.id },
+      orderBy: { generatedAt: 'desc' }
+    });
+
+    // Active strategy
+    const activeStrategy = await req.prisma.strategy.findFirst({
+      where: { relationshipId: relationship.id, isActive: true },
+      orderBy: { week: 'desc' }
+    });
+
+    // Log access
+    await req.prisma.accessLog.create({
+      data: {
+        accessorId: req.user.id,
+        accessorRole: 'user',
+        resourceType: 'couple_dashboard',
+        resourceOwnerId: relationship.id,
+        action: 'read',
+        accessGranted: true,
+        ipAddress: req.ip
+      }
+    });
+
+    res.json({
+      coupleHappinessScore,
+      user1: { avgMood: user1AvgMood, avgCloseness: user1AvgCloseness, logCount: user1Logs.length },
+      user2: { avgMood: user2AvgMood, avgCloseness: user2AvgCloseness, logCount: user2Logs.length },
+      matchupScore: latestMatchup?.score || null,
+      sharedGoals,
+      activeStrategy: activeStrategy ? {
+        week: activeStrategy.week,
+        progress: activeStrategy.progress,
+        weeklyGoals: activeStrategy.weeklyGoals
+      } : null,
+      daysTracked: Math.max(user1Logs.length, user2Logs.length)
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Helper function to generate recommendations
 function generateRecommendations(logs, strategy) {
   const recommendations = [];

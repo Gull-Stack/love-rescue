@@ -18,6 +18,7 @@ const insightsRoutes = require('./routes/insights');
 const videosRoutes = require('./routes/videos');
 const mediatorsRoutes = require('./routes/mediators');
 const meetingsRoutes = require('./routes/meetings');
+const goalsRoutes = require('./routes/goals');
 
 const { auditLogger } = require('./middleware/auditLogger');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -30,7 +31,10 @@ const PORT = process.env.PORT || 3001;
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'http://10.0.0.219:3000'
+  ],
   credentials: true
 }));
 
@@ -74,6 +78,7 @@ app.use('/api/insights', insightsRoutes);
 app.use('/api/videos', videosRoutes);
 app.use('/api/mediators', mediatorsRoutes);
 app.use('/api/meetings', meetingsRoutes);
+app.use('/api/goals', goalsRoutes);
 
 // Error handling
 app.use(errorHandler);

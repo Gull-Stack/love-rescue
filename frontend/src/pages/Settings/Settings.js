@@ -364,12 +364,12 @@ const Settings = () => {
                 Choose a plan to continue using Marriage Rescue:
               </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={4}>
                   <Card variant="outlined">
                     <CardContent>
                       <Typography variant="h6" gutterBottom>Standard</Typography>
                       <Typography variant="h4" color="primary" gutterBottom>
-                        $9.99<Typography component="span" variant="body2" color="text.secondary">/mo</Typography>
+                        $29.99<Typography component="span" variant="body2" color="text.secondary">/mo</Typography>
                       </Typography>
                       <Typography variant="body2" color="text.secondary" paragraph>
                         Assessments, daily logs, insights, videos, strategies, and reports.
@@ -386,18 +386,17 @@ const Settings = () => {
                     </CardContent>
                   </Card>
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={4}>
                   <Card variant="outlined" sx={{ borderColor: 'secondary.main', borderWidth: 2 }}>
                     <CardContent>
                       <Box display="flex" alignItems="center" gap={1} mb={1}>
                         <Typography variant="h6">Premium</Typography>
-                        <Chip label="Recommended" size="small" color="secondary" />
                       </Box>
                       <Typography variant="h4" color="secondary" gutterBottom>
-                        $19.99<Typography component="span" variant="body2" color="text.secondary">/mo</Typography>
+                        $249<Typography component="span" variant="body2" color="text.secondary">/mo</Typography>
                       </Typography>
                       <Typography variant="body2" color="text.secondary" paragraph>
-                        Everything in Standard, plus weekly mediated video meetings with neutral facilitators.
+                        Everything in Standard, plus mediated video meetings with professional facilitators.
                       </Typography>
                       <Button
                         variant="contained"
@@ -405,6 +404,32 @@ const Settings = () => {
                         fullWidth
                         startIcon={<PaymentIcon />}
                         onClick={() => handleSubscribe('premium')}
+                        disabled={loading.payment}
+                      >
+                        {loading.payment ? <CircularProgress size={20} /> : 'Subscribe'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Card variant="outlined" sx={{ borderColor: 'success.main', borderWidth: 2 }}>
+                    <CardContent>
+                      <Box display="flex" alignItems="center" gap={1} mb={1}>
+                        <Typography variant="h6">Annual Unlimited</Typography>
+                        <Chip label="Best Value" size="small" color="success" />
+                      </Box>
+                      <Typography variant="h4" color="success.main" gutterBottom>
+                        $200<Typography component="span" variant="body2" color="text.secondary">/mo</Typography>
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" paragraph>
+                        Unlimited access including all mediated sessions. $2,400/year billed monthly. 12-month commitment.
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        fullWidth
+                        startIcon={<PaymentIcon />}
+                        onClick={() => handleSubscribe('annual')}
                         disabled={loading.payment}
                       >
                         {loading.payment ? <CircularProgress size={20} /> : 'Subscribe'}

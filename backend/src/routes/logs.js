@@ -18,7 +18,9 @@ router.post('/daily', authenticate, requireSubscription, async (req, res, next) 
       journalEntry,
       bidsTurned,
       closenessScore,
-      mood
+      mood,
+      isPrivate,
+      therapistVisible
     } = req.body;
 
     const logDate = date ? new Date(date) : new Date();
@@ -42,7 +44,9 @@ router.post('/daily', authenticate, requireSubscription, async (req, res, next) 
         journalEntry,
         bidsTurned,
         closenessScore,
-        mood
+        mood,
+        isPrivate: isPrivate || false,
+        therapistVisible: therapistVisible !== false
       },
       create: {
         userId: req.user.id,
@@ -53,7 +57,9 @@ router.post('/daily', authenticate, requireSubscription, async (req, res, next) 
         journalEntry,
         bidsTurned,
         closenessScore,
-        mood
+        mood,
+        isPrivate: isPrivate || false,
+        therapistVisible: therapistVisible !== false
       }
     });
 
