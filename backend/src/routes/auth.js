@@ -599,13 +599,25 @@ router.post('/revoke-partner', authenticate, async (req, res, next) => {
       })
     ]);
 
-    // Create a new solo relationship so the user can continue using the app
-    await req.prisma.relationship.create({
-      data: {
-        user1Id: req.user.id,
-        inviteCode: uuidv4().substring(0, 8).toUpperCase()
-      }
-    });
+    // Create new solo relationships for both users so they can continue using the app
+    const partnerId = relationship.user1Id === req.user.id
+      ? relationship.user2Id
+      : relationship.user1Id;
+
+    await Promise.all([
+      req.prisma.relationship.create({
+        data: {
+          user1Id: req.user.id,
+          inviteCode: uuidv4().substring(0, 8).toUpperCase()
+        }
+      }),
+      req.prisma.relationship.create({
+        data: {
+          user1Id: partnerId,
+          inviteCode: uuidv4().substring(0, 8).toUpperCase()
+        }
+      })
+    ]);
 
     logger.info('Partner access revoked', {
       userId: req.user.id,
