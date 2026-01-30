@@ -11,6 +11,15 @@ jest.mock('../../../contexts/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
 
+// Mock GoogleLogin component from @react-oauth/google
+let mockGoogleOnSuccess;
+jest.mock('@react-oauth/google', () => ({
+  GoogleLogin: (props) => {
+    mockGoogleOnSuccess = props.onSuccess;
+    return <button data-testid="google-signin-btn" onClick={() => props.onSuccess({ credential: 'mock-credential' })}>Sign in with Google</button>;
+  },
+}));
+
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -29,11 +38,13 @@ const renderWithProviders = (ui, { route = '/' } = {}) => {
 
 describe('Login', () => {
   const mockLogin = jest.fn();
+  const mockGoogleLogin = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
     useAuth.mockReturnValue({
       login: mockLogin,
+      googleLogin: mockGoogleLogin,
       error: null,
     });
   });
@@ -143,6 +154,60 @@ describe('Login', () => {
       expect(
         screen.getByText(/biometric login can be set up after signing in via settings/i)
       ).toBeInTheDocument();
+    });
+  });
+
+  test('renders Google Sign-In button', () => {
+    renderWithProviders(<Login />);
+
+    expect(screen.getByTestId('google-signin-btn')).toBeInTheDocument();
+  });
+
+  test('navigates to /dashboard on Google sign-in for existing user', async () => {
+    mockGoogleLogin.mockResolvedValueOnce({
+      user: { id: 'user-1' },
+      token: 'google-token',
+      isNewUser: false,
+    });
+
+    renderWithProviders(<Login />);
+
+    fireEvent.click(screen.getByTestId('google-signin-btn'));
+
+    await waitFor(() => {
+      expect(mockGoogleLogin).toHaveBeenCalledWith('mock-credential');
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+    });
+  });
+
+  test('navigates to /assessments on Google sign-in for new user', async () => {
+    mockGoogleLogin.mockResolvedValueOnce({
+      user: { id: 'user-1' },
+      token: 'google-token',
+      isNewUser: true,
+    });
+
+    renderWithProviders(<Login />);
+
+    fireEvent.click(screen.getByTestId('google-signin-btn'));
+
+    await waitFor(() => {
+      expect(mockGoogleLogin).toHaveBeenCalledWith('mock-credential');
+      expect(mockNavigate).toHaveBeenCalledWith('/assessments');
+    });
+  });
+
+  test('shows error on Google sign-in failure', async () => {
+    mockGoogleLogin.mockRejectedValueOnce({
+      response: { data: { error: 'Invalid Google token' } },
+    });
+
+    renderWithProviders(<Login />);
+
+    fireEvent.click(screen.getByTestId('google-signin-btn'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Invalid Google token')).toBeInTheDocument();
     });
   });
 });

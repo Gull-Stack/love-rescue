@@ -18,7 +18,7 @@ import api from '../../services/api';
 
 // A test component that exposes AuthContext values for assertions
 const TestComponent = () => {
-  const { user, loading, error, login, signup, logout, invitePartner } = useAuth();
+  const { user, loading, error, login, signup, googleLogin, logout, invitePartner } = useAuth();
 
   return (
     <div>
@@ -35,6 +35,9 @@ const TestComponent = () => {
         }
       >
         Signup
+      </button>
+      <button data-testid="google-login-btn" onClick={() => googleLogin('mock-google-credential').catch(() => {})}>
+        Google Login
       </button>
       <button data-testid="logout-btn" onClick={() => logout()}>
         Logout
@@ -270,6 +273,65 @@ describe('AuthContext', () => {
 
     expect(api.post).toHaveBeenCalledWith('/auth/invite-partner', {
       partnerEmail: 'partner@example.com',
+    });
+  });
+
+  test('googleLogin - stores token and sets user', async () => {
+    const mockGoogleResponse = {
+      data: {
+        token: 'google-token',
+        user: { id: 'user-g1', firstName: 'Google', email: 'google@example.com' },
+        isNewUser: true,
+      },
+    };
+
+    const mockMeResponse = {
+      data: {
+        user: { id: 'user-g1', firstName: 'Google', email: 'google@example.com' },
+        relationship: null,
+      },
+    };
+
+    api.post.mockResolvedValueOnce(mockGoogleResponse);
+    api.get.mockResolvedValueOnce(mockMeResponse);
+
+    renderWithAuth();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false');
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('google-login-btn'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user')).toHaveTextContent('Google');
+    });
+
+    expect(api.post).toHaveBeenCalledWith('/auth/google', {
+      credential: 'mock-google-credential',
+    });
+    expect(window.localStorage.setItem).toHaveBeenCalledWith('token', 'google-token');
+  });
+
+  test('googleLogin - sets error on failure', async () => {
+    api.post.mockRejectedValueOnce({
+      response: { data: { error: 'Invalid Google token' } },
+    });
+
+    renderWithAuth();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false');
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('google-login-btn'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('error')).toHaveTextContent('Invalid Google token');
     });
   });
 });

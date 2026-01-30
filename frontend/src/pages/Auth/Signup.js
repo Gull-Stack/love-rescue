@@ -10,14 +10,16 @@ import {
   Link,
   Alert,
   CircularProgress,
+  Divider,
   Grid,
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Signup = () => {
   const navigate = useNavigate();
-  const { signup } = useAuth();
+  const { signup, googleLogin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -160,6 +162,33 @@ const Signup = () => {
               {loading ? <CircularProgress size={24} /> : 'Create Account'}
             </Button>
           </form>
+
+          <Divider sx={{ my: 3 }}>
+            <Typography variant="body2" color="text.secondary">
+              or
+            </Typography>
+          </Divider>
+
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+            <GoogleLogin
+              text="signup_with"
+              onSuccess={async (credentialResponse) => {
+                setLoading(true);
+                setError('');
+                try {
+                  await googleLogin(credentialResponse.credential);
+                  navigate('/assessments');
+                } catch (err) {
+                  setError(err.response?.data?.error || 'Google sign-up failed');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              onError={() => {
+                setError('Google sign-up failed');
+              }}
+            />
+          </Box>
 
           <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mb: 2 }}>
             14-day free trial, then $9.99/month per couple

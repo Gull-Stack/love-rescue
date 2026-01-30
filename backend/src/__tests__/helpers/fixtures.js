@@ -26,6 +26,8 @@ function createUser(overrides = {}) {
     id: uuidv4(),
     email: `testuser-${uuidv4().substring(0, 8)}@example.com`,
     passwordHash: DEFAULT_PASSWORD_HASH,
+    googleId: null,
+    authProvider: 'email',
     firstName: 'Test',
     lastName: 'User',
     subscriptionStatus: 'trial',

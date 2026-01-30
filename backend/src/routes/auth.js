@@ -8,8 +8,11 @@ const {
   generateAuthenticationOptions,
   verifyAuthenticationResponse
 } = require('@simplewebauthn/server');
+const { OAuth2Client } = require('google-auth-library');
 const { authenticate } = require('../middleware/auth');
 const logger = require('../utils/logger');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const router = express.Router();
 
@@ -116,6 +119,10 @@ router.post('/login', async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    if (!user.passwordHash) {
+      return res.status(401).json({ error: 'This account uses Google Sign-In. Please sign in with Google.' });
+    }
+
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
 
     if (!isValidPassword) {
@@ -148,6 +155,109 @@ router.post('/login', async (req, res, next) => {
         subscriptionStatus: user.subscriptionStatus
       },
       token
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/auth/google
+ * Authenticate with Google ID token (popup-based)
+ */
+router.post('/google', async (req, res, next) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ error: 'Google credential is required' });
+    }
+
+    // Verify the Google ID token
+    let ticket;
+    try {
+      ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+    } catch (err) {
+      return res.status(401).json({ error: 'Invalid Google token' });
+    }
+
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, email_verified, given_name, family_name } = payload;
+
+    if (!email_verified) {
+      return res.status(401).json({ error: 'Google email not verified' });
+    }
+
+    let user;
+    let isNewUser = false;
+
+    // 1. Look up by googleId first
+    user = await req.prisma.user.findUnique({
+      where: { googleId }
+    });
+
+    if (!user) {
+      // 2. Look up by email (account linking)
+      user = await req.prisma.user.findUnique({
+        where: { email: email.toLowerCase() }
+      });
+
+      if (user) {
+        // Link Google account to existing email user
+        user = await req.prisma.user.update({
+          where: { id: user.id },
+          data: { googleId }
+        });
+      } else {
+        // 3. Create new user (no password)
+        const trialEndsAt = new Date();
+        trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+
+        user = await req.prisma.user.create({
+          data: {
+            email: email.toLowerCase(),
+            googleId,
+            authProvider: 'google',
+            firstName: given_name || null,
+            lastName: family_name || null,
+            subscriptionStatus: 'trial',
+            trialEndsAt
+          }
+        });
+
+        // Create solo relationship
+        await req.prisma.relationship.create({
+          data: {
+            user1Id: user.id,
+            inviteCode: uuidv4().substring(0, 8).toUpperCase()
+          }
+        });
+
+        isNewUser = true;
+      }
+    }
+
+    const token = jwt.sign(
+      { userId: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+
+    logger.info('Google auth', { userId: user.id, isNewUser });
+
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        subscriptionStatus: user.subscriptionStatus
+      },
+      token,
+      isNewUser
     });
   } catch (error) {
     next(error);
@@ -478,6 +588,7 @@ router.get('/me', authenticate, async (req, res, next) => {
         firstName: true,
         lastName: true,
         subscriptionStatus: true,
+        authProvider: true,
         trialEndsAt: true,
         createdAt: true
       }
@@ -530,6 +641,10 @@ router.post('/change-password', authenticate, async (req, res, next) => {
     const user = await req.prisma.user.findUnique({
       where: { id: req.user.id }
     });
+
+    if (!user.passwordHash) {
+      return res.status(400).json({ error: 'Google Sign-In accounts cannot change password' });
+    }
 
     const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isValid) {
@@ -636,19 +751,27 @@ router.post('/revoke-partner', authenticate, async (req, res, next) => {
  */
 router.delete('/delete-account', authenticate, async (req, res, next) => {
   try {
-    const { password } = req.body;
-
-    if (!password) {
-      return res.status(400).json({ error: 'Password required to confirm deletion' });
-    }
+    const { password, confirmDelete } = req.body;
 
     const user = await req.prisma.user.findUnique({
       where: { id: req.user.id }
     });
 
-    const isValid = await bcrypt.compare(password, user.passwordHash);
-    if (!isValid) {
-      return res.status(401).json({ error: 'Incorrect password' });
+    if (!user.passwordHash) {
+      // Google-only user: confirm with confirmDelete flag
+      if (!confirmDelete) {
+        return res.status(400).json({ error: 'Please confirm account deletion' });
+      }
+    } else {
+      // Email/password user: confirm with password
+      if (!password) {
+        return res.status(400).json({ error: 'Password required to confirm deletion' });
+      }
+
+      const isValid = await bcrypt.compare(password, user.passwordHash);
+      if (!isValid) {
+        return res.status(401).json({ error: 'Incorrect password' });
+      }
     }
 
     // End any active relationships first (don't cascade-delete partner's data)

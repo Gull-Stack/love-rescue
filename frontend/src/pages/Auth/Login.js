@@ -15,11 +15,12 @@ import {
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, error } = useAuth();
+  const { login, googleLogin, error } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -117,6 +118,31 @@ const Login = () => {
               or
             </Typography>
           </Divider>
+
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+            <GoogleLogin
+              text="signin_with"
+              onSuccess={async (credentialResponse) => {
+                setLoading(true);
+                setFormError('');
+                try {
+                  const data = await googleLogin(credentialResponse.credential);
+                  if (data.isNewUser) {
+                    navigate('/assessments');
+                  } else {
+                    navigate('/dashboard');
+                  }
+                } catch (err) {
+                  setFormError(err.response?.data?.error || 'Google sign-in failed');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              onError={() => {
+                setFormError('Google sign-in failed');
+              }}
+            />
+          </Box>
 
           <Button
             fullWidth

@@ -67,6 +67,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const googleLogin = async (credential) => {
+    try {
+      setError(null);
+      const response = await api.post('/auth/google', { credential });
+      localStorage.setItem('token', response.data.token);
+      setUser(response.data.user);
+      await fetchUser();
+      return response.data;
+    } catch (err) {
+      setError(err.response?.data?.error || 'Google sign-in failed');
+      throw err;
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
@@ -99,6 +113,7 @@ export const AuthProvider = ({ children }) => {
     error,
     login,
     signup,
+    googleLogin,
     logout,
     invitePartner,
     joinRelationship,

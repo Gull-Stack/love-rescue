@@ -25,6 +25,13 @@ jest.mock('@simplewebauthn/server', () => ({
   verifyAuthenticationResponse: jest.fn()
 }));
 
+const mockVerifyIdToken = jest.fn();
+jest.mock('google-auth-library', () => ({
+  OAuth2Client: jest.fn().mockImplementation(() => ({
+    verifyIdToken: mockVerifyIdToken
+  }))
+}));
+
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const {
@@ -85,7 +92,8 @@ describe('Auth Routes', () => {
       user: {
         findUnique: jest.fn(),
         create: jest.fn(),
-        update: jest.fn()
+        update: jest.fn(),
+        delete: jest.fn()
       },
       relationship: {
         findFirst: jest.fn(),
@@ -727,6 +735,287 @@ describe('Auth Routes', () => {
 
       expect(res.status).toBe(401);
       expect(res.body.error).toBe('Authentication failed');
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────
+  // POST /api/auth/google
+  // ───────────────────────────────────────────────────────────────
+
+  describe('POST /api/auth/google', () => {
+    const mockGooglePayload = {
+      sub: 'google-123456',
+      email: 'google@example.com',
+      email_verified: true,
+      given_name: 'Google',
+      family_name: 'User'
+    };
+
+    it('should create a new user when Google account is not found', async () => {
+      mockVerifyIdToken.mockResolvedValue({
+        getPayload: () => mockGooglePayload
+      });
+      mockPrisma.user.findUnique
+        .mockResolvedValueOnce(null)   // googleId lookup
+        .mockResolvedValueOnce(null);  // email lookup
+      mockPrisma.user.create.mockResolvedValue({
+        id: 'new-user-1',
+        email: 'google@example.com',
+        firstName: 'Google',
+        lastName: 'User',
+        subscriptionStatus: 'trial',
+        googleId: 'google-123456',
+        authProvider: 'google'
+      });
+      mockPrisma.relationship.create.mockResolvedValue({ id: 'rel-1' });
+
+      const res = await request(app)
+        .post('/api/auth/google')
+        .send({ credential: 'valid-google-token' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.token).toBeDefined();
+      expect(res.body.isNewUser).toBe(true);
+      expect(res.body.user.email).toBe('google@example.com');
+      expect(mockPrisma.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            googleId: 'google-123456',
+            authProvider: 'google'
+          })
+        })
+      );
+      expect(mockPrisma.relationship.create).toHaveBeenCalled();
+    });
+
+    it('should login existing user found by googleId', async () => {
+      mockVerifyIdToken.mockResolvedValue({
+        getPayload: () => mockGooglePayload
+      });
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
+        id: 'existing-user-1',
+        email: 'google@example.com',
+        firstName: 'Google',
+        lastName: 'User',
+        subscriptionStatus: 'trial',
+        googleId: 'google-123456'
+      });
+
+      const res = await request(app)
+        .post('/api/auth/google')
+        .send({ credential: 'valid-google-token' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.token).toBeDefined();
+      expect(res.body.isNewUser).toBe(false);
+      expect(res.body.user.email).toBe('google@example.com');
+      expect(mockPrisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it('should link Google account when found by email', async () => {
+      mockVerifyIdToken.mockResolvedValue({
+        getPayload: () => mockGooglePayload
+      });
+      mockPrisma.user.findUnique
+        .mockResolvedValueOnce(null)   // googleId lookup - not found
+        .mockResolvedValueOnce({       // email lookup - found
+          id: 'existing-user-2',
+          email: 'google@example.com',
+          firstName: 'Existing',
+          lastName: 'User',
+          subscriptionStatus: 'trial',
+          passwordHash: '$2a$12$hashedpassword'
+        });
+      mockPrisma.user.update.mockResolvedValue({
+        id: 'existing-user-2',
+        email: 'google@example.com',
+        firstName: 'Existing',
+        lastName: 'User',
+        subscriptionStatus: 'trial',
+        googleId: 'google-123456'
+      });
+
+      const res = await request(app)
+        .post('/api/auth/google')
+        .send({ credential: 'valid-google-token' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.token).toBeDefined();
+      expect(res.body.isNewUser).toBe(false);
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'existing-user-2' },
+          data: { googleId: 'google-123456' }
+        })
+      );
+    });
+
+    it('should return 400 when credential is missing', async () => {
+      const res = await request(app)
+        .post('/api/auth/google')
+        .send({});
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('Google credential is required');
+    });
+
+    it('should return 401 for invalid Google token', async () => {
+      mockVerifyIdToken.mockRejectedValue(new Error('Invalid token'));
+
+      const res = await request(app)
+        .post('/api/auth/google')
+        .send({ credential: 'invalid-token' });
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('Invalid Google token');
+    });
+
+    it('should return 401 when Google email is not verified', async () => {
+      mockVerifyIdToken.mockResolvedValue({
+        getPayload: () => ({
+          ...mockGooglePayload,
+          email_verified: false
+        })
+      });
+
+      const res = await request(app)
+        .post('/api/auth/google')
+        .send({ credential: 'valid-token-unverified-email' });
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('Google email not verified');
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────
+  // Login guard: Google-only user tries email/password login
+  // ───────────────────────────────────────────────────────────────
+
+  describe('POST /api/auth/login - Google-only user guard', () => {
+    it('should return 401 when Google-only user tries email/password login', async () => {
+      const googleOnlyUser = {
+        ...mockUser,
+        passwordHash: null,
+        googleId: 'google-123456',
+        authProvider: 'google'
+      };
+      mockPrisma.user.findUnique.mockResolvedValue(googleOnlyUser);
+
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'test@example.com', password: 'password123' });
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toContain('Google Sign-In');
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────
+  // Change-password guard: Google-only user
+  // ───────────────────────────────────────────────────────────────
+
+  describe('POST /api/auth/change-password - Google-only user guard', () => {
+    it('should return 400 when Google-only user tries to change password', async () => {
+      const token = generateToken('user-1');
+
+      // First call from authenticate middleware
+      mockPrisma.user.findUnique
+        .mockResolvedValueOnce({
+          id: 'user-1',
+          email: 'test@example.com',
+          firstName: 'John',
+          lastName: 'Doe',
+          subscriptionStatus: 'trial',
+          stripeCustomerId: null,
+          createdAt: new Date()
+        })
+        .mockResolvedValueOnce({
+          id: 'user-1',
+          email: 'test@example.com',
+          passwordHash: null,
+          googleId: 'google-123456',
+          authProvider: 'google'
+        });
+
+      const res = await request(app)
+        .post('/api/auth/change-password')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ currentPassword: 'anything', newPassword: 'newpassword123' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('Google Sign-In');
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────
+  // Delete-account: Google-only user
+  // ───────────────────────────────────────────────────────────────
+
+  describe('DELETE /api/auth/delete-account - Google-only user', () => {
+    it('should allow Google-only user to delete with confirmDelete flag', async () => {
+      const token = generateToken('user-1');
+
+      mockPrisma.user.findUnique
+        .mockResolvedValueOnce({
+          id: 'user-1',
+          email: 'test@example.com',
+          firstName: 'John',
+          lastName: 'Doe',
+          subscriptionStatus: 'trial',
+          stripeCustomerId: null,
+          createdAt: new Date()
+        })
+        .mockResolvedValueOnce({
+          id: 'user-1',
+          email: 'test@example.com',
+          passwordHash: null,
+          googleId: 'google-123456',
+          authProvider: 'google'
+        });
+
+      mockPrisma.relationship = {
+        ...mockPrisma.relationship,
+        findMany: jest.fn().mockResolvedValue([])
+      };
+      mockPrisma.user.delete.mockResolvedValue({ id: 'user-1' });
+
+      const res = await request(app)
+        .delete('/api/auth/delete-account')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ confirmDelete: true });
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe('Account deleted successfully');
+    });
+
+    it('should return 400 when Google-only user does not confirm deletion', async () => {
+      const token = generateToken('user-1');
+
+      mockPrisma.user.findUnique
+        .mockResolvedValueOnce({
+          id: 'user-1',
+          email: 'test@example.com',
+          firstName: 'John',
+          lastName: 'Doe',
+          subscriptionStatus: 'trial',
+          stripeCustomerId: null,
+          createdAt: new Date()
+        })
+        .mockResolvedValueOnce({
+          id: 'user-1',
+          email: 'test@example.com',
+          passwordHash: null,
+          googleId: 'google-123456',
+          authProvider: 'google'
+        });
+
+      const res = await request(app)
+        .delete('/api/auth/delete-account')
+        .set('Authorization', `Bearer ${token}`)
+        .send({});
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('Please confirm account deletion');
     });
   });
 });

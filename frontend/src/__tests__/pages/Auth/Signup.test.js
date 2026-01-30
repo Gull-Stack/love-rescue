@@ -11,6 +11,13 @@ jest.mock('../../../contexts/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
 
+// Mock GoogleLogin component from @react-oauth/google
+jest.mock('@react-oauth/google', () => ({
+  GoogleLogin: (props) => {
+    return <button data-testid="google-signup-btn" onClick={() => props.onSuccess({ credential: 'mock-credential' })}>Sign up with Google</button>;
+  },
+}));
+
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -29,11 +36,13 @@ const renderWithProviders = (ui, { route = '/' } = {}) => {
 
 describe('Signup', () => {
   const mockSignup = jest.fn();
+  const mockGoogleLogin = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
     useAuth.mockReturnValue({
       signup: mockSignup,
+      googleLogin: mockGoogleLogin,
     });
   });
 
@@ -172,6 +181,43 @@ describe('Signup', () => {
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/assessments');
+    });
+  });
+
+  test('renders Google Sign-Up button', () => {
+    renderWithProviders(<Signup />);
+
+    expect(screen.getByTestId('google-signup-btn')).toBeInTheDocument();
+  });
+
+  test('navigates to /assessments on Google sign-up success', async () => {
+    mockGoogleLogin.mockResolvedValueOnce({
+      user: { id: 'user-g1' },
+      token: 'google-token',
+      isNewUser: true,
+    });
+
+    renderWithProviders(<Signup />);
+
+    fireEvent.click(screen.getByTestId('google-signup-btn'));
+
+    await waitFor(() => {
+      expect(mockGoogleLogin).toHaveBeenCalledWith('mock-credential');
+      expect(mockNavigate).toHaveBeenCalledWith('/assessments');
+    });
+  });
+
+  test('shows error on Google sign-up failure', async () => {
+    mockGoogleLogin.mockRejectedValueOnce({
+      response: { data: { error: 'Google sign-up failed' } },
+    });
+
+    renderWithProviders(<Signup />);
+
+    fireEvent.click(screen.getByTestId('google-signup-btn'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Google sign-up failed')).toBeInTheDocument();
     });
   });
 });
