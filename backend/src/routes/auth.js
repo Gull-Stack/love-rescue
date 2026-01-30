@@ -372,13 +372,14 @@ router.post('/invite-partner', authenticate, async (req, res, next) => {
   try {
     const { partnerEmail } = req.body;
 
-    // Find user's relationship
+    // Find user's active relationship
     const relationship = await req.prisma.relationship.findFirst({
       where: {
         OR: [
           { user1Id: req.user.id },
           { user2Id: req.user.id }
-        ]
+        ],
+        status: 'active'
       }
     });
 
@@ -487,7 +488,8 @@ router.get('/me', authenticate, async (req, res, next) => {
         OR: [
           { user1Id: req.user.id },
           { user2Id: req.user.id }
-        ]
+        ],
+        status: 'active'
       },
       include: {
         user1: { select: { id: true, firstName: true, lastName: true } },
@@ -596,6 +598,14 @@ router.post('/revoke-partner', authenticate, async (req, res, next) => {
         }
       })
     ]);
+
+    // Create a new solo relationship so the user can continue using the app
+    await req.prisma.relationship.create({
+      data: {
+        user1Id: req.user.id,
+        inviteCode: uuidv4().substring(0, 8).toUpperCase()
+      }
+    });
 
     logger.info('Partner access revoked', {
       userId: req.user.id,
