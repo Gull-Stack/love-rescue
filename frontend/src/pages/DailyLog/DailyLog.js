@@ -49,15 +49,20 @@ const DailyLog = () => {
       setHasLoggedToday(promptRes.data.hasLoggedToday);
 
       if (promptRes.data.todayLog) {
+        const tl = promptRes.data.todayLog;
         setFormData((prev) => ({
           ...prev,
-          positiveCount: promptRes.data.todayLog.positiveCount || 0,
-          negativeCount: promptRes.data.todayLog.negativeCount || 0,
+          positiveCount: tl.positiveCount || 0,
+          negativeCount: tl.negativeCount || 0,
+          journalEntry: tl.journalEntry || prev.journalEntry,
+          closenessScore: tl.closenessScore || prev.closenessScore,
+          mood: tl.mood || prev.mood,
         }));
       }
 
-      // Try to get full today's log
-      const today = new Date().toISOString().split('T')[0];
+      // Try to get full today's log (use local date, not UTC which can differ)
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       try {
         const logRes = await logsApi.getDaily(today);
         if (logRes.data.log) {

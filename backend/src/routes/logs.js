@@ -23,8 +23,15 @@ router.post('/daily', authenticate, requireSubscription, async (req, res, next) 
       therapistVisible
     } = req.body;
 
-    const logDate = date ? new Date(date) : new Date();
-    logDate.setHours(0, 0, 0, 0);
+    let logDate;
+    if (date) {
+      // Parse date string as local timezone (new Date('YYYY-MM-DD') parses as UTC, causing mismatches)
+      const [year, month, day] = date.split('-').map(Number);
+      logDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+    } else {
+      logDate = new Date();
+      logDate.setHours(0, 0, 0, 0);
+    }
 
     // Calculate ratio
     const ratio = calculateRatio(positiveCount || 0, negativeCount || 0);
@@ -90,8 +97,9 @@ router.post('/daily', authenticate, requireSubscription, async (req, res, next) 
 router.get('/daily/:date', authenticate, async (req, res, next) => {
   try {
     const { date } = req.params;
-    const logDate = new Date(date);
-    logDate.setHours(0, 0, 0, 0);
+    // Parse date string as local timezone (new Date('YYYY-MM-DD') parses as UTC, causing mismatches)
+    const [year, month, day] = date.split('-').map(Number);
+    const logDate = new Date(year, month - 1, day, 0, 0, 0, 0);
 
     const dailyLog = await req.prisma.dailyLog.findUnique({
       where: {
@@ -302,7 +310,10 @@ router.get('/prompt', authenticate, async (req, res, next) => {
       todayLog: todayLog ? {
         positiveCount: todayLog.positiveCount,
         negativeCount: todayLog.negativeCount,
-        ratio: todayLog.ratio
+        ratio: todayLog.ratio,
+        journalEntry: todayLog.journalEntry,
+        closenessScore: todayLog.closenessScore,
+        mood: todayLog.mood
       } : null
     });
   } catch (error) {
