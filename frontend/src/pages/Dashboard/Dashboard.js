@@ -13,11 +13,14 @@ import {
   Alert,
   IconButton,
   Tooltip,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
+import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import VideocamIcon from '@mui/icons-material/Videocam';
@@ -60,11 +63,15 @@ const Dashboard = () => {
       let matchupData = null;
       let strategyData = null;
 
+      const strategyPromise = strategiesApi.getCurrent().catch(() => ({ data: { strategy: null } }));
+
       if (relationship?.hasPartner) {
         [matchupData, strategyData] = await Promise.all([
           matchupApi.getCurrent().catch(() => ({ data: { matchup: null } })),
-          strategiesApi.getCurrent().catch(() => ({ data: { strategy: null } })),
+          strategyPromise,
         ]);
+      } else {
+        strategyData = await strategyPromise;
       }
 
       setData({
@@ -145,6 +152,117 @@ const Dashboard = () => {
             </Tooltip>
           </Box>
         </Alert>
+      )}
+
+      {/* Strategy Hero Section */}
+      {data.strategy ? (
+        <Card
+          sx={{
+            mb: 3,
+            background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
+            color: 'white',
+          }}
+        >
+          <CardContent sx={{ p: 3 }}>
+            <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={3}>
+              {/* Left side: Week info + progress ring */}
+              <Box flex={1}>
+                <Box display="flex" alignItems="center" gap={1} mb={1}>
+                  <EmojiObjectsIcon />
+                  <Typography variant="overline" sx={{ opacity: 0.9 }}>
+                    Week {data.strategy.week} of 6
+                  </Typography>
+                </Box>
+                <Typography variant="h5" fontWeight="bold" gutterBottom>
+                  Your Strategy Plan
+                </Typography>
+                <Box display="flex" alignItems="center" gap={2} mb={2}>
+                  <Box position="relative" display="inline-flex">
+                    <CircularProgress
+                      variant="determinate"
+                      value={data.strategy.progress || 0}
+                      size={64}
+                      thickness={5}
+                      sx={{ color: 'rgba(255,255,255,0.9)' }}
+                    />
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 0, left: 0, bottom: 0, right: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Typography variant="body2" fontWeight="bold">
+                        {data.strategy.progress || 0}%
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                      Weekly Progress
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                      {data.strategy.weeklyGoals?.length || 0} goals this week
+                    </Typography>
+                  </Box>
+                </Box>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => navigate('/strategies')}
+                  sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.5)', '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' } }}
+                >
+                  View Full Strategy
+                </Button>
+              </Box>
+
+              {/* Right side: Today's activities checklist */}
+              <Box flex={1}>
+                <Typography variant="subtitle2" sx={{ opacity: 0.9, mb: 1 }}>
+                  Today's Activities
+                </Typography>
+                {(() => {
+                  const today = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date().getDay()];
+                  const activities = data.strategy.dailyActivities?.[today] || [];
+                  if (activities.length === 0) {
+                    return (
+                      <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                        No activities scheduled for today
+                      </Typography>
+                    );
+                  }
+                  return activities.map((activity, idx) => (
+                    <FormControlLabel
+                      key={idx}
+                      control={<Checkbox size="small" sx={{ color: 'rgba(255,255,255,0.7)', '&.Mui-checked': { color: 'white' } }} />}
+                      label={<Typography variant="body2">{activity}</Typography>}
+                      sx={{ display: 'flex', mb: 0.5 }}
+                    />
+                  ));
+                })()}
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card sx={{ mb: 3, bgcolor: 'background.paper' }}>
+          <CardContent sx={{ textAlign: 'center', py: 4 }}>
+            <EmojiObjectsIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
+            <Typography variant="h6" gutterBottom>
+              Generate Your Personalized Strategy
+            </Typography>
+            <Typography color="text.secondary" paragraph>
+              {relationship?.hasPartner
+                ? 'Create a 6-week plan based on your matchup results to strengthen your relationship.'
+                : 'Create a 6-week plan based on your assessments to build stronger relationship skills.'}
+            </Typography>
+            <Button variant="contained" onClick={() => navigate('/strategies')}>
+              Get Started
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       <Grid container spacing={3}>
@@ -382,45 +500,6 @@ const Dashboard = () => {
           </Card>
         </Grid>
 
-        {/* Current Strategy Card */}
-        {data.strategy && (
-          <Grid item xs={12}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={1} mb={2}>
-                  <TipsAndUpdatesIcon color="primary" />
-                  <Typography variant="h6">
-                    Current Strategy - Week {data.strategy.week}
-                  </Typography>
-                </Box>
-                <Box mb={2}>
-                  <Box display="flex" justifyContent="space-between" mb={1}>
-                    <Typography variant="body2">Progress</Typography>
-                    <Typography variant="body2">{data.strategy.progress}%</Typography>
-                  </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={data.strategy.progress}
-                    sx={{ height: 8, borderRadius: 4 }}
-                  />
-                </Box>
-                <Typography variant="subtitle2" gutterBottom>
-                  Weekly Goals:
-                </Typography>
-                <Box component="ul" sx={{ pl: 2, mb: 2 }}>
-                  {data.strategy.weeklyGoals.slice(0, 3).map((goal, idx) => (
-                    <li key={idx}>
-                      <Typography variant="body2">{goal}</Typography>
-                    </li>
-                  ))}
-                </Box>
-                <Button variant="outlined" onClick={() => navigate('/strategies')}>
-                  View Full Strategy
-                </Button>
-              </CardContent>
-            </Card>
-          </Grid>
-        )}
       </Grid>
     </Box>
   );

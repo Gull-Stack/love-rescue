@@ -120,28 +120,12 @@ const Strategies = () => {
     );
   }
 
-  if (!relationship?.hasPartner) {
-    return (
-      <Box textAlign="center" py={8}>
-        <Typography variant="h5" gutterBottom>
-          Partner Required
-        </Typography>
-        <Typography color="text.secondary" paragraph>
-          Invite your partner and complete matchup to unlock strategies.
-        </Typography>
-        <Button variant="contained" onClick={() => navigate('/settings')}>
-          Invite Partner
-        </Button>
-      </Box>
-    );
-  }
-
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Box>
           <Typography variant="h4" fontWeight="bold">
-            Your Strategy
+            {relationship?.hasPartner ? 'Your Relationship Strategy' : 'Your Personal Growth Strategy'}
           </Typography>
           {strategy && (
             <Typography color="text.secondary">
@@ -290,7 +274,9 @@ const Strategies = () => {
               No Active Strategy
             </Typography>
             <Typography color="text.secondary" paragraph>
-              Generate a personalized 6-week strategy based on your matchup results.
+              {relationship?.hasPartner
+                ? 'Generate a personalized 6-week strategy based on your matchup results.'
+                : 'Generate a personalized 6-week strategy based on your assessment results.'}
             </Typography>
             <Button
               variant="contained"

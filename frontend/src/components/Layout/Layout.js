@@ -32,15 +32,16 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import { useAuth } from '../../contexts/AuthContext';
 
 const navItems = [
   { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
-  { label: 'Assessments', path: '/assessments', icon: <AssignmentIcon /> },
-  { label: 'Matchup', path: '/matchup', icon: <FavoriteIcon /> },
-  { label: 'Daily Log', path: '/daily', icon: <EditNoteIcon /> },
   { label: 'Strategies', path: '/strategies', icon: <TipsAndUpdatesIcon /> },
+  { label: 'Daily Log', path: '/daily', icon: <EditNoteIcon /> },
+  { label: 'Matchup', path: '/matchup', icon: <FavoriteIcon /> },
+  { label: 'Assessments', path: '/assessments', icon: <AssignmentIcon /> },
   { label: 'Reports', path: '/reports', icon: <AssessmentIcon /> },
   { label: 'Meetings', path: '/meetings', icon: <VideocamIcon /> },
   { label: 'Settings', path: '/settings', icon: <SettingsIcon /> },
@@ -48,9 +49,9 @@ const navItems = [
 
 const bottomNavItems = [
   { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
+  { label: 'Strategy', path: '/strategies', icon: <EmojiObjectsIcon /> },
   { label: 'Log', path: '/daily', icon: <EditNoteIcon /> },
   { label: 'Matchup', path: '/matchup', icon: <FavoriteIcon /> },
-  { label: 'Reports', path: '/reports', icon: <AssessmentIcon /> },
   { label: 'More', path: null, icon: <MoreHorizIcon /> },
 ];
 

@@ -83,7 +83,7 @@ describe('Strategies', () => {
     renderWithProviders(<Strategies />);
 
     await waitFor(() => {
-      expect(screen.getByText('Your Strategy')).toBeInTheDocument();
+      expect(screen.getByText('Your Relationship Strategy')).toBeInTheDocument();
     });
   });
 

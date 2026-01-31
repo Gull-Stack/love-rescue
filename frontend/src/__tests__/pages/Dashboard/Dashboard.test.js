@@ -107,6 +107,15 @@ const mockStrategyData = {
     strategy: {
       week: 3,
       progress: 60,
+      dailyActivities: {
+        monday: ['Log 3 positive interactions'],
+        tuesday: ['Ask an open-ended question'],
+        wednesday: ['Express appreciation'],
+        thursday: ['Log interaction ratio'],
+        friday: ['Plan a meaningful activity'],
+        saturday: ['Spend 20 minutes together'],
+        sunday: ['Reflect on the week'],
+      },
       weeklyGoals: [
         'Practice active listening daily',
         'Schedule one date night',
@@ -213,7 +222,7 @@ describe('Dashboard', () => {
     expect(screen.getByText(/1 areas to work on/i)).toBeInTheDocument();
   });
 
-  test('shows strategy card when active', async () => {
+  test('shows strategy hero when active', async () => {
     useAuth.mockReturnValue({
       user: { id: 'user-1', firstName: 'Test', lastName: 'User', email: 'test@example.com' },
       relationship: { id: 'rel-1', hasPartner: true },
@@ -223,12 +232,24 @@ describe('Dashboard', () => {
     renderWithProviders(<Dashboard />);
 
     await waitFor(() => {
-      expect(screen.getByText(/current strategy - week 3/i)).toBeInTheDocument();
+      expect(screen.getByText(/your strategy plan/i)).toBeInTheDocument();
     });
 
+    expect(screen.getByText(/week 3 of 6/i)).toBeInTheDocument();
     expect(screen.getByText('60%')).toBeInTheDocument();
-    expect(screen.getByText('Practice active listening daily')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /view full strategy/i })).toBeInTheDocument();
+  });
+
+  test('shows strategy CTA when no strategy exists', async () => {
+    strategiesApi.getCurrent.mockResolvedValue({ data: { strategy: null } });
+
+    renderWithProviders(<Dashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/generate your personalized strategy/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: /get started/i })).toBeInTheDocument();
   });
 
   test('shows stats card with ratio and days logged', async () => {

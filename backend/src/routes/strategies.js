@@ -80,11 +80,20 @@ router.post('/generate', authenticate, requireSubscription, async (req, res, nex
       orderBy: { generatedAt: 'desc' }
     });
 
+    // If no matchup, fall back to individual assessments
+    let assessments = null;
     if (!matchup) {
-      return res.status(400).json({
-        error: 'Complete matchup assessment first',
-        code: 'NO_MATCHUP'
+      assessments = await req.prisma.assessment.findMany({
+        where: { userId: req.user.id },
+        orderBy: { completedAt: 'desc' }
       });
+
+      if (!assessments || assessments.length === 0) {
+        return res.status(400).json({
+          error: 'Complete at least one assessment first',
+          code: 'NO_ASSESSMENTS'
+        });
+      }
     }
 
     // Deactivate old strategies
@@ -103,7 +112,7 @@ router.post('/generate', authenticate, requireSubscription, async (req, res, nex
     });
     const cycleNumber = (lastStrategy?.cycleNumber || 0) + 1;
 
-    // Generate 6 weeks of strategies based on matchup misses
+    // Generate 6 weeks of strategies
     const strategies = [];
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
@@ -115,7 +124,7 @@ router.post('/generate', authenticate, requireSubscription, async (req, res, nex
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 6);
 
-      const weekPlan = generateWeekPlan(week, matchup);
+      const weekPlan = generateWeekPlan(week, { matchup, assessments });
 
       const strategy = await req.prisma.strategy.create({
         data: {
@@ -255,12 +264,19 @@ router.get('/history', authenticate, async (req, res, next) => {
   }
 });
 
-// Helper function to generate week plan based on matchup
-function generateWeekPlan(week, matchup) {
+// Helper function to generate week plan based on matchup or individual assessments
+function generateWeekPlan(week, { matchup, assessments }) {
+  if (matchup) {
+    return generateMatchupWeekPlan(week, matchup);
+  }
+  return generateSoloWeekPlan(week, assessments);
+}
+
+// Generate week plan from matchup data (partnered flow)
+function generateMatchupWeekPlan(week, matchup) {
   const misses = matchup.alignments?.misses || [];
   const missAreas = misses.map(m => m.area);
 
-  // Base activities for all weeks
   const baseActivities = {
     monday: ['Log 3 positive interactions you had today'],
     tuesday: ['Ask one open-ended question about your partner\'s day'],
@@ -273,43 +289,36 @@ function generateWeekPlan(week, matchup) {
 
   const weeklyGoals = ['Complete daily prompts', 'Maintain 5:1 positive ratio'];
 
-  // Customize based on week number and misses
   switch (week) {
-    case 1: // Focus: Building Friendship Foundation
+    case 1:
       weeklyGoals.push('Learn 3 new things about your partner');
       baseActivities.tuesday.push('Share a childhood memory');
       break;
-
-    case 2: // Focus: Appreciation and Admiration
+    case 2:
       weeklyGoals.push('Express 7 genuine compliments this week');
       baseActivities.wednesday.push('Write a short note of appreciation');
       break;
-
-    case 3: // Focus: Turning Towards Bids
+    case 3:
       weeklyGoals.push('Track and respond to 10 bids for connection');
       baseActivities.thursday.push('Notice and turn towards one bid today');
       break;
-
-    case 4: // Focus: Managing Conflict
+    case 4:
       weeklyGoals.push('Practice one repair attempt during a disagreement');
       if (missAreas.includes('patterns')) {
         baseActivities.friday.push('Discuss your conflict styles calmly');
       }
       break;
-
-    case 5: // Focus: Supporting Dreams
+    case 5:
       weeklyGoals.push('Discuss one personal dream or goal with your partner');
       baseActivities.saturday.push('Ask about your partner\'s hopes for the future');
       break;
-
-    case 6: // Focus: Creating Shared Meaning
+    case 6:
       weeklyGoals.push('Establish or reinforce one relationship ritual');
       baseActivities.sunday.push('Discuss what you want your relationship to stand for');
       weeklyGoals.push('Prepare for reassessment next week');
       break;
   }
 
-  // Add targeted activities based on misses
   if (missAreas.includes('attachment')) {
     baseActivities.monday.push('Practice a 6-second hug');
     weeklyGoals.push('Discuss attachment needs openly');
@@ -320,10 +329,89 @@ function generateWeekPlan(week, matchup) {
     weeklyGoals.push('Support each other\'s self-care');
   }
 
-  return {
-    dailyActivities: baseActivities,
-    weeklyGoals
+  return { dailyActivities: baseActivities, weeklyGoals };
+}
+
+// Generate week plan from individual assessments (solo flow)
+function generateSoloWeekPlan(week, assessments) {
+  const assessmentsByType = {};
+  for (const a of assessments) {
+    if (!assessmentsByType[a.type] || a.completedAt > assessmentsByType[a.type].completedAt) {
+      assessmentsByType[a.type] = a;
+    }
+  }
+
+  const focusAreas = [];
+  const gottman = assessmentsByType.gottman;
+  const eft = assessmentsByType.eft;
+  const prep = assessmentsByType.prep;
+
+  if (gottman?.score) {
+    const scores = gottman.score;
+    if (scores.friendship < 70) focusAreas.push('friendship');
+    if (scores.conflict < 70) focusAreas.push('conflict');
+    if (scores.meaning < 70) focusAreas.push('meaning');
+  }
+  if (eft?.score?.attachment) {
+    focusAreas.push('attachment');
+  }
+  if (prep?.score?.communication && prep.score.communication < 70) {
+    focusAreas.push('communication');
+  }
+
+  const baseActivities = {
+    monday: ['Journal about 3 things you appreciate in your relationship'],
+    tuesday: ['Practice active listening in one conversation today'],
+    wednesday: ['Write down one thing you are grateful for about yourself'],
+    thursday: ['Reflect on your communication patterns this week'],
+    friday: ['Identify one personal boundary and practice honoring it'],
+    saturday: ['Spend 20 minutes on a self-care activity'],
+    sunday: ['Review your week and set one intention for next week']
   };
+
+  const weeklyGoals = ['Complete daily reflections', 'Practice mindful communication'];
+
+  switch (week) {
+    case 1: // Focus: Self-Awareness
+      weeklyGoals.push('Identify 3 personal emotional patterns');
+      baseActivities.tuesday.push('Write about a recent emotional reaction and its trigger');
+      break;
+    case 2: // Focus: Communication Skills
+      weeklyGoals.push('Practice "I" statements in 5 conversations');
+      baseActivities.wednesday.push('Reframe one complaint as a request');
+      break;
+    case 3: // Focus: Emotional Regulation
+      weeklyGoals.push('Practice a calming technique daily');
+      baseActivities.thursday.push('Try a 5-minute breathing exercise');
+      break;
+    case 4: // Focus: Understanding Patterns
+      weeklyGoals.push('Map out one recurring conflict pattern');
+      if (focusAreas.includes('conflict')) {
+        baseActivities.friday.push('Write about your conflict style and one way to improve it');
+      }
+      break;
+    case 5: // Focus: Personal Growth
+      weeklyGoals.push('Define one personal growth goal for your relationship');
+      baseActivities.saturday.push('Reflect on your hopes for the future');
+      break;
+    case 6: // Focus: Integration
+      weeklyGoals.push('Create a personal relationship vision statement');
+      baseActivities.sunday.push('Write a letter to yourself about the partner you want to be');
+      weeklyGoals.push('Prepare for reassessment next week');
+      break;
+  }
+
+  if (focusAreas.includes('attachment')) {
+    baseActivities.monday.push('Reflect on your attachment style and how it affects your relationships');
+    weeklyGoals.push('Learn about your attachment patterns');
+  }
+
+  if (focusAreas.includes('communication')) {
+    baseActivities.thursday.push('Practice reflective listening in one conversation');
+    weeklyGoals.push('Improve active listening skills');
+  }
+
+  return { dailyActivities: baseActivities, weeklyGoals };
 }
 
 module.exports = router;

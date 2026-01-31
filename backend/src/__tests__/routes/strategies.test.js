@@ -65,6 +65,9 @@ describe('Strategies Routes', () => {
       },
       matchup: {
         findFirst: jest.fn()
+      },
+      assessment: {
+        findMany: jest.fn()
       }
     };
 
@@ -128,6 +131,34 @@ describe('Strategies Routes', () => {
       expect(res.body.error).toBe('No active strategy');
       expect(res.body.code).toBe('NO_STRATEGY');
     });
+
+    test('returns strategy for solo user (no partner)', async () => {
+      const mockStrategy = {
+        id: 'strat-solo-1',
+        cycleNumber: 1,
+        week: 1,
+        dailyActivities: { monday: ['Journal about 3 things you appreciate'] },
+        weeklyGoals: ['Complete daily reflections'],
+        progress: 20,
+        startDate: new Date('2025-06-01'),
+        endDate: new Date('2025-06-07')
+      };
+
+      mockPrisma.relationship.findFirst.mockResolvedValue({ id: relationshipId, user1Id: userId, user2Id: null });
+      mockPrisma.strategy.findFirst.mockResolvedValue(mockStrategy);
+
+      const res = await request(app)
+        .get('/api/strategies/current')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.strategy).toMatchObject({
+        id: 'strat-solo-1',
+        cycleNumber: 1,
+        week: 1,
+        progress: 20
+      });
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -171,9 +202,10 @@ describe('Strategies Routes', () => {
       expect(mockPrisma.strategy.create).toHaveBeenCalledTimes(6);
     });
 
-    test('returns 400 NO_MATCHUP when no matchup found', async () => {
+    test('returns 400 NO_ASSESSMENTS when no matchup and no assessments found', async () => {
       mockPrisma.relationship.findFirst.mockResolvedValue({ id: relationshipId, user1Id: userId, user2Id: 'user-2' });
       mockPrisma.matchup.findFirst.mockResolvedValue(null);
+      mockPrisma.assessment.findMany.mockResolvedValue([]);
 
       const res = await request(app)
         .post('/api/strategies/generate')
@@ -181,8 +213,59 @@ describe('Strategies Routes', () => {
         .send({});
 
       expect(res.status).toBe(400);
-      expect(res.body.code).toBe('NO_MATCHUP');
-      expect(res.body.error).toBe('Complete matchup assessment first');
+      expect(res.body.code).toBe('NO_ASSESSMENTS');
+      expect(res.body.error).toBe('Complete at least one assessment first');
+    });
+
+    test('generates strategy for solo user with assessments but no matchup', async () => {
+      const mockAssessments = [
+        {
+          id: 'assess-1',
+          userId,
+          type: 'gottman',
+          score: { friendship: 60, conflict: 80, meaning: 50 },
+          completedAt: new Date('2025-06-01')
+        },
+        {
+          id: 'assess-2',
+          userId,
+          type: 'eft',
+          score: { attachment: true },
+          completedAt: new Date('2025-06-02')
+        }
+      ];
+
+      mockPrisma.relationship.findFirst.mockResolvedValue({ id: relationshipId, user1Id: userId, user2Id: null });
+      mockPrisma.matchup.findFirst.mockResolvedValue(null);
+      mockPrisma.assessment.findMany.mockResolvedValue(mockAssessments);
+      mockPrisma.strategy.updateMany.mockResolvedValue({ count: 0 });
+      mockPrisma.strategy.findFirst.mockResolvedValue(null);
+
+      let weekCounter = 0;
+      mockPrisma.strategy.create.mockImplementation(({ data }) => {
+        weekCounter++;
+        return Promise.resolve({
+          id: `strat-solo-${weekCounter}`,
+          ...data,
+          week: data.week
+        });
+      });
+
+      const res = await request(app)
+        .post('/api/strategies/generate')
+        .set('Authorization', `Bearer ${token}`)
+        .send({});
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe('6-week strategy plan generated');
+      expect(res.body.cycleNumber).toBe(1);
+      expect(res.body.strategies).toHaveLength(6);
+      expect(mockPrisma.strategy.create).toHaveBeenCalledTimes(6);
+
+      // Verify solo activities are generated (not partner-centric)
+      const firstWeek = res.body.strategies[0];
+      expect(firstWeek.dailyActivities.monday).toBeDefined();
+      expect(firstWeek.weeklyGoals).toContain('Complete daily reflections');
     });
 
     test('returns 404 when no relationship found', async () => {
