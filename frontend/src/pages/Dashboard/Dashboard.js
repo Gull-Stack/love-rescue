@@ -24,8 +24,10 @@ import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import VideocamIcon from '@mui/icons-material/Videocam';
+import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import { useAuth } from '../../contexts/AuthContext';
-import { logsApi, matchupApi, strategiesApi, assessmentsApi, meetingsApi, paymentsApi } from '../../services/api';
+import { logsApi, matchupApi, strategiesApi, assessmentsApi, meetingsApi, paymentsApi, gratitudeApi } from '../../services/api';
 import DailyInsight from '../../components/common/DailyInsight';
 import DailyVideo from '../../components/common/DailyVideo';
 
@@ -41,6 +43,8 @@ const Dashboard = () => {
     assessments: null,
     meetings: [],
     subscription: null,
+    gratitude: null,
+    gratitudeStreak: null,
   });
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
@@ -52,12 +56,14 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [promptRes, statsRes, assessRes, meetingsRes, subRes] = await Promise.all([
+      const [promptRes, statsRes, assessRes, meetingsRes, subRes, gratTodayRes, gratStreakRes] = await Promise.all([
         logsApi.getPrompt().catch(() => ({ data: { prompt: null } })),
         logsApi.getStats('7d').catch(() => ({ data: { stats: null } })),
         assessmentsApi.getResults().catch(() => ({ data: { completed: [], pending: [] } })),
         meetingsApi.getUpcoming().catch(() => ({ data: { meetings: [] } })),
         paymentsApi.getSubscription().catch(() => ({ data: null })),
+        gratitudeApi.getToday().catch(() => ({ data: { entry: null } })),
+        gratitudeApi.getStreak().catch(() => ({ data: { currentStreak: 0, longestStreak: 0, totalEntries: 0 } })),
       ]);
 
       let matchupData = null;
@@ -83,6 +89,8 @@ const Dashboard = () => {
         assessments: assessRes.data,
         meetings: meetingsRes.data.meetings || [],
         subscription: subRes.data,
+        gratitude: gratTodayRes.data.entry,
+        gratitudeStreak: gratStreakRes.data,
       });
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -334,6 +342,71 @@ const Dashboard = () => {
                   </Typography>
                   <Button variant="outlined" onClick={() => navigate('/settings')}>
                     Upgrade
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Daily Gratitude Card */}
+        <Grid item xs={12} md={6}>
+          <Card
+            sx={{
+              background: data.gratitude
+                ? 'linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%)'
+                : 'background.paper',
+              border: data.gratitude ? '1px solid #f59e0b' : undefined,
+            }}
+          >
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={1} mb={2}>
+                <VolunteerActivismIcon sx={{ color: '#f59e0b' }} />
+                <Typography variant="h6">Daily Gratitude</Typography>
+                {data.gratitude && (
+                  <Chip label="Done" size="small" sx={{ bgcolor: '#f59e0b', color: '#fff' }} />
+                )}
+              </Box>
+              {data.gratitude ? (
+                <>
+                  <Typography variant="body1" sx={{ mb: 1, color: '#78350f', fontStyle: 'italic' }}>
+                    "{data.gratitude.text}"
+                  </Typography>
+                  {data.gratitudeStreak?.currentStreak > 0 && (
+                    <Box display="flex" alignItems="center" gap={0.5} mb={1}>
+                      <LocalFireDepartmentIcon sx={{ color: '#ef4444', fontSize: 20 }} />
+                      <Typography variant="body2" fontWeight="bold" sx={{ color: '#ef4444' }}>
+                        {data.gratitudeStreak.currentStreak} day streak
+                      </Typography>
+                    </Box>
+                  )}
+                  <Button
+                    variant="text"
+                    onClick={() => navigate('/gratitude')}
+                    sx={{ color: '#92400e' }}
+                  >
+                    View All
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Typography color="text.secondary" gutterBottom>
+                    What do you appreciate about your partner today?
+                  </Typography>
+                  {data.gratitudeStreak?.currentStreak > 0 && (
+                    <Box display="flex" alignItems="center" gap={0.5} mb={1}>
+                      <LocalFireDepartmentIcon sx={{ color: '#ef4444', fontSize: 20 }} />
+                      <Typography variant="body2" sx={{ color: '#ef4444' }}>
+                        {data.gratitudeStreak.currentStreak} day streak — don't break it!
+                      </Typography>
+                    </Box>
+                  )}
+                  <Button
+                    variant="contained"
+                    onClick={() => navigate('/gratitude')}
+                    sx={{ bgcolor: '#f59e0b', '&:hover': { bgcolor: '#d97706' } }}
+                  >
+                    Log Gratitude
                   </Button>
                 </>
               )}

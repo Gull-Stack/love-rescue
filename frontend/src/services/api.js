@@ -116,6 +116,16 @@ export const mediatorsApi = {
   getAvailable: () => api.get('/mediators/available'),
 };
 
+export const gratitudeApi = {
+  submitEntry: (data) => api.post('/gratitude', data),
+  getToday: () => api.get('/gratitude/today'),
+  getHistory: (params) => api.get('/gratitude/history', { params }),
+  getStreak: () => api.get('/gratitude/streak'),
+  getStats: () => api.get('/gratitude/stats'),
+  getShared: () => api.get('/gratitude/shared'),
+  toggleShare: (id) => api.patch(`/gratitude/${id}/share`),
+};
+
 export const meetingsApi = {
   checkAvailability: (mediatorId, date) => api.post('/meetings/check-availability', { mediatorId, date }),
   schedule: (mediatorId, startTime) => api.post('/meetings/schedule', { mediatorId, startTime }),

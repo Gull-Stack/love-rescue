@@ -25,6 +25,7 @@ const Strategies = React.lazy(() => import('./pages/Strategies/Strategies'));
 const Reports = React.lazy(() => import('./pages/Reports/Reports'));
 const Settings = React.lazy(() => import('./pages/Settings/Settings'));
 const ScheduleMeeting = React.lazy(() => import('./pages/Meetings/ScheduleMeeting'));
+const Gratitude = React.lazy(() => import('./pages/Gratitude/Gratitude'));
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -127,6 +128,7 @@ function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
           <Route path="meetings" element={<ScheduleMeeting />} />
+          <Route path="gratitude" element={<Gratitude />} />
         </Route>
 
         {/* Catch all — send unauthenticated to landing, authenticated to dashboard */}

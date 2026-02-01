@@ -19,6 +19,7 @@ const videosRoutes = require('./routes/videos');
 const mediatorsRoutes = require('./routes/mediators');
 const meetingsRoutes = require('./routes/meetings');
 const goalsRoutes = require('./routes/goals');
+const gratitudeRoutes = require('./routes/gratitude');
 
 const { auditLogger } = require('./middleware/auditLogger');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -84,6 +85,7 @@ app.use('/api/videos', videosRoutes);
 app.use('/api/mediators', mediatorsRoutes);
 app.use('/api/meetings', meetingsRoutes);
 app.use('/api/goals', goalsRoutes);
+app.use('/api/gratitude', gratitudeRoutes);
 
 // Error handling
 app.use(errorHandler);

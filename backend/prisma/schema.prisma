@@ -493,3 +493,24 @@ model Meeting {
   @@index([status])
   @@index([scheduledAt])
 }
+
+// Daily gratitude entries — one per day per user
+model GratitudeEntry {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  date        DateTime @db.Date
+  text        String   @db.Text  // what they appreciate about their partner
+  category    String?  @db.VarChar(50)  // optional: kindness, effort, humor, presence, support, growth, love, other
+  isShared    Boolean  @default(false) @map("is_shared")  // opted to share with partner
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("gratitude_entries")
+  @@index([userId])
+  @@index([date])
+  @@index([userId, date])
+}

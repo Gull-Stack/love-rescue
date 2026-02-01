@@ -34,12 +34,14 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
 import VideocamIcon from '@mui/icons-material/Videocam';
+import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import { useAuth } from '../../contexts/AuthContext';
 
 const navItems = [
   { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
   { label: 'Strategies', path: '/strategies', icon: <TipsAndUpdatesIcon /> },
   { label: 'Daily Log', path: '/daily', icon: <EditNoteIcon /> },
+  { label: 'Gratitude', path: '/gratitude', icon: <VolunteerActivismIcon /> },
   { label: 'Matchup', path: '/matchup', icon: <FavoriteIcon /> },
   { label: 'Assessments', path: '/assessments', icon: <AssignmentIcon /> },
   { label: 'Reports', path: '/reports', icon: <AssessmentIcon /> },
