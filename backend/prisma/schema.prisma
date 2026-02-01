@@ -51,6 +51,12 @@ enum AssessmentType {
   personality
   wellness_behavior
   negative_patterns_closeness
+  love_language
+  human_needs
+  gottman_checkup
+  emotional_intelligence
+  conflict_style
+  differentiation
 }
 
 // Therapist assignment status

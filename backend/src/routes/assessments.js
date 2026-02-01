@@ -1,14 +1,54 @@
 const express = require('express');
 const { authenticate, requireSubscription } = require('../middleware/auth');
 const logger = require('../utils/logger');
-const {
-  scoreAttachment,
-  scorePersonality,
-  scoreWellnessBehavior,
-  scoreNegativePatterns
-} = require('../utils/scoring');
+const { scoreAssessment, calculateMatchupScore, calculateRatio } = require('../utils/scoring');
+const { getQuestions, getAvailableAssessments, validateResponses } = require('../utils/questionBank');
+const { getInterpretation } = require('../utils/interpretations');
 
 const router = express.Router();
+
+// All supported assessment types
+const VALID_TYPES = [
+  'attachment', 'personality', 'love_language', 'human_needs',
+  'gottman_checkup', 'emotional_intelligence', 'conflict_style', 'differentiation',
+  // Legacy types
+  'wellness_behavior', 'negative_patterns_closeness'
+];
+
+/**
+ * GET /api/assessments/catalog
+ * Get list of all available assessments with metadata
+ */
+router.get('/catalog', authenticate, async (req, res, next) => {
+  try {
+    const catalog = getAvailableAssessments();
+
+    // Get user's completed assessments
+    const completed = await req.prisma.assessment.findMany({
+      where: { userId: req.user.id },
+      orderBy: { completedAt: 'desc' },
+      select: { type: true, completedAt: true }
+    });
+
+    const completedTypes = {};
+    for (const a of completed) {
+      if (!completedTypes[a.type]) {
+        completedTypes[a.type] = a.completedAt;
+      }
+    }
+
+    // Merge completion status into catalog
+    const enriched = catalog.map(a => ({
+      ...a,
+      completed: !!completedTypes[a.type],
+      completedAt: completedTypes[a.type] || null
+    }));
+
+    res.json({ assessments: enriched });
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * GET /api/assessments/questions/:type
@@ -17,13 +57,18 @@ const router = express.Router();
 router.get('/questions/:type', authenticate, async (req, res, next) => {
   try {
     const { type } = req.params;
-    const questions = getQuestions(type);
 
-    if (!questions) {
+    if (!VALID_TYPES.includes(type)) {
       return res.status(400).json({ error: 'Invalid assessment type' });
     }
 
-    res.json({ type, questions });
+    const questions = getQuestions(type);
+
+    if (!questions) {
+      return res.status(400).json({ error: 'Questions not available for this type' });
+    }
+
+    res.json({ type, questions, count: questions.length });
   } catch (error) {
     next(error);
   }
@@ -41,26 +86,23 @@ router.post('/submit', authenticate, requireSubscription, async (req, res, next)
       return res.status(400).json({ error: 'Type and responses are required' });
     }
 
-    const validTypes = ['attachment', 'personality', 'wellness_behavior', 'negative_patterns_closeness'];
-    if (!validTypes.includes(type)) {
+    if (!VALID_TYPES.includes(type)) {
       return res.status(400).json({ error: 'Invalid assessment type' });
     }
 
-    // Calculate score based on type
-    let score;
-    switch (type) {
-      case 'attachment':
-        score = scoreAttachment(responses);
-        break;
-      case 'personality':
-        score = scorePersonality(responses);
-        break;
-      case 'wellness_behavior':
-        score = scoreWellnessBehavior(responses);
-        break;
-      case 'negative_patterns_closeness':
-        score = scoreNegativePatterns(responses);
-        break;
+    // Validate responses if validator is available
+    if (validateResponses) {
+      const validation = validateResponses(type, responses);
+      if (validation && !validation.valid) {
+        return res.status(400).json({ error: validation.error || 'Invalid responses' });
+      }
+    }
+
+    // Calculate score
+    const score = scoreAssessment(type, responses);
+
+    if (!score) {
+      return res.status(500).json({ error: 'Failed to calculate score' });
     }
 
     // Check if assessment already exists (update) or create new
@@ -93,6 +135,9 @@ router.post('/submit', authenticate, requireSubscription, async (req, res, next)
       });
     }
 
+    // Get interpretation
+    const interpretation = getInterpretation(type, score);
+
     logger.info('Assessment submitted', { userId: req.user.id, type });
 
     res.json({
@@ -102,7 +147,8 @@ router.post('/submit', authenticate, requireSubscription, async (req, res, next)
         type: assessment.type,
         score: assessment.score,
         completedAt: assessment.completedAt
-      }
+      },
+      interpretation
     });
   } catch (error) {
     next(error);
@@ -133,14 +179,22 @@ router.get('/results', authenticate, async (req, res, next) => {
       }
     }
 
-    const allTypes = ['attachment', 'personality', 'wellness_behavior', 'negative_patterns_closeness'];
-    const completed = Object.keys(latestByType);
-    const pending = allTypes.filter(t => !completed.includes(t));
+    const completed = Object.values(latestByType);
+    const completedTypes = Object.keys(latestByType);
+    const pending = VALID_TYPES.filter(t => !completedTypes.includes(t));
+    // Exclude legacy types from "required" count
+    const coreTypes = VALID_TYPES.filter(t => !['wellness_behavior', 'negative_patterns_closeness'].includes(t));
+    const coreCompleted = coreTypes.filter(t => completedTypes.includes(t));
 
     res.json({
-      completed: Object.values(latestByType),
+      completed,
       pending,
-      allCompleted: pending.length === 0
+      allCompleted: coreCompleted.length >= coreTypes.length,
+      progress: {
+        completed: coreCompleted.length,
+        total: coreTypes.length,
+        percentage: Math.round((coreCompleted.length / coreTypes.length) * 100)
+      }
     });
   } catch (error) {
     next(error);
@@ -149,11 +203,15 @@ router.get('/results', authenticate, async (req, res, next) => {
 
 /**
  * GET /api/assessments/results/:type
- * Get specific assessment result with details
+ * Get specific assessment result with rich interpretation
  */
 router.get('/results/:type', authenticate, async (req, res, next) => {
   try {
     const { type } = req.params;
+
+    if (!VALID_TYPES.includes(type)) {
+      return res.status(400).json({ error: 'Invalid assessment type' });
+    }
 
     const assessment = await req.prisma.assessment.findFirst({
       where: {
@@ -167,7 +225,7 @@ router.get('/results/:type', authenticate, async (req, res, next) => {
       return res.status(404).json({ error: 'Assessment not found' });
     }
 
-    // Get interpretation
+    // Get rich interpretation
     const interpretation = getInterpretation(type, assessment.score);
 
     res.json({
@@ -184,156 +242,370 @@ router.get('/results/:type', authenticate, async (req, res, next) => {
   }
 });
 
-// Helper function to get questions by type
-function getQuestions(type) {
-  const questionBank = {
-    attachment: [
-      { id: 1, text: "I often worry my partner doesn't really love me.", category: 'anxious' },
-      { id: 2, text: "I prefer not to depend on others or have them depend on me.", category: 'avoidant' },
-      { id: 3, text: "I feel comfortable sharing my innermost thoughts with my partner.", category: 'secure' },
-      { id: 4, text: "Relationships make me feel trapped.", category: 'dismissive' },
-      { id: 5, text: "I fear being abandoned.", category: 'fearful' },
-      { id: 6, text: "I am okay with emotional closeness.", category: 'secure' },
-      { id: 7, text: "I pull away when things get too intimate.", category: 'avoidant' },
-      { id: 8, text: "I need constant reassurance from my partner.", category: 'anxious' },
-      { id: 9, text: "I value independence over emotional bonds.", category: 'dismissive' },
-      { id: 10, text: "I have trouble trusting partners fully.", category: 'fearful' },
-      { id: 11, text: "I enjoy deep emotional connections without fear.", category: 'secure' },
-      { id: 12, text: "I avoid conflict to prevent rejection.", category: 'anxious' }
-    ],
-    personality: [
-      { id: 1, text: "You enjoy large social gatherings.", dimension: 'EI', direction: 'E' },
-      { id: 2, text: "You focus on facts more than ideas.", dimension: 'SN', direction: 'S' },
-      { id: 3, text: "Decisions are based on logic over feelings.", dimension: 'TF', direction: 'T' },
-      { id: 4, text: "You prefer structured plans.", dimension: 'JP', direction: 'J' },
-      { id: 5, text: "You make new friends easily.", dimension: 'EI', direction: 'E' },
-      { id: 6, text: "You daydream about possibilities.", dimension: 'SN', direction: 'N' },
-      { id: 7, text: "You prioritize harmony in groups.", dimension: 'TF', direction: 'F' },
-      { id: 8, text: "You adapt to changes flexibly.", dimension: 'JP', direction: 'P' },
-      { id: 9, text: "You recharge alone.", dimension: 'EI', direction: 'I' },
-      { id: 10, text: "You trust intuition over data.", dimension: 'SN', direction: 'N' },
-      { id: 11, text: "You confront issues directly.", dimension: 'TF', direction: 'T' },
-      { id: 12, text: "You organize your space meticulously.", dimension: 'JP', direction: 'J' },
-      { id: 13, text: "You avoid crowds.", dimension: 'EI', direction: 'I' },
-      { id: 14, text: "You see patterns in abstract concepts.", dimension: 'SN', direction: 'N' },
-      { id: 15, text: "Empathy guides your choices.", dimension: 'TF', direction: 'F' },
-      { id: 16, text: "Spontaneity excites you.", dimension: 'JP', direction: 'P' },
-      { id: 17, text: "You network at events.", dimension: 'EI', direction: 'E' },
-      { id: 18, text: "You question established facts.", dimension: 'SN', direction: 'N' },
-      { id: 19, text: "You value fairness over kindness.", dimension: 'TF', direction: 'T' },
-      { id: 20, text: "Deadlines motivate you.", dimension: 'JP', direction: 'J' }
-    ],
-    wellness_behavior: [
-      { id: 1, text: "When disappointed, I communicate my needs calmly.", positive: true },
-      { id: 2, text: "I withdraw and sulk when things don't go my way.", positive: false },
-      { id: 3, text: "I blame others for my frustrations.", positive: false },
-      { id: 4, text: "I reflect and adjust my expectations.", positive: true },
-      { id: 5, text: "I become overly critical of myself or partner.", positive: false },
-      { id: 6, text: "I seek compromise solutions.", positive: true },
-      { id: 7, text: "I ignore the issue to avoid conflict.", positive: false },
-      { id: 8, text: "I express anger constructively.", positive: true },
-      { id: 9, text: "I ruminate on negatives.", positive: false },
-      { id: 10, text: "I practice self-care to regain balance.", positive: true }
-    ],
-    negative_patterns_closeness: [
-      { id: 1, text: "I often point out my partner's flaws.", pattern: 'criticism' },
-      { id: 2, text: "When blamed, I counter with my own complaints.", pattern: 'defensiveness' },
-      { id: 3, text: "I use sarcasm or mockery during arguments.", pattern: 'disrespect' },
-      { id: 4, text: "I shut down during tough talks.", pattern: 'withdrawal' },
-      { id: 5, text: "I feel emotionally close to my partner daily.", pattern: 'closeness' },
-      { id: 6, text: "We express appreciation regularly.", pattern: 'closeness' },
-      { id: 7, text: "Conflicts escalate to insults.", pattern: 'disrespect' },
-      { id: 8, text: "I avoid responsibility in disputes.", pattern: 'defensiveness' },
-      { id: 9, text: "Complaints turn into character attacks.", pattern: 'criticism' },
-      { id: 10, text: "I tune out when overwhelmed.", pattern: 'withdrawal' },
-      { id: 11, text: "We share dreams and values openly.", pattern: 'closeness' },
-      { id: 12, text: "Our interactions are mostly positive.", pattern: 'closeness' },
-      { id: 13, text: "I feel superior in arguments.", pattern: 'disrespect' },
-      { id: 14, text: "I whine to defend myself.", pattern: 'defensiveness' },
-      { id: 15, text: "We repair after fights quickly.", pattern: 'closeness' }
-    ]
-  };
+/**
+ * GET /api/assessments/results/:type/detailed
+ * Get detailed assessment result with full interpretation, action steps, frameworks
+ */
+router.get('/results/:type/detailed', authenticate, async (req, res, next) => {
+  try {
+    const { type } = req.params;
 
-  return questionBank[type] || null;
-}
+    const assessment = await req.prisma.assessment.findFirst({
+      where: {
+        userId: req.user.id,
+        type
+      },
+      orderBy: { completedAt: 'desc' }
+    });
 
-// Helper function to get interpretation
-function getInterpretation(type, score) {
-  const interpretations = {
-    attachment: {
-      secure: {
-        title: 'Secure Attachment',
-        description: 'You feel comfortable with intimacy and independence. You tend to have trusting, lasting relationships.',
-        tips: ['Continue nurturing open communication', 'Support your partner\'s independence while maintaining closeness']
+    if (!assessment) {
+      return res.status(404).json({ error: 'Assessment not found' });
+    }
+
+    const interpretation = getInterpretation(type, assessment.score);
+
+    // Get previous attempts for comparison
+    const history = await req.prisma.assessment.findMany({
+      where: {
+        userId: req.user.id,
+        type
       },
-      anxious: {
-        title: 'Anxious Attachment',
-        description: 'You may seek more reassurance and closeness. Fear of abandonment can sometimes affect your relationships.',
-        tips: ['Practice self-soothing techniques', 'Communicate needs directly instead of seeking validation', 'Build self-confidence independent of relationships']
+      orderBy: { completedAt: 'desc' },
+      take: 5,
+      select: { score: true, completedAt: true }
+    });
+
+    res.json({
+      assessment: {
+        id: assessment.id,
+        type: assessment.type,
+        score: assessment.score,
+        completedAt: assessment.completedAt
       },
-      avoidant: {
-        title: 'Avoidant Attachment',
-        description: 'You value independence highly and may find too much closeness uncomfortable.',
-        tips: ['Practice gradual emotional opening', 'Recognize when you\'re pulling away', 'Challenge beliefs about needing to be self-reliant']
-      },
-      'dismissive-fearful': {
-        title: 'Dismissive-Fearful Attachment',
-        description: 'You may experience conflicting desires for closeness and independence, sometimes leading to relationship difficulties.',
-        tips: ['Work on building trust gradually', 'Consider professional support to explore attachment patterns', 'Practice vulnerability in safe contexts']
-      }
-    },
-    personality: {
-      title: `Personality Type: ${score.type}`,
-      description: score.description || 'Your unique personality type influences how you interact in relationships.',
-      tips: ['Learn your partner\'s type for better understanding', 'Recognize your strengths in communication', 'Adapt your approach to complement your partner']
-    },
-    wellness_behavior: {
-      high: {
-        title: 'Strong Coping Skills',
-        description: 'You generally handle disappointment and frustration in healthy ways.',
-        tips: ['Continue practicing healthy communication', 'Share your coping strategies with your partner']
-      },
-      medium: {
-        title: 'Mixed Coping Patterns',
-        description: 'You have some healthy coping strategies but may fall into unhelpful patterns under stress.',
-        tips: ['Identify your triggers', 'Develop a plan for high-stress moments', 'Practice pause-and-reflect before reacting']
-      },
-      low: {
-        title: 'Areas for Growth',
-        description: 'You may benefit from developing healthier ways to handle not getting what you want.',
-        tips: ['Practice "I feel" statements', 'Learn about emotional regulation', 'Consider couples counseling for communication skills']
+      interpretation,
+      history: history.map(h => ({
+        score: h.score,
+        completedAt: h.completedAt
+      })),
+      philosophy: 'This assessment is a mirror showing YOUR patterns. Use these insights to understand yourself — not to diagnose or blame your partner. You are the creator of your relationship experience.'
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/assessments/profile
+ * Unified self-portrait combining ALL completed assessments
+ */
+router.get('/profile', authenticate, async (req, res, next) => {
+  try {
+    const assessments = await req.prisma.assessment.findMany({
+      where: { userId: req.user.id },
+      orderBy: { completedAt: 'desc' }
+    });
+
+    // Get latest of each type
+    const latest = {};
+    for (const a of assessments) {
+      if (!latest[a.type]) {
+        latest[a.type] = a;
       }
     }
-  };
 
-  if (type === 'attachment') {
-    return interpretations.attachment[score.style] || interpretations.attachment.secure;
-  } else if (type === 'personality') {
-    return interpretations.personality;
-  } else if (type === 'wellness_behavior') {
-    if (score.score >= 70) return interpretations.wellness_behavior.high;
-    if (score.score >= 40) return interpretations.wellness_behavior.medium;
-    return interpretations.wellness_behavior.low;
-  } else if (type === 'negative_patterns_closeness') {
-    return {
-      title: 'Relationship Patterns Analysis',
-      patterns: score.patterns,
-      closeness: score.closeness,
-      tips: generatePatternTips(score)
+    // Build unified profile
+    const profile = {
+      completedAssessments: Object.keys(latest).length,
+      totalAssessments: 8,
+
+      // Know Yourself
+      knowYourself: {},
+
+      // Own Yourself
+      ownYourself: {},
+
+      // Grow Yourself
+      growYourself: {},
+
+      // Unified insights
+      unifiedInsights: [],
+
+      // Growth edges
+      primaryGrowthEdges: [],
+
+      // Connected action plan
+      actionPlan: []
     };
+
+    // Attachment
+    if (latest.attachment) {
+      const interp = getInterpretation('attachment', latest.attachment.score);
+      profile.knowYourself.attachment = {
+        style: latest.attachment.score.style,
+        title: interp.title,
+        summary: interp.description,
+        scores: interp.scores
+      };
+    }
+
+    // Personality
+    if (latest.personality) {
+      const interp = getInterpretation('personality', latest.personality.score);
+      profile.knowYourself.personality = {
+        type: latest.personality.score.type,
+        description: latest.personality.score.description,
+        dimensions: interp.dimensions
+      };
+    }
+
+    // Love Language
+    if (latest.love_language) {
+      const interp = getInterpretation('love_language', latest.love_language.score);
+      profile.knowYourself.loveLanguage = {
+        primary: interp.primary?.title,
+        secondary: interp.secondary?.title,
+        allScores: interp.allScores
+      };
+    }
+
+    // Human Needs
+    if (latest.human_needs) {
+      const interp = getInterpretation('human_needs', latest.human_needs.score);
+      profile.knowYourself.humanNeeds = {
+        topTwo: latest.human_needs.score.topTwo,
+        profile: latest.human_needs.score.profile,
+        summary: interp.overallInsight
+      };
+    }
+
+    // Gottman
+    if (latest.gottman_checkup) {
+      const interp = getInterpretation('gottman_checkup', latest.gottman_checkup.score);
+      profile.ownYourself.gottman = {
+        overallHealth: interp.overallHealth,
+        horsemen: Object.entries(interp.horsemen || {}).map(([name, data]) => ({
+          name, level: data.level, score: data.score
+        })),
+        strengths: Object.entries(interp.strengths || {}).map(([name, data]) => ({
+          name: data.title, score: data.score
+        }))
+      };
+    }
+
+    // EQ
+    if (latest.emotional_intelligence) {
+      const interp = getInterpretation('emotional_intelligence', latest.emotional_intelligence.score);
+      profile.ownYourself.emotionalIntelligence = {
+        overall: interp.overall,
+        domains: Object.entries(interp.domains || {}).map(([name, data]) => ({
+          name: data.title, score: data.score, level: data.level
+        }))
+      };
+    }
+
+    // Conflict Style
+    if (latest.conflict_style) {
+      const interp = getInterpretation('conflict_style', latest.conflict_style.score);
+      profile.growYourself.conflictStyle = {
+        primary: interp.primary?.title,
+        secondary: interp.secondary?.title,
+        growthPath: interp.primary?.growthPath
+      };
+    }
+
+    // Differentiation
+    if (latest.differentiation) {
+      const interp = getInterpretation('differentiation', latest.differentiation.score);
+      profile.growYourself.differentiation = {
+        level: interp.title,
+        score: interp.score,
+        growthEdge: interp.growthEdge,
+        insight: interp.finlaysonFifeInsight
+      };
+    }
+
+    // Generate unified insights
+    profile.unifiedInsights = generateUnifiedInsights(profile);
+    profile.primaryGrowthEdges = generateGrowthEdges(profile);
+    profile.actionPlan = generateActionPlan(profile);
+
+    profile.philosophy = 'This is YOUR self-portrait in love. Every insight here is about understanding and growing YOURSELF. The relationship transforms as a byproduct of your individual transformation.';
+
+    res.json({ profile });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/assessments/compare/:type
+ * Compare your results with partner (if both completed)
+ */
+router.get('/compare/:type', authenticate, async (req, res, next) => {
+  try {
+    const { type } = req.params;
+
+    // Find user's relationship
+    const relationship = await req.prisma.relationship.findFirst({
+      where: {
+        OR: [
+          { user1Id: req.user.id },
+          { user2Id: req.user.id }
+        ],
+        status: 'active',
+        sharedConsent: true
+      }
+    });
+
+    if (!relationship) {
+      return res.status(404).json({ error: 'No active relationship with shared consent found' });
+    }
+
+    const partnerId = relationship.user1Id === req.user.id
+      ? relationship.user2Id
+      : relationship.user1Id;
+
+    if (!partnerId) {
+      return res.status(404).json({ error: 'Partner has not joined yet' });
+    }
+
+    // Get both assessments
+    const [myAssessment, partnerAssessment] = await Promise.all([
+      req.prisma.assessment.findFirst({
+        where: { userId: req.user.id, type },
+        orderBy: { completedAt: 'desc' }
+      }),
+      req.prisma.assessment.findFirst({
+        where: { userId: partnerId, type },
+        orderBy: { completedAt: 'desc' }
+      })
+    ]);
+
+    if (!myAssessment || !partnerAssessment) {
+      return res.status(404).json({
+        error: 'Both partners must complete this assessment',
+        myCompleted: !!myAssessment,
+        partnerCompleted: !!partnerAssessment
+      });
+    }
+
+    res.json({
+      myResult: {
+        score: myAssessment.score,
+        interpretation: getInterpretation(type, myAssessment.score)
+      },
+      partnerResult: {
+        score: partnerAssessment.score,
+        // Only share interpretation, not raw responses (privacy)
+        interpretation: getInterpretation(type, partnerAssessment.score)
+      },
+      insight: 'Understanding your differences is not about who needs to change — it\'s about how you can each grow individually to create a stronger connection together.'
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================
+// HELPER FUNCTIONS
+// ============================================================
+
+function generateUnifiedInsights(profile) {
+  const insights = [];
+
+  // Attachment + Conflict Style connection
+  if (profile.knowYourself.attachment && profile.growYourself.conflictStyle) {
+    const style = profile.knowYourself.attachment.style;
+    const conflict = profile.growYourself.conflictStyle.primary;
+
+    if (style === 'anxious' && conflict === 'Competing') {
+      insights.push('Your anxious attachment combined with a competing conflict style means you may escalate during disagreements out of fear of disconnection. Practice pausing before engaging.');
+    } else if (style === 'avoidant' && conflict === 'Avoiding') {
+      insights.push('Your avoidant attachment aligns with an avoiding conflict style — you may withdraw from important conversations. Practice staying present even when uncomfortable.');
+    }
   }
 
-  return null;
+  // Human Needs + Attachment connection
+  if (profile.knowYourself.humanNeeds && profile.knowYourself.attachment) {
+    const topNeeds = profile.knowYourself.humanNeeds.topTwo || [];
+    const style = profile.knowYourself.attachment.style;
+
+    if (topNeeds.includes('certainty') && style === 'anxious') {
+      insights.push('Your high need for certainty combined with anxious attachment means you may seek constant reassurance. Build internal certainty through self-trust practices.');
+    }
+    if (topNeeds.includes('significance') && style === 'avoidant') {
+      insights.push('Your need for significance combined with avoidant attachment may make you prioritize achievement over connection. Remember: being deeply known is the highest form of significance.');
+    }
+  }
+
+  // Generic insight if no specific patterns
+  if (insights.length === 0) {
+    insights.push('Complete more assessments to unlock deeper cross-framework insights about your unique patterns.');
+  }
+
+  return insights;
 }
 
-function generatePatternTips(score) {
-  const tips = [];
-  if (score.patterns.criticism > 10) tips.push('Try expressing complaints without criticizing character');
-  if (score.patterns.defensiveness > 10) tips.push('Practice taking responsibility for your part');
-  if (score.patterns.disrespect > 10) tips.push('Replace contempt with appreciation exercises');
-  if (score.patterns.withdrawal > 10) tips.push('Learn to take breaks and return to discussions');
-  if (score.closeness < 60) tips.push('Increase daily expressions of affection and appreciation');
-  return tips;
+function generateGrowthEdges(profile) {
+  const edges = [];
+
+  if (profile.growYourself.differentiation) {
+    const score = profile.growYourself.differentiation.score;
+    if (score < 50) {
+      edges.push({ area: 'Differentiation', priority: 'high', description: 'Building your solid sense of self is your primary growth area. This improves everything else.' });
+    }
+  }
+
+  if (profile.ownYourself.gottman) {
+    const horsemen = profile.ownYourself.gottman.horsemen || [];
+    const worst = horsemen.sort((a, b) => (b.score || 0) - (a.score || 0))[0];
+    if (worst && worst.score > 50) {
+      edges.push({ area: `Gottman: ${worst.name}`, priority: 'high', description: `Your strongest horseman is ${worst.name}. Focus on its antidote.` });
+    }
+  }
+
+  if (profile.ownYourself.emotionalIntelligence) {
+    const domains = profile.ownYourself.emotionalIntelligence.domains || [];
+    const lowest = domains.sort((a, b) => (a.score || 0) - (b.score || 0))[0];
+    if (lowest && lowest.score < 40) {
+      edges.push({ area: `EQ: ${lowest.name}`, priority: 'medium', description: `Strengthening your ${lowest.name} will improve your overall emotional intelligence.` });
+    }
+  }
+
+  return edges;
+}
+
+function generateActionPlan(profile) {
+  const plan = [];
+
+  plan.push({
+    timeframe: 'Daily',
+    actions: [
+      'A.R.E. check-in: Am I Accessible, Responsive, Engaged? (Johnson)',
+      'Notice and respond to one bid for connection (Gottman)',
+      'Practice one moment of tactical empathy (Voss)'
+    ]
+  });
+
+  plan.push({
+    timeframe: 'Weekly',
+    actions: [
+      'Self-confrontation journal: Where did I blame this week? Where did I grow? (Finlayson-Fife)',
+      'Love Map update: Learn one new thing about your partner\'s inner world (Gottman)',
+      'State management practice: Set your emotional intention before difficult conversations (Belfort)'
+    ]
+  });
+
+  plan.push({
+    timeframe: 'Monthly',
+    actions: [
+      'Retake one assessment to track growth',
+      'Review your growth edges and adjust your practice',
+      'Have a "Hold Me Tight" conversation with your partner (Johnson)'
+    ]
+  });
+
+  return plan;
 }
 
 module.exports = router;

@@ -114,8 +114,9 @@ const Dashboard = () => {
     );
   }
 
+  const totalAssessments = 8;
   const assessmentProgress = data.assessments
-    ? (data.assessments.completed.length / 4) * 100
+    ? (data.assessments.completed.length / totalAssessments) * 100
     : 0;
 
   return (
@@ -433,7 +434,7 @@ const Dashboard = () => {
                 <Box display="flex" justifyContent="space-between" mb={1}>
                   <Typography variant="body2">Progress</Typography>
                   <Typography variant="body2">
-                    {data.assessments?.completed.length || 0}/4
+                    {data.assessments?.completed.length || 0}/{totalAssessments}
                   </Typography>
                 </Box>
                 <LinearProgress

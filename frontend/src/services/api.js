@@ -45,6 +45,12 @@ export const assessmentsApi = {
   submit: (type, responses) => api.post('/assessments/submit', { type, responses }),
   getResults: () => api.get('/assessments/results'),
   getResult: (type) => api.get(`/assessments/results/${type}`),
+  // Unified profile: aggregated view of all completed assessments
+  getUnifiedProfile: () => api.get('/assessments/profile'),
+  // Get detailed result with interpretation, action steps, strengths, growth edges
+  getDetailedResult: (type) => api.get(`/assessments/results/${type}/detailed`),
+  // Compare two users' assessment results (for matchup detail)
+  compareResults: (type) => api.get(`/assessments/compare/${type}`),
 };
 
 export const matchupApi = {
