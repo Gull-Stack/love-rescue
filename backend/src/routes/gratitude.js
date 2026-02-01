@@ -332,6 +332,107 @@ router.get('/shared', authenticate, async (req, res, next) => {
 });
 
 /**
+ * GET /api/gratitude/love-note
+ * Get the weekly love note (partner's shared gratitudes from past 7 days)
+ */
+router.get('/love-note', authenticate, async (req, res, next) => {
+  try {
+    // Find relationship to get partner ID
+    const relationship = await req.prisma.relationship.findFirst({
+      where: {
+        OR: [
+          { user1Id: req.user.id },
+          { user2Id: req.user.id }
+        ],
+        status: 'active'
+      }
+    });
+
+    if (!relationship || !relationship.user2Id) {
+      return res.json({ loveNote: null, hasPartner: false, message: 'Connect with your partner to receive weekly love notes' });
+    }
+
+    const partnerId = relationship.user1Id === req.user.id
+      ? relationship.user2Id
+      : relationship.user1Id;
+
+    // Get partner's name
+    const partner = await req.prisma.user.findUnique({
+      where: { id: partnerId },
+      select: { firstName: true }
+    });
+
+    const partnerName = partner?.firstName || 'Your Partner';
+
+    // Get shared entries from past 7 days
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    const entries = await req.prisma.gratitudeEntry.findMany({
+      where: {
+        userId: partnerId,
+        isShared: true,
+        date: {
+          gte: sevenDaysAgo,
+          lte: today
+        }
+      },
+      orderBy: { date: 'desc' },
+      select: { date: true, text: true, category: true }
+    });
+
+    if (entries.length === 0) {
+      return res.json({ loveNote: null, hasPartner: true, message: 'No shared gratitudes from your partner this week' });
+    }
+
+    // Format week range
+    const formatShortDate = (d) => {
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+    const weekOf = `${formatShortDate(sevenDaysAgo)} - ${formatShortDate(today)}`;
+
+    // Find top categories
+    const categoryCounts = {};
+    entries.forEach(e => {
+      if (e.category) {
+        categoryCounts[e.category] = (categoryCounts[e.category] || 0) + 1;
+      }
+    });
+    const sortedCategories = Object.entries(categoryCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat]) => cat);
+    const topCategory = sortedCategories[0] || null;
+
+    // Build summary
+    let summary = `This week, ${partnerName} appreciated ${entries.length} thing${entries.length !== 1 ? 's' : ''} about you`;
+    if (sortedCategories.length >= 2) {
+      summary += `, especially your ${sortedCategories[0]} and ${sortedCategories[1]}.`;
+    } else if (sortedCategories.length === 1) {
+      summary += `, especially your ${sortedCategories[0]}.`;
+    } else {
+      summary += '.';
+    }
+
+    res.json({
+      loveNote: {
+        fromName: partnerName,
+        weekOf,
+        entries,
+        entryCount: entries.length,
+        topCategory,
+        summary
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * PATCH /api/gratitude/:id/share
  * Toggle sharing a gratitude entry with partner
  */

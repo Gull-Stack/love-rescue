@@ -124,6 +124,7 @@ export const gratitudeApi = {
   getStats: () => api.get('/gratitude/stats'),
   getShared: () => api.get('/gratitude/shared'),
   toggleShare: (id) => api.patch(`/gratitude/${id}/share`),
+  getLoveNote: () => api.get('/gratitude/love-note'),
 };
 
 export const meetingsApi = {

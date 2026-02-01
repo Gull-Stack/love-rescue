@@ -26,6 +26,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import { useAuth } from '../../contexts/AuthContext';
 import { logsApi, matchupApi, strategiesApi, assessmentsApi, meetingsApi, paymentsApi, gratitudeApi } from '../../services/api';
 import DailyInsight from '../../components/common/DailyInsight';
@@ -45,6 +46,7 @@ const Dashboard = () => {
     subscription: null,
     gratitude: null,
     gratitudeStreak: null,
+    loveNote: null,
   });
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
@@ -56,7 +58,7 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [promptRes, statsRes, assessRes, meetingsRes, subRes, gratTodayRes, gratStreakRes] = await Promise.all([
+      const [promptRes, statsRes, assessRes, meetingsRes, subRes, gratTodayRes, gratStreakRes, loveNoteRes] = await Promise.all([
         logsApi.getPrompt().catch(() => ({ data: { prompt: null } })),
         logsApi.getStats('7d').catch(() => ({ data: { stats: null } })),
         assessmentsApi.getResults().catch(() => ({ data: { completed: [], pending: [] } })),
@@ -64,6 +66,7 @@ const Dashboard = () => {
         paymentsApi.getSubscription().catch(() => ({ data: null })),
         gratitudeApi.getToday().catch(() => ({ data: { entry: null } })),
         gratitudeApi.getStreak().catch(() => ({ data: { currentStreak: 0, longestStreak: 0, totalEntries: 0 } })),
+        gratitudeApi.getLoveNote().catch(() => ({ data: { loveNote: null } })),
       ]);
 
       let matchupData = null;
@@ -91,6 +94,7 @@ const Dashboard = () => {
         subscription: subRes.data,
         gratitude: gratTodayRes.data.entry,
         gratitudeStreak: gratStreakRes.data,
+        loveNote: loveNoteRes.data.loveNote,
       });
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -413,6 +417,59 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* Weekly Love Note Card */}
+        {data.loveNote && (
+          <Grid item xs={12} md={6}>
+            <Card
+              sx={{
+                background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #fbcfe8 100%)',
+                border: '2px solid #f9a8d4',
+                cursor: 'pointer',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 8px 25px rgba(244, 114, 182, 0.25)',
+                },
+              }}
+              onClick={() => navigate('/gratitude')}
+            >
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={1} mb={1}>
+                  <MailOutlineIcon sx={{ color: '#be185d' }} />
+                  <Typography variant="h6" sx={{ color: '#9d174d' }}>
+                    💌 You have a Love Note!
+                  </Typography>
+                </Box>
+                <Typography variant="body2" sx={{ color: '#9d174d', mb: 1 }}>
+                  From {data.loveNote.fromName} · {data.loveNote.entryCount} appreciation{data.loveNote.entryCount !== 1 ? 's' : ''} this week
+                </Typography>
+                {data.loveNote.entries.length > 0 && (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: '#831843',
+                      fontStyle: 'italic',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      mb: 1,
+                    }}
+                  >
+                    "{data.loveNote.entries[0].text}"
+                  </Typography>
+                )}
+                <Button
+                  variant="text"
+                  size="small"
+                  sx={{ color: '#be185d', p: 0, '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' } }}
+                >
+                  Read your Love Note →
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
 
         {/* Daily Prompt Card */}
         <Grid item xs={12} md={6}>

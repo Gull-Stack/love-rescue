@@ -49,6 +49,8 @@ const Gratitude = () => {
   const [history, setHistory] = useState([]);
   const [sharedEntries, setSharedEntries] = useState([]);
   const [hasPartner, setHasPartner] = useState(false);
+  const [loveNote, setLoveNote] = useState(null);
+  const [loveNoteHasPartner, setLoveNoteHasPartner] = useState(false);
 
   const [text, setText] = useState('');
   const [category, setCategory] = useState(null);
@@ -60,11 +62,12 @@ const Gratitude = () => {
 
   const fetchAllData = async () => {
     try {
-      const [todayRes, streakRes, historyRes, sharedRes] = await Promise.all([
+      const [todayRes, streakRes, historyRes, sharedRes, loveNoteRes] = await Promise.all([
         gratitudeApi.getToday().catch(() => ({ data: { entry: null } })),
         gratitudeApi.getStreak().catch(() => ({ data: { currentStreak: 0, longestStreak: 0, totalEntries: 0 } })),
         gratitudeApi.getHistory({ limit: 30 }).catch(() => ({ data: { entries: [] } })),
         gratitudeApi.getShared().catch(() => ({ data: { entries: [], hasPartner: false } })),
+        gratitudeApi.getLoveNote().catch(() => ({ data: { loveNote: null, hasPartner: false } })),
       ]);
 
       const entry = todayRes.data.entry;
@@ -77,6 +80,8 @@ const Gratitude = () => {
       setHistory(historyRes.data.entries);
       setSharedEntries(sharedRes.data.entries);
       setHasPartner(sharedRes.data.hasPartner);
+      setLoveNote(loveNoteRes.data.loveNote);
+      setLoveNoteHasPartner(loveNoteRes.data.hasPartner !== false);
     } catch (err) {
       setError('Failed to load gratitude data');
     } finally {
@@ -319,6 +324,100 @@ const Gratitude = () => {
                   </Typography>
                 </Grid>
               </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Weekly Love Note */}
+        <Grid item xs={12}>
+          <Card
+            sx={{
+              background: loveNote
+                ? 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 30%, #fbcfe8 100%)'
+                : 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+              border: '2px solid',
+              borderColor: loveNote ? '#f9a8d4' : '#f3e8ff',
+              borderRadius: 3,
+              position: 'relative',
+              overflow: 'visible',
+            }}
+          >
+            <CardContent sx={{ p: 3 }}>
+              <Typography
+                variant="h6"
+                fontWeight="bold"
+                gutterBottom
+                sx={{ color: '#9d174d', display: 'flex', alignItems: 'center', gap: 1 }}
+              >
+                💌 Your Weekly Love Note
+              </Typography>
+
+              {loveNote ? (
+                <>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ color: '#be185d', fontWeight: 600 }}>
+                      From {loveNote.fromName}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#9d174d', opacity: 0.7 }}>
+                      {loveNote.weekOf}
+                    </Typography>
+                  </Box>
+
+                  <Divider sx={{ mb: 2, borderColor: '#f9a8d4' }} />
+
+                  {loveNote.entries.map((entry, idx) => (
+                    <Box
+                      key={idx}
+                      sx={{
+                        mb: 2,
+                        pl: 2,
+                        borderLeft: '3px solid #f9a8d4',
+                      }}
+                    >
+                      <Typography
+                        variant="body1"
+                        sx={{ color: '#831843', fontStyle: 'italic', mb: 0.5 }}
+                      >
+                        "{entry.text}"
+                      </Typography>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Typography variant="caption" sx={{ color: '#9d174d', opacity: 0.6 }}>
+                          {new Date(entry.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </Typography>
+                        {entry.category && (
+                          <Chip
+                            label={`${CATEGORIES.find(c => c.value === entry.category)?.emoji || '✨'} ${entry.category}`}
+                            size="small"
+                            sx={{ bgcolor: 'rgba(249, 168, 212, 0.3)', color: '#9d174d', height: 22 }}
+                          />
+                        )}
+                      </Box>
+                    </Box>
+                  ))}
+
+                  <Divider sx={{ mb: 2, borderColor: '#f9a8d4' }} />
+
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: '#9d174d',
+                      fontWeight: 500,
+                      textAlign: 'center',
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    {loveNote.summary}
+                  </Typography>
+                </>
+              ) : loveNoteHasPartner ? (
+                <Typography variant="body1" sx={{ color: '#9d174d', textAlign: 'center', py: 2 }}>
+                  No love note yet this week. When your partner shares their gratitudes, you'll see them here 💛
+                </Typography>
+              ) : (
+                <Typography variant="body1" sx={{ color: '#9d174d', textAlign: 'center', py: 2 }}>
+                  Connect with your partner to receive weekly love notes
+                </Typography>
+              )}
             </CardContent>
           </Card>
         </Grid>
