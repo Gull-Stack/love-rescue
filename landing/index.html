@@ -225,19 +225,23 @@
     .hero-bg {
       position: absolute; inset: 0;
       background: url('assets/couple-hero.jpg') center/cover no-repeat;
-      opacity: 0.18;
+      opacity: 0; /* hidden when video plays — fallback only */
+      transition: opacity 0.5s ease;
+    }
+    .hero-bg.no-video {
+      opacity: 0.18; /* show only if video fails to load */
     }
     .hero-bg::after {
       content: ''; position: absolute; inset: 0;
       background: linear-gradient(180deg, var(--dark-1) 0%, transparent 30%, transparent 70%, var(--dark-2) 100%);
     }
     .hero-video-bg {
-      position: absolute; inset: 0; overflow: hidden; z-index: 0;
+      position: absolute; inset: 0; overflow: hidden; z-index: 1;
     }
     .hero-video-bg video {
       position: absolute; top: 50%; left: 50%; min-width: 100%; min-height: 100%;
       transform: translate(-50%, -50%); object-fit: cover;
-      opacity: 0.12; filter: blur(1px);
+      opacity: 0.18; filter: blur(1px);
     }
     .hero-glow-1, .hero-glow-2 {
       position: absolute; border-radius: 50%;
@@ -1751,6 +1755,21 @@
 </div>
 
 <script>
+  // ── Hero video fallback ──
+  (function() {
+    var vid = document.querySelector('.hero-video-bg video');
+    var bg = document.querySelector('.hero-bg');
+    if (vid) {
+      vid.addEventListener('error', function() { bg.classList.add('no-video'); });
+      // If video hasn't started within 3s, show static image
+      setTimeout(function() {
+        if (vid.readyState < 2) bg.classList.add('no-video');
+      }, 3000);
+    } else {
+      bg.classList.add('no-video');
+    }
+  })();
+
   // ── Sticky header ──
   var header = document.getElementById('header');
   window.addEventListener('scroll', function() {
