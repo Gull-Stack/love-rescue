@@ -62,13 +62,13 @@ router.get('/questions/:type', authenticate, async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid assessment type' });
     }
 
-    const questions = getQuestions(type);
+    const result = getQuestions(type);
 
-    if (!questions) {
+    if (!result || !result.questions) {
       return res.status(400).json({ error: 'Questions not available for this type' });
     }
 
-    res.json({ type, questions, count: questions.length });
+    res.json({ type, questions: result.questions, count: result.questions.length });
   } catch (error) {
     next(error);
   }
