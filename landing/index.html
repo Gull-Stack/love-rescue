@@ -794,6 +794,113 @@
     .header { top: 0; }
     body.has-announcement .header { top: 42px; }
     body.has-announcement .hero { padding-top: 42px; }
+
+    /* ═══════════════════════════════════════════
+       BEFORE / AFTER IDENTITY
+    ═══════════════════════════════════════════ */
+    .identity-section {
+      padding: 96px 0;
+      background: linear-gradient(180deg, var(--dark-2) 0%, var(--dark-3) 100%);
+    }
+    .identity-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 40px;
+      margin-top: 56px;
+    }
+    .identity-card {
+      border-radius: 20px; padding: 40px; position: relative;
+    }
+    .identity-card.before {
+      background: rgba(255,82,82,0.06); border: 1px solid rgba(255,82,82,0.2);
+    }
+    .identity-card.after {
+      background: rgba(76,175,80,0.06); border: 1px solid rgba(76,175,80,0.2);
+    }
+    .identity-label {
+      display: inline-block; padding: 6px 16px; border-radius: 50px;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.15em;
+      margin-bottom: 20px;
+    }
+    .identity-card.before .identity-label {
+      background: rgba(255,82,82,0.15); color: #ff5252;
+    }
+    .identity-card.after .identity-label {
+      background: rgba(76,175,80,0.15); color: #4caf50;
+    }
+    .identity-card h3 {
+      font-size: 1.4rem; font-weight: 800; margin-bottom: 20px; line-height: 1.3;
+    }
+    .identity-card.before h3 { color: rgba(255,255,255,0.9); }
+    .identity-card.after h3 { color: #4caf50; }
+    .identity-list { display: flex; flex-direction: column; gap: 14px; }
+    .identity-list li {
+      display: flex; align-items: flex-start; gap: 12px;
+      color: var(--text-mid); font-size: 0.92rem; line-height: 1.6;
+    }
+    .identity-list li svg { width: 20px; height: 20px; flex-shrink: 0; margin-top: 2px; }
+    .identity-card.before .identity-list li svg { fill: #ff5252; }
+    .identity-card.after .identity-list li svg { fill: #4caf50; }
+    @media (max-width: 768px) { .identity-grid { grid-template-columns: 1fr; } }
+
+    /* ═══════════════════════════════════════════
+       COMPARISON TABLE
+    ═══════════════════════════════════════════ */
+    .comparison-section {
+      padding: 96px 0;
+      background: var(--dark-1);
+    }
+    .comparison-table {
+      max-width: 800px; margin: 48px auto 0;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px; overflow: hidden;
+    }
+    .comparison-row {
+      display: grid; grid-template-columns: 1.2fr 1fr 1fr;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .comparison-row:last-child { border-bottom: none; }
+    .comparison-row.header-row {
+      background: rgba(255,255,255,0.04);
+    }
+    .comparison-cell {
+      padding: 16px 20px; font-size: 0.9rem; color: var(--text-mid);
+      display: flex; align-items: center;
+    }
+    .comparison-row.header-row .comparison-cell {
+      font-weight: 700; color: #fff; font-size: 0.85rem;
+      letter-spacing: 0.05em;
+    }
+    .comparison-cell.label { font-weight: 600; color: rgba(255,255,255,0.8); }
+    .comparison-cell.bad { color: #ff5252; }
+    .comparison-cell.good { color: #4caf50; font-weight: 600; }
+    .comparison-cell svg { width: 18px; height: 18px; margin-right: 8px; flex-shrink: 0; }
+    @media (max-width: 600px) {
+      .comparison-cell { padding: 12px 14px; font-size: 0.8rem; }
+    }
+
+    /* ═══════════════════════════════════════════
+       VISCERAL VILLAIN STORY
+    ═══════════════════════════════════════════ */
+    .villain-story {
+      max-width: 760px; margin: 0 auto 48px;
+      padding: 40px; border-radius: 20px;
+      background: rgba(255,82,82,0.04); border: 1px solid rgba(255,82,82,0.12);
+      font-size: 1.05rem; line-height: 1.9; color: var(--text-mid);
+    }
+    .villain-story em { color: rgba(255,255,255,0.85); font-style: italic; }
+    .villain-story .punchline {
+      color: var(--pink); font-weight: 700; font-style: normal;
+      display: block; margin-top: 20px; font-size: 1.15rem;
+    }
+    .hero-moment {
+      max-width: 760px; margin: 0 auto;
+      padding: 40px; border-radius: 20px;
+      background: rgba(76,175,80,0.04); border: 1px solid rgba(76,175,80,0.12);
+      font-size: 1.05rem; line-height: 1.9; color: var(--text-mid);
+    }
+    .hero-moment .punchline {
+      color: #4caf50; font-weight: 700; font-style: normal;
+      display: block; margin-top: 20px; font-size: 1.15rem;
+    }
   </style>
 </head>
 <body>
@@ -802,13 +909,8 @@
 
 <!-- ═══════════ ANNOUNCEMENT BAR ═══════════ -->
 <div class="announcement-bar" id="announcementBar">
-  <span>Stop guessing. Start <strong>progressing</strong>. Your custom strategy is waiting.</span>
-  <span class="countdown" id="countdown">
-    <span class="countdown-unit" id="cd-hours">00</span>:
-    <span class="countdown-unit" id="cd-mins">00</span>:
-    <span class="countdown-unit" id="cd-secs">00</span>
-  </span>
-  <a href="https://marriage-rescue-frontend.vercel.app/signup">Start Free</a>
+  <span>🚀 <strong>11 world-class experts. One custom strategy. $0 to start.</strong> The program traditional therapy wishes it was.</span>
+  <a href="https://marriage-rescue-frontend.vercel.app/signup">Start Free →</a>
   <button class="close-announcement" onclick="document.getElementById('announcementBar').style.display='none';document.body.classList.remove('has-announcement');" aria-label="Close">&times;</button>
 </div>
 
@@ -900,13 +1002,17 @@
 <!-- ═══════════ AS SEEN IN ═══════════ -->
 <section class="seen-in">
   <div class="container">
-    <div class="seen-in-label">Built on the Combined Wisdom of</div>
+    <div class="seen-in-label">Built on the Combined Wisdom of 11+ World-Class Experts</div>
     <div class="seen-in-logos">
       <div class="logo-placeholder">GOTTMAN</div>
       <div class="logo-placeholder">SUE JOHNSON</div>
       <div class="logo-placeholder">TONY ROBBINS</div>
       <div class="logo-placeholder">BRENÉ BROWN</div>
       <div class="logo-placeholder">ESTHER PEREL</div>
+      <div class="logo-placeholder">CHRIS VOSS</div>
+      <div class="logo-placeholder">FINLAYSON-FIFE</div>
+      <div class="logo-placeholder">STAN TATKIN</div>
+      <div class="logo-placeholder">GARY CHAPMAN</div>
     </div>
   </div>
 </section>
@@ -941,32 +1047,141 @@
   </div>
 </section>
 
-<!-- ═══════════ VILLAIN SECTION ═══════════ -->
+<!-- ═══════════ VILLAIN SECTION — VISCERAL ═══════════ -->
 <section class="villain-section">
   <div class="container" style="text-align:center;">
-    <span class="chip chip-purple fade-up">THE PROBLEM WITH TRADITIONAL THERAPY</span>
+    <span class="chip chip-purple fade-up">THE PROBLEM NOBODY TALKS ABOUT</span>
     <h2 class="section-title fade-up">Lost at Sea With <span class="gradient-text">No Compass</span></h2>
-    <p class="section-sub fade-up">Traditional talk therapy has failed most couples. Here's why — and what you deserve instead.</p>
-    <div class="villain-grid">
+    <p class="section-sub fade-up" style="margin-bottom:48px;">Traditional talk therapy has failed most couples. Not because they didn't try hard enough — because the system is broken.</p>
+
+    <!-- Visceral villain story -->
+    <div class="villain-story fade-up">
+      You know the drill. You sit on a couch. You each take turns explaining why the other person is wrong. The therapist nods. Says <em>"and how does that make you feel?"</em> Charges you $250. You drive home in silence.<br><br>
+      Next week: same couch, same stories, same silence. Months pass. Years pass. Nothing changes except your bank account — that gets smaller. You start to wonder: <em>maybe this is just what marriage is.</em><br><br>
+      You've spent more money talking in circles than most people spend on a car. And what do you have to show for it? No plan. No skills. No measurable progress. Just a recurring calendar invite and a growing sense that nothing will ever change.
+      <span class="punchline">It's not that you failed therapy. Therapy failed you.</span>
+    </div>
+
+    <!-- The hero moment -->
+    <div class="hero-moment fade-up" style="margin-top:32px;">
+      Now imagine something different. You open your phone Monday morning. There's your plan for this week — specific skills to practice, based on YOUR personality, YOUR patterns, YOUR growth areas. Not generic advice. YOUR strategy.<br><br>
+      You watch a 10-minute video from one of the world's best experts. You practice one specific technique. By Friday, you notice something different. Your partner notices too.<br><br>
+      By week 4, you have hard data proving you've changed. By week 14, you're someone your past self wouldn't recognize. You didn't just survive your relationship — you transformed yourself within it.
+      <span class="punchline">That's not hope. That's a plan. That's Love Rescue.</span>
+    </div>
+
+    <div class="villain-grid" style="margin-top:56px;">
       <div class="villain-card fade-up">
-        <h3>💸 Years &amp; Thousands Wasted</h3>
-        <p class="villain-desc">The average couple spends $150-$300 per session, 2-4x per month, for months or years — with no measurable progress. No weekly plan. No skills. Just talking in circles while the clock ticks and the bill grows.</p>
-        <p class="villain-hope">Love Rescue gives you a structured plan for less than ONE therapy session per month.</p>
+        <h3>💸 Years &amp; Thousands — Gone</h3>
+        <p class="villain-desc">The average couple spends $150-$300 per session, 2-4x per month, for months or years — with zero measurable progress. No weekly plan. No skills. Just talking in circles while the clock runs and the bill grows.</p>
+        <p class="villain-hope">Love Rescue: a complete strategy for less than ONE therapy session per month.</p>
       </div>
       <div class="villain-card fade-up fade-up-delay-1">
-        <h3>🧭 No Strategy. No Direction.</h3>
-        <p class="villain-desc">Traditional therapy is like being lost at sea with no compass. You show up, talk about how you feel, and leave without knowing what to actually DO differently. No action plan. No homework. No measurable progress between sessions.</p>
-        <p class="villain-hope">Love Rescue gives you the compass AND the map AND a luxury cruise ship to sail on.</p>
+        <h3>🧭 No Strategy. No Map. No Destination.</h3>
+        <p class="villain-desc">You show up, talk about how you feel, and leave without knowing what to actually DO differently. There's no action plan. No homework. No way to measure if anything is improving. It's like being lost at sea with no compass.</p>
+        <p class="villain-hope">We give you the compass AND the map AND a luxury cruise ship to sail on.</p>
       </div>
       <div class="villain-card fade-up fade-up-delay-2">
-        <h3>👆 The Blame Game</h3>
-        <p class="villain-desc">Most therapy becomes a finger-pointing contest. "They did this." "They said that." Two people performing for a referee instead of looking in the mirror. Nobody actually changes because nobody is working on themselves.</p>
-        <p class="villain-hope">Love Rescue: You work on YOU. Your partner works on THEM. No finger pointing. Just growth.</p>
+        <h3>👆 Two People Performing for a Referee</h3>
+        <p class="villain-desc">Most therapy becomes a finger-pointing contest. "They did this." "They said that." Two people competing for the therapist's validation instead of looking in the mirror. Nobody changes because nobody is working on themselves.</p>
+        <p class="villain-hope">Love Rescue: You work on YOU. Your partner works on THEM. Mirror, not window.</p>
       </div>
     </div>
-    <div class="villain-testimonial fade-up">
-      <blockquote>"We spent 2 years and over $15,000 on couples therapy with zero progress. Three weeks into Love Rescue, we had more clarity about our patterns than in 24 months of talking. We finally had a PLAN."</blockquote>
-      <cite>— Michael &amp; David, Chicago</cite>
+  </div>
+</section>
+
+<!-- ═══════════ COMPARISON TABLE ═══════════ -->
+<section class="comparison-section">
+  <div class="container" style="text-align:center;">
+    <span class="chip chip-pink fade-up">THE SIDE-BY-SIDE</span>
+    <h2 class="section-title fade-up">Traditional Therapy vs. <span class="gradient-text">Love Rescue</span></h2>
+    <p class="section-sub fade-up">See why couples are choosing a system that actually works.</p>
+    <div class="comparison-table fade-up">
+      <div class="comparison-row header-row">
+        <div class="comparison-cell label"></div>
+        <div class="comparison-cell" style="color:#ff5252;">🛋️ TRADITIONAL THERAPY</div>
+        <div class="comparison-cell" style="color:#4caf50;">🚢 LOVE RESCUE</div>
+      </div>
+      <div class="comparison-row">
+        <div class="comparison-cell label">Cost</div>
+        <div class="comparison-cell bad">$200-300/session</div>
+        <div class="comparison-cell good">$9.99/month</div>
+      </div>
+      <div class="comparison-row">
+        <div class="comparison-cell label">Weekly Plan</div>
+        <div class="comparison-cell bad"><svg viewBox="0 0 24 24" fill="#ff5252"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> None</div>
+        <div class="comparison-cell good"><svg viewBox="0 0 24 24" fill="#4caf50"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Custom each week</div>
+      </div>
+      <div class="comparison-row">
+        <div class="comparison-cell label">Expert Sources</div>
+        <div class="comparison-cell bad">1 therapist's opinion</div>
+        <div class="comparison-cell good">11+ world-class specialists</div>
+      </div>
+      <div class="comparison-row">
+        <div class="comparison-cell label">Progress Tracking</div>
+        <div class="comparison-cell bad"><svg viewBox="0 0 24 24" fill="#ff5252"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> None</div>
+        <div class="comparison-cell good"><svg viewBox="0 0 24 24" fill="#4caf50"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Weekly reports</div>
+      </div>
+      <div class="comparison-row">
+        <div class="comparison-cell label">Approach</div>
+        <div class="comparison-cell bad">Process feelings &amp; blame</div>
+        <div class="comparison-cell good">Build skills &amp; own your growth</div>
+      </div>
+      <div class="comparison-row">
+        <div class="comparison-cell label">Timeline</div>
+        <div class="comparison-cell bad">Indefinite — no end in sight</div>
+        <div class="comparison-cell good">14-week structured voyage</div>
+      </div>
+      <div class="comparison-row">
+        <div class="comparison-cell label">Actual Skills Taught</div>
+        <div class="comparison-cell bad"><svg viewBox="0 0 24 24" fill="#ff5252"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Rarely</div>
+        <div class="comparison-cell good"><svg viewBox="0 0 24 24" fill="#4caf50"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Daily skill building</div>
+      </div>
+      <div class="comparison-row">
+        <div class="comparison-cell label">Availability</div>
+        <div class="comparison-cell bad">1 hour/week if you're lucky</div>
+        <div class="comparison-cell good">24/7 — your pocket coach</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ BEFORE / AFTER IDENTITY ═══════════ -->
+<section class="identity-section">
+  <div class="container" style="text-align:center;">
+    <span class="chip chip-green fade-up">THE TRANSFORMATION</span>
+    <h2 class="section-title fade-up">Two Versions of You. <span class="gradient-text">Which One Wins?</span></h2>
+    <p class="section-sub fade-up">This isn't about saving your relationship. It's about transforming the person IN the relationship — you.</p>
+    <div class="identity-grid">
+      <div class="identity-card before fade-up">
+        <span class="identity-label">❌ BEFORE LOVE RESCUE</span>
+        <h3>Stuck in the Loop</h3>
+        <ul class="identity-list">
+          <li><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Same argument every Tuesday — different words, same pain</li>
+          <li><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Silent car rides home from therapy — again</li>
+          <li><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Googling "is my marriage over" at 2am</li>
+          <li><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Blaming your partner for how YOU feel</li>
+          <li><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> No plan, no progress, no clue what to work on</li>
+          <li><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Spending $250/session to talk about last week's fight</li>
+          <li><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Wondering if this is just "how relationships are"</li>
+        </ul>
+      </div>
+      <div class="identity-card after fade-up fade-up-delay-1">
+        <span class="identity-label">✅ AFTER LOVE RESCUE</span>
+        <h3>Captain of Your Own Ship</h3>
+        <ul class="identity-list">
+          <li><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> You understand YOUR patterns — why you react the way you do</li>
+          <li><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> You have a specific plan THIS WEEK — not "someday"</li>
+          <li><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> You're building real skills — negotiation, attachment, communication</li>
+          <li><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> You look in the mirror, not out the window</li>
+          <li><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Weekly progress reports prove you're growing</li>
+          <li><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Your partner notices the change — and wants in</li>
+          <li><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> You know EXACTLY where you're headed — and you're enjoying the voyage</li>
+        </ul>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:48px;" class="fade-up">
+      <a href="https://marriage-rescue-frontend.vercel.app/signup" class="btn btn-primary btn-large">Become the After — Start Free <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></a>
     </div>
   </div>
 </section>
@@ -1357,13 +1572,13 @@
 <section class="email-capture">
   <div class="container">
     <div class="capture-box fade-up">
-      <h2>Get Your Free <span class="gradient-text">Relationship Skill Assessment</span></h2>
-      <p>A quick mini-assessment that reveals your biggest growth opportunities and which expert frameworks will help you most — delivered to your inbox in minutes.</p>
-      <form class="capture-form" onsubmit="event.preventDefault();this.querySelector('button').textContent='Sent!';this.querySelector('input').value='';">
+      <h2>Free: <span class="gradient-text">"The 5 Patterns Destroying Your Relationship"</span> Guide</h2>
+      <p>Discover the 5 unconscious patterns most couples repeat — and the specific skill from each of our 11 experts that breaks each one. Takes 3 minutes to read. Could save you 3 years of going in circles.</p>
+      <form class="capture-form" onsubmit="event.preventDefault();this.querySelector('button').textContent='✓ Check Your Inbox!';this.querySelector('input').value='';">
         <input type="email" placeholder="Enter your email address" required aria-label="Email address" />
-        <button type="submit" class="btn btn-primary">Send My Free Assessment</button>
+        <button type="submit" class="btn btn-primary">Send My Free Guide</button>
       </form>
-      <div class="capture-fine">No spam, ever. Unsubscribe anytime.</div>
+      <div class="capture-fine">No spam. No fluff. Just the patterns you need to see — and the skills to break them.</div>
     </div>
   </div>
 </section>
@@ -1440,25 +1655,7 @@
   // ── Announcement bar ──
   document.body.classList.add('has-announcement');
 
-  // ── Countdown timer (resets every 24h) ──
-  function updateCountdown() {
-    var now = new Date();
-    var end = new Date();
-    end.setHours(23, 59, 59, 999);
-    var diff = end - now;
-    if (diff <= 0) diff = 86400000;
-    var h = Math.floor(diff / 3600000);
-    var m = Math.floor((diff % 3600000) / 60000);
-    var s = Math.floor((diff % 60000) / 1000);
-    var he = document.getElementById('cd-hours');
-    var me = document.getElementById('cd-mins');
-    var se = document.getElementById('cd-secs');
-    if (he) he.textContent = h < 10 ? '0' + h : h;
-    if (me) me.textContent = m < 10 ? '0' + m : m;
-    if (se) se.textContent = s < 10 ? '0' + s : s;
-  }
-  updateCountdown();
-  setInterval(updateCountdown, 1000);
+  // ── Countdown timer removed — trust > urgency ──
 
   // ── Back to top ──
   var btt = document.getElementById('backToTop');
