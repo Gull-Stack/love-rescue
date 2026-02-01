@@ -224,12 +224,20 @@
     }
     .hero-bg {
       position: absolute; inset: 0;
-      background: url('/images/hero-bg.jpg') center/cover no-repeat;
-      opacity: 0.12;
+      background: url('assets/couple-hero.jpg') center/cover no-repeat;
+      opacity: 0.18;
     }
     .hero-bg::after {
       content: ''; position: absolute; inset: 0;
       background: linear-gradient(180deg, var(--dark-1) 0%, transparent 30%, transparent 70%, var(--dark-2) 100%);
+    }
+    .hero-video-bg {
+      position: absolute; inset: 0; overflow: hidden; z-index: 0;
+    }
+    .hero-video-bg video {
+      position: absolute; top: 50%; left: 50%; min-width: 100%; min-height: 100%;
+      transform: translate(-50%, -50%); object-fit: cover;
+      opacity: 0.12; filter: blur(1px);
     }
     .hero-glow-1, .hero-glow-2 {
       position: absolute; border-radius: 50%;
@@ -433,11 +441,17 @@
        FINAL CTA
     ═══════════════════════════════════════════ */
     .final-cta {
-      padding: 96px 0; text-align: center;
+      padding: 96px 0; text-align: center; position: relative; overflow: hidden;
       background:
         radial-gradient(ellipse at 50% 50%, rgba(233,30,99,0.15) 0%, transparent 60%),
         var(--dark-2);
     }
+    .final-cta-bg {
+      position: absolute; inset: 0;
+      background: url('assets/couple-walking.jpg') center/cover no-repeat;
+      opacity: 0.08;
+    }
+    .final-cta .container { position: relative; z-index: 2; }
     .final-cta h2 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px; }
     .final-cta p {
       color: rgba(255,255,255,0.6); font-size: clamp(1rem, 2vw, 1.2rem);
@@ -635,13 +649,18 @@
     .guide-feature svg { width: 22px; height: 22px; fill: var(--pink); flex-shrink: 0; }
     .guide-feature span { color: var(--text-mid); font-size: 0.95rem; }
     .guide-image {
-      width: 100%; aspect-ratio: 1; border-radius: 24px;
-      background: linear-gradient(135deg, rgba(233,30,99,0.15), rgba(156,39,176,0.15));
+      width: 100%; aspect-ratio: 3/4; border-radius: 24px;
       border: 1px solid rgba(255,255,255,0.08);
-      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; position: relative;
       box-shadow: 0 30px 80px rgba(0,0,0,0.3);
     }
-    .guide-image svg { width: 80px; height: 80px; fill: rgba(255,255,255,0.2); }
+    .guide-image img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .guide-image::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(180deg, transparent 50%, rgba(13,2,33,0.4) 100%);
+    }
     @media (max-width: 768px) { .guide-grid { grid-template-columns: 1fr; } .guide-image { max-width: 320px; margin: 0 auto; } }
 
     /* ═══════════════════════════════════════════
@@ -695,6 +714,43 @@
     .quiz-cta-row { text-align: center; margin-top: 40px; }
     .quiz-fine { color: rgba(255,255,255,0.3); font-size: 0.78rem; margin-top: 16px; text-align: center; }
     @media (max-width: 600px) { .quiz-paths { grid-template-columns: 1fr; } }
+
+    /* ═══════════════════════════════════════════
+       VISUAL MOMENTS GALLERY
+    ═══════════════════════════════════════════ */
+    .moments-gallery {
+      padding: 64px 0;
+      background: var(--dark-1);
+      overflow: hidden;
+    }
+    .moments-label {
+      text-align: center; color: var(--text-dim); font-size: 0.75rem;
+      font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+    .moments-strip {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px;
+      max-width: 1200px; margin: 0 auto; padding: 0 24px;
+    }
+    .moment-card {
+      border-radius: 16px; overflow: hidden; position: relative;
+      aspect-ratio: 16/9; border: 1px solid rgba(255,255,255,0.06);
+      transition: all 0.4s ease; cursor: default;
+    }
+    .moment-card:hover {
+      transform: scale(1.03); border-color: rgba(233,30,99,0.3);
+      box-shadow: 0 16px 48px rgba(233,30,99,0.1);
+    }
+    .moment-card video, .moment-card img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .moment-card::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(180deg, transparent 40%, rgba(13,2,33,0.5) 100%);
+      pointer-events: none;
+    }
+    @media (max-width: 900px) { .moments-strip { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 600px) { .moments-strip { grid-template-columns: repeat(2, 1fr); } .moment-card:nth-child(5) { display: none; } }
 
     /* ═══════════════════════════════════════════
        FAILURE STAKES
@@ -814,6 +870,14 @@
     }
     .identity-card.after {
       background: rgba(76,175,80,0.06); border: 1px solid rgba(76,175,80,0.2);
+      position: relative; overflow: hidden;
+    }
+    .identity-card.after .identity-bg-video {
+      position: absolute; top: 0; right: 0; width: 200px; height: 200px;
+      border-radius: 50%; overflow: hidden; opacity: 0.12;
+    }
+    .identity-card.after .identity-bg-video video {
+      width: 100%; height: 100%; object-fit: cover;
     }
     .identity-label {
       display: inline-block; padding: 6px 16px; border-radius: 50px;
@@ -955,6 +1019,11 @@
 
 <!-- ═══════════ HERO ═══════════ -->
 <section class="hero">
+  <div class="hero-video-bg">
+    <video autoplay muted loop playsinline poster="assets/couple-hero.jpg">
+      <source src="assets/couple-beautiful.mp4" type="video/mp4">
+    </video>
+  </div>
   <div class="hero-bg"></div>
   <div class="hero-glow-1"></div>
   <div class="hero-glow-2"></div>
@@ -1041,7 +1110,7 @@
         </div>
       </div>
       <div class="guide-image fade-up">
-        <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        <img src="assets/couple-confident.jpg" alt="A confident, connected couple — the kind of relationship Love Rescue helps you build" loading="lazy" />
       </div>
     </div>
   </div>
@@ -1167,6 +1236,11 @@
         </ul>
       </div>
       <div class="identity-card after fade-up fade-up-delay-1">
+        <div class="identity-bg-video">
+          <video autoplay muted loop playsinline>
+            <source src="assets/couple-kissing.mp4" type="video/mp4">
+          </video>
+        </div>
         <span class="identity-label">✅ AFTER LOVE RESCUE</span>
         <h3>Captain of Your Own Ship</h3>
         <ul class="identity-list">
@@ -1401,6 +1475,36 @@
   </div>
 </section>
 
+<!-- ═══════════ VISUAL MOMENTS ═══════════ -->
+<section class="moments-gallery">
+  <div class="moments-label">Real Moments. Real Connection.</div>
+  <div class="moments-strip">
+    <div class="moment-card">
+      <video autoplay muted loop playsinline>
+        <source src="assets/couple-looking.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="moment-card">
+      <video autoplay muted loop playsinline>
+        <source src="assets/couple-hands.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="moment-card">
+      <img src="assets/couple-walking.jpg" alt="Happy couple walking together" loading="lazy" />
+    </div>
+    <div class="moment-card">
+      <video autoplay muted loop playsinline>
+        <source src="assets/couple-talking.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="moment-card">
+      <video autoplay muted loop playsinline>
+        <source src="assets/couple-kiss.mp4" type="video/mp4">
+      </video>
+    </div>
+  </div>
+</section>
+
 <!-- ═══════════ FAILURE STAKES ═══════════ -->
 <section class="failure-stakes">
   <div class="container">
@@ -1585,6 +1689,7 @@
 
 <!-- ═══════════ FINAL CTA ═══════════ -->
 <section class="final-cta">
+  <div class="final-cta-bg"></div>
   <div class="container">
     <h2>Stop Drifting. Start <span class="gradient-text">Sailing.</span></h2>
     <p>You've spent enough time lost at sea. Love Rescue gives you the compass, the map, and the ship. 11+ world-class experts. One custom strategy. Weekly progress you can see. Board today — your first 14 days are free.</p>
