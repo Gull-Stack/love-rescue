@@ -749,6 +749,139 @@ function scoreDifferentiation(responses) {
 
 
 // ═══════════════════════════════════════════════════════════════
+// 9. HORMONAL HEALTH SCORING
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Score hormonal health wellness screener
+ * Higher agreement = more symptoms = more concern in that area
+ * @param {Object} responses - { questionId: score (1-7) }
+ * @returns {Object} Hormonal health profile
+ */
+function scoreHormonalHealth(responses) {
+  const questions = questionBank.hormonal_health.questions;
+  const scaleMax = 7;
+
+  const categoryScores = groupScores(responses, questions, 'category', scaleMax);
+
+  const sorted = sortByValue(categoryScores);
+
+  // Overall symptom load (higher = more symptomatic)
+  const allPercentages = Object.values(categoryScores).map(c => c.percentage);
+  const overallSymptomLoad = allPercentages.length > 0 ? Math.round(avg(allPercentages)) : 0;
+
+  // Level
+  let level;
+  if (overallSymptomLoad >= 70) level = 'high_concern';
+  else if (overallSymptomLoad >= 50) level = 'moderate_concern';
+  else if (overallSymptomLoad >= 30) level = 'mild_symptoms';
+  else level = 'low_symptoms';
+
+  const categoryLabels = {
+    testosterone_symptoms: 'Testosterone-Related Symptoms',
+    estrogen_progesterone: 'Estrogen/Progesterone-Related Symptoms',
+    cortisol_stress: 'Cortisol/Stress-Related Symptoms',
+    thyroid_energy: 'Thyroid/Energy-Related Symptoms',
+    libido_drive: 'Libido & Drive Symptoms',
+  };
+
+  // Areas of most concern (highest symptom severity)
+  const areasOfConcern = sorted.filter(([_, data]) => data.percentage >= 50).map(([cat]) => cat);
+  const strengths = sorted.slice().reverse().filter(([_, data]) => data.percentage < 35).map(([cat]) => cat);
+
+  const subscores = {};
+  for (const [cat, data] of Object.entries(categoryScores)) {
+    subscores[cat] = {
+      ...data,
+      label: categoryLabels[cat],
+    };
+  }
+
+  return {
+    overallSymptomLoad,
+    overall: overallSymptomLoad,
+    level,
+    subscores,
+    areasOfConcern,
+    areasOfConcernLabels: areasOfConcern.map(a => categoryLabels[a]),
+    strengths,
+    strengthLabels: strengths.map(s => categoryLabels[s]),
+    ranking: sorted.map(([cat, data]) => ({
+      category: cat,
+      label: categoryLabels[cat],
+      ...data,
+    })),
+  };
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// 10. PHYSICAL VITALITY SCORING
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Score physical vitality assessment
+ * Higher agreement = better vitality in that area
+ * @param {Object} responses - { questionId: score (1-7) }
+ * @returns {Object} Physical vitality profile
+ */
+function scorePhysicalVitality(responses) {
+  const questions = questionBank.physical_vitality.questions;
+  const scaleMax = 7;
+
+  const categoryScores = groupScores(responses, questions, 'category', scaleMax);
+
+  const sorted = sortByValue(categoryScores);
+
+  // Overall vitality score (higher = better)
+  const allPercentages = Object.values(categoryScores).map(c => c.percentage);
+  const overallVitality = allPercentages.length > 0 ? Math.round(avg(allPercentages)) : 0;
+
+  // Level
+  let level;
+  if (overallVitality >= 80) level = 'thriving';
+  else if (overallVitality >= 65) level = 'strong';
+  else if (overallVitality >= 50) level = 'developing';
+  else if (overallVitality >= 35) level = 'struggling';
+  else level = 'critical';
+
+  const categoryLabels = {
+    fitness_activity: 'Fitness & Activity',
+    weight_body_composition: 'Weight & Body Confidence',
+    nutrition_diet: 'Nutrition & Diet',
+    sleep_recovery: 'Sleep & Recovery',
+    energy_stamina: 'Energy & Stamina',
+  };
+
+  const strengths = sorted.filter(([_, data]) => data.percentage >= 65).map(([cat]) => cat);
+  const growth = sorted.slice().reverse().filter(([_, data]) => data.percentage < 50).map(([cat]) => cat);
+
+  const subscores = {};
+  for (const [cat, data] of Object.entries(categoryScores)) {
+    subscores[cat] = {
+      ...data,
+      label: categoryLabels[cat],
+    };
+  }
+
+  return {
+    overall: overallVitality,
+    level,
+    subscores,
+    strengths,
+    strengthLabels: strengths.map(s => categoryLabels[s]),
+    growth,
+    growthLabels: growth.map(g => categoryLabels[g]),
+    ranking: sorted.map(([cat, data]) => ({
+      category: cat,
+      label: categoryLabels[cat],
+      ...data,
+    })),
+  };
+}
+
+
+// ═══════════════════════════════════════════════════════════════
 // LEGACY / COMPATIBILITY SCORERS
 // ═══════════════════════════════════════════════════════════════
 
@@ -1101,6 +1234,8 @@ function scoreAssessment(type, responses) {
     emotional_intelligence: scoreEmotionalIntelligence,
     conflict_style: scoreConflictStyle,
     differentiation: scoreDifferentiation,
+    hormonal_health: scoreHormonalHealth,
+    physical_vitality: scorePhysicalVitality,
     wellness_behavior: scoreWellnessBehavior,
     negative_patterns_closeness: scoreNegativePatterns,
   };
@@ -1131,6 +1266,8 @@ module.exports = {
   scoreEmotionalIntelligence,
   scoreConflictStyle,
   scoreDifferentiation,
+  scoreHormonalHealth,
+  scorePhysicalVitality,
 
   // Legacy scorers
   scoreWellnessBehavior,

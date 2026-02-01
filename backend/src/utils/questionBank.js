@@ -420,6 +420,99 @@ const differentiationQuestions = [
 
 
 // ═══════════════════════════════════════════════════════════════
+// 9. HORMONAL HEALTH — 30 questions (Scale 1-7)
+//    Wellness screener for hormonal factors impacting relationships
+//    Categories: testosterone_symptoms, estrogen_progesterone,
+//                cortisol_stress, thyroid_energy, libido_drive
+//    NOT medical advice — a self-awareness mirror for your body.
+// ═══════════════════════════════════════════════════════════════
+const hormonalHealthQuestions = [
+  // --- TESTOSTERONE SYMPTOMS (6) ---
+  { id: 'hh_1',  text: 'I notice that my muscle mass and physical strength have decreased over time, even without changes to my activity level.', category: 'testosterone_symptoms' },
+  { id: 'hh_2',  text: 'I tend to feel less motivated and driven than I used to — a general loss of ambition or competitive fire.', category: 'testosterone_symptoms' },
+  { id: 'hh_3',  text: 'I notice that I carry more body fat than I\'d like, especially around my midsection and chest.', category: 'testosterone_symptoms' },
+  { id: 'hh_4',  text: 'I tend to feel mentally foggy or have difficulty concentrating, especially in the afternoon.', category: 'testosterone_symptoms' },
+  { id: 'hh_5',  text: 'I notice that my confidence and assertiveness have declined compared to earlier in my life.', category: 'testosterone_symptoms' },
+  { id: 'hh_6',  text: 'I tend to feel emotionally flat or less resilient — things that didn\'t bother me before now get under my skin.', category: 'testosterone_symptoms' },
+
+  // --- ESTROGEN / PROGESTERONE (6) ---
+  { id: 'hh_7',  text: 'I notice significant mood shifts that seem to follow a cyclical pattern throughout the month.', category: 'estrogen_progesterone' },
+  { id: 'hh_8',  text: 'I tend to experience bloating, water retention, or breast tenderness that fluctuates over time.', category: 'estrogen_progesterone' },
+  { id: 'hh_9',  text: 'I notice that I feel more anxious, irritable, or emotionally reactive during certain times of the month or certain life phases.', category: 'estrogen_progesterone' },
+  { id: 'hh_10', text: 'I tend to experience hot flashes, night sweats, or sudden temperature changes that disrupt my comfort or sleep.', category: 'estrogen_progesterone' },
+  { id: 'hh_11', text: 'I notice that my skin, hair, or nails have changed in quality — dryness, thinning, or breakouts that seem hormonally driven.', category: 'estrogen_progesterone' },
+  { id: 'hh_12', text: 'I tend to feel like my emotional reactions are disproportionate to the situation, and I can\'t always explain why.', category: 'estrogen_progesterone' },
+
+  // --- CORTISOL / STRESS (6) ---
+  { id: 'hh_13', text: 'I notice that I feel "wired but tired" — exhausted yet unable to fully relax or fall asleep.', category: 'cortisol_stress' },
+  { id: 'hh_14', text: 'I tend to carry tension in my body — tight shoulders, clenched jaw, or a knotted stomach — even when nothing specific is wrong.', category: 'cortisol_stress' },
+  { id: 'hh_15', text: 'I notice that I crave sugar, caffeine, or comfort food, especially in the afternoon or evening.', category: 'cortisol_stress' },
+  { id: 'hh_16', text: 'I tend to feel overwhelmed by tasks that I used to handle easily — my stress threshold feels lower.', category: 'cortisol_stress' },
+  { id: 'hh_17', text: 'I notice that I gain weight around my belly even when my eating and exercise habits haven\'t changed much.', category: 'cortisol_stress' },
+  { id: 'hh_18', text: 'I tend to feel a crash in energy between 2-4pm that makes me want to nap or reach for stimulants.', category: 'cortisol_stress' },
+
+  // --- THYROID / ENERGY (6) ---
+  { id: 'hh_19', text: 'I notice that I feel cold more often than others around me, especially in my hands and feet.', category: 'thyroid_energy' },
+  { id: 'hh_20', text: 'I tend to feel sluggish and fatigued in the morning, regardless of how much sleep I get.', category: 'thyroid_energy' },
+  { id: 'hh_21', text: 'I notice that my weight fluctuates or is difficult to manage despite consistent eating and exercise.', category: 'thyroid_energy' },
+  { id: 'hh_22', text: 'I tend to experience constipation, dry skin, or hair thinning that doesn\'t respond well to typical remedies.', category: 'thyroid_energy' },
+  { id: 'hh_23', text: 'I notice that my mood feels heavy or low — a persistent low-grade sadness or apathy that\'s hard to shake.', category: 'thyroid_energy' },
+  { id: 'hh_24', text: 'I tend to feel mentally slow — processing information takes more effort than it used to.', category: 'thyroid_energy' },
+
+  // --- LIBIDO / DRIVE (6) ---
+  { id: 'hh_25', text: 'I notice that my desire for physical intimacy has significantly decreased compared to earlier in my life or relationship.', category: 'libido_drive' },
+  { id: 'hh_26', text: 'I tend to feel disconnected from my body — less aware of or responsive to physical sensations and pleasure.', category: 'libido_drive' },
+  { id: 'hh_27', text: 'I notice that I rarely initiate physical intimacy, even when I know it would benefit my relationship.', category: 'libido_drive' },
+  { id: 'hh_28', text: 'I tend to feel like physical intimacy is more of an obligation than something I genuinely look forward to.', category: 'libido_drive' },
+  { id: 'hh_29', text: 'I notice that my physical arousal response is weaker or slower than it used to be.', category: 'libido_drive' },
+  { id: 'hh_30', text: 'I tend to feel that stress, fatigue, or body image concerns significantly dampen my desire for intimacy.', category: 'libido_drive' },
+];
+
+// ═══════════════════════════════════════════════════════════════
+// 10. PHYSICAL VITALITY — 25 questions (Scale 1-7)
+//     Wellness assessment for physical factors impacting relationships
+//     Categories: fitness_activity, weight_body_composition,
+//                 nutrition_diet, sleep_recovery, energy_stamina
+// ═══════════════════════════════════════════════════════════════
+const physicalVitalityQuestions = [
+  // --- FITNESS / ACTIVITY (5) ---
+  { id: 'pv_1',  text: 'I engage in structured physical exercise — strength training, cardio, or sports — at least three times per week.', category: 'fitness_activity' },
+  { id: 'pv_2',  text: 'I tend to move my body throughout the day — walking, stretching, taking stairs — rather than sitting for long unbroken periods.', category: 'fitness_activity' },
+  { id: 'pv_3',  text: 'I notice that I feel physically capable and strong in my daily activities — lifting, moving, and keeping up with life\'s demands.', category: 'fitness_activity' },
+  { id: 'pv_4',  text: 'I make physical activity a non-negotiable part of my routine, even when life gets busy or stressful.', category: 'fitness_activity' },
+  { id: 'pv_5',  text: 'I notice that my cardiovascular fitness allows me to climb stairs, play with kids, or be active without getting winded quickly.', category: 'fitness_activity' },
+
+  // --- WEIGHT / BODY COMPOSITION (5) ---
+  { id: 'pv_6',  text: 'I feel generally satisfied with my body composition and how I look and feel physically.', category: 'weight_body_composition' },
+  { id: 'pv_7',  text: 'I notice that I feel physically confident and comfortable in intimate situations with my partner.', category: 'weight_body_composition' },
+  { id: 'pv_8',  text: 'I tend to maintain a stable, healthy weight without extreme dieting or frequent fluctuations.', category: 'weight_body_composition' },
+  { id: 'pv_9',  text: 'I notice that my physical appearance reflects the effort I put into taking care of myself.', category: 'weight_body_composition' },
+  { id: 'pv_10', text: 'I feel that my body serves me well — I\'m not limited by physical discomfort, pain, or excess weight in daily life.', category: 'weight_body_composition' },
+
+  // --- NUTRITION / DIET (5) ---
+  { id: 'pv_11', text: 'I tend to eat whole, nutritious foods as the foundation of my diet rather than relying on processed or fast food.', category: 'nutrition_diet' },
+  { id: 'pv_12', text: 'I notice that I drink enough water throughout the day and rarely feel dehydrated.', category: 'nutrition_diet' },
+  { id: 'pv_13', text: 'I tend to eat adequate protein and balanced meals that sustain my energy rather than causing crashes.', category: 'nutrition_diet' },
+  { id: 'pv_14', text: 'I notice that I have a healthy relationship with food — I eat mindfully rather than emotionally or compulsively.', category: 'nutrition_diet' },
+  { id: 'pv_15', text: 'I tend to limit alcohol, excessive sugar, and other substances that I know undermine my health and energy.', category: 'nutrition_diet' },
+
+  // --- SLEEP / RECOVERY (5) ---
+  { id: 'pv_16', text: 'I consistently get 7-9 hours of quality sleep most nights of the week.', category: 'sleep_recovery' },
+  { id: 'pv_17', text: 'I notice that I fall asleep relatively easily and wake up feeling genuinely rested.', category: 'sleep_recovery' },
+  { id: 'pv_18', text: 'I tend to have a consistent sleep schedule — going to bed and waking up at roughly the same time each day.', category: 'sleep_recovery' },
+  { id: 'pv_19', text: 'I notice that I allow my body adequate recovery time after intense physical activity or stressful periods.', category: 'sleep_recovery' },
+  { id: 'pv_20', text: 'I tend to wind down before bed with healthy habits rather than screens, stimulants, or work.', category: 'sleep_recovery' },
+
+  // --- ENERGY / STAMINA (5) ---
+  { id: 'pv_21', text: 'I notice that I have consistent, sustained energy throughout the day without major crashes or reliance on caffeine.', category: 'energy_stamina' },
+  { id: 'pv_22', text: 'I tend to feel physically energized enough to be present and engaged with my partner at the end of the day.', category: 'energy_stamina' },
+  { id: 'pv_23', text: 'I notice that my physical stamina allows me to enjoy activities, travel, and adventures without being held back by fatigue.', category: 'energy_stamina' },
+  { id: 'pv_24', text: 'I tend to recover quickly from physical exertion — I bounce back rather than being wiped out for days.', category: 'energy_stamina' },
+  { id: 'pv_25', text: 'I notice that I have enough physical and mental energy to invest in my relationship, not just survive my daily responsibilities.', category: 'energy_stamina' },
+];
+
+
+// ═══════════════════════════════════════════════════════════════
 // QUESTION BANK API
 // ═══════════════════════════════════════════════════════════════
 
@@ -471,6 +564,18 @@ const questionBank = {
     scale: { min: 1, max: 7, labels: ['Strongly Disagree', 'Disagree', 'Slightly Disagree', 'Neutral', 'Slightly Agree', 'Agree', 'Strongly Agree'] },
     description: 'Differentiation of Self Assessment — Based on Bowen Family Systems and Finlayson-Fife. Measures your ability to maintain a solid sense of self while staying emotionally connected.',
     estimatedMinutes: 6,
+  },
+  hormonal_health: {
+    questions: hormonalHealthQuestions,
+    scale: { min: 1, max: 7, labels: ['Strongly Disagree', 'Disagree', 'Slightly Disagree', 'Neutral', 'Slightly Agree', 'Agree', 'Strongly Agree'] },
+    description: 'Hormonal Wellness Assessment — A self-awareness screener for hormonal factors that may impact your energy, mood, libido, and relationship. Not medical advice — a mirror for your body.',
+    estimatedMinutes: 8,
+  },
+  physical_vitality: {
+    questions: physicalVitalityQuestions,
+    scale: { min: 1, max: 7, labels: ['Strongly Disagree', 'Disagree', 'Slightly Disagree', 'Neutral', 'Slightly Agree', 'Agree', 'Strongly Agree'] },
+    description: 'Physical Vitality Assessment — Evaluates your fitness, nutrition, sleep, energy, and body confidence. Your physical health IS your relationship health.',
+    estimatedMinutes: 7,
   },
 };
 

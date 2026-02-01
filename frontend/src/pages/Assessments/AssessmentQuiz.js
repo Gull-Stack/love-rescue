@@ -163,6 +163,40 @@ const assessmentMeta = {
       7: 'Very true',
     },
   },
+  hormonal_health: {
+    title: 'Hormonal Wellness Assessment',
+    icon: '🧬',
+    encouragement: 'Your body tells a story. This helps you listen — not diagnose.',
+    scaleType: 'likert7',
+    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    color: '#e91e63',
+    scaleLabels: {
+      1: 'Strongly Disagree',
+      2: 'Disagree',
+      3: 'Slightly Disagree',
+      4: 'Neutral',
+      5: 'Slightly Agree',
+      6: 'Agree',
+      7: 'Strongly Agree',
+    },
+  },
+  physical_vitality: {
+    title: 'Physical Vitality Assessment',
+    icon: '💪',
+    encouragement: 'Your physical health powers everything — including your love life.',
+    scaleType: 'likert7',
+    gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    color: '#00c9a7',
+    scaleLabels: {
+      1: 'Strongly Disagree',
+      2: 'Disagree',
+      3: 'Slightly Disagree',
+      4: 'Neutral',
+      5: 'Slightly Agree',
+      6: 'Agree',
+      7: 'Strongly Agree',
+    },
+  },
 };
 
 // Warm encouragement messages that rotate as user progresses

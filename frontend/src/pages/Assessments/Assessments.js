@@ -120,6 +120,28 @@ const assessmentTypes = [
     expert: 'Based on Dr. Jennifer Finlayson-Fife & Murray Bowen',
     category: 'Grow Yourself',
   },
+  {
+    type: 'hormonal_health',
+    title: 'Hormonal Wellness',
+    description:
+      'Screen for hormonal symptoms that silently impact your energy, mood, libido, and relationship. Not a diagnosis — a mirror for your body.',
+    questions: 30,
+    duration: '8 min',
+    icon: '🧬',
+    expert: 'Wellness screener — consult a healthcare provider for diagnosis',
+    category: 'Fuel Yourself',
+  },
+  {
+    type: 'physical_vitality',
+    title: 'Physical Vitality',
+    description:
+      'Evaluate YOUR fitness, nutrition, sleep, energy, and body confidence. Your physical health IS your relationship health.',
+    questions: 25,
+    duration: '7 min',
+    icon: '💪',
+    expert: 'Based on exercise science, sleep research & nutritional psychology',
+    category: 'Fuel Yourself',
+  },
 ];
 
 // ─── Category Metadata ────────────────────────────────────────────────────────
@@ -150,6 +172,15 @@ const categories = [
       'The most attractive thing you can do in a relationship is become a better version of yourself. These assessments show you the path forward.',
     gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
     color: '#00c9a7',
+  },
+  {
+    name: 'Fuel Yourself',
+    icon: '⚡',
+    tagline: 'Your body is the vehicle for your love.',
+    description:
+      'You can\'t pour from an empty cup. These assessments examine the physiological foundations — hormones, fitness, sleep, nutrition, energy — that power everything you bring to your relationship. Optional but powerful.',
+    gradient: 'linear-gradient(135deg, #f093fb 0%, #e91e63 100%)',
+    color: '#e91e63',
   },
 ];
 

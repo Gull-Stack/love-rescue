@@ -11,6 +11,7 @@ const router = express.Router();
 const VALID_TYPES = [
   'attachment', 'personality', 'love_language', 'human_needs',
   'gottman_checkup', 'emotional_intelligence', 'conflict_style', 'differentiation',
+  'hormonal_health', 'physical_vitality',
   // Legacy types
   'wellness_behavior', 'negative_patterns_closeness'
 ];
@@ -183,7 +184,7 @@ router.get('/results', authenticate, async (req, res, next) => {
     const completedTypes = Object.keys(latestByType);
     const pending = VALID_TYPES.filter(t => !completedTypes.includes(t));
     // Exclude legacy types from "required" count
-    const coreTypes = VALID_TYPES.filter(t => !['wellness_behavior', 'negative_patterns_closeness'].includes(t));
+    const coreTypes = VALID_TYPES.filter(t => !['wellness_behavior', 'negative_patterns_closeness', 'hormonal_health', 'physical_vitality'].includes(t));
     const coreCompleted = coreTypes.filter(t => completedTypes.includes(t));
 
     res.json({

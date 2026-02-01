@@ -444,6 +444,108 @@ const differentiationInterpretations = {
 };
 
 // ============================================================
+// HORMONAL HEALTH INTERPRETATIONS
+// ============================================================
+const hormonalHealthInterpretations = {
+  testosterone_symptoms: {
+    title: 'Testosterone-Related Symptoms',
+    description: 'These symptoms may suggest low or declining testosterone levels — which affects both men and women.',
+    low: 'Minimal testosterone-related symptoms. Your energy, motivation, and physical resilience appear strong in this area.',
+    moderate: 'Some testosterone-related symptoms present. You may be experiencing gradual changes in energy, motivation, body composition, or confidence that could have a hormonal component.',
+    high: 'Significant testosterone-related symptoms. Loss of drive, muscle mass, confidence, and emotional resilience can all point to testosterone changes. Consider getting your levels checked — a simple blood test can provide clarity.',
+    relationshipImpact: 'Testosterone affects desire, confidence, assertiveness, and physical vitality — all of which directly impact how you show up in your relationship. Low T can make you withdraw, feel less interested in intimacy, or lose the "edge" your partner fell in love with.',
+    actionSteps: ['Consider comprehensive bloodwork (total T, free T, SHBG)', 'Prioritize strength training — resistance exercise is the #1 natural testosterone booster', 'Optimize sleep — testosterone is primarily produced during deep sleep', 'Reduce chronic stress — cortisol directly suppresses testosterone production', 'Review medications that may affect hormone levels with your doctor']
+  },
+  estrogen_progesterone: {
+    title: 'Estrogen/Progesterone Symptoms',
+    description: 'These symptoms may relate to estrogen and progesterone fluctuations — affecting mood, body, and emotional regulation.',
+    low: 'Minimal estrogen/progesterone-related symptoms. Your hormonal rhythms appear relatively stable.',
+    moderate: 'Some symptoms suggesting estrogen/progesterone fluctuations. Cyclical mood shifts, physical changes, and emotional reactivity may have a hormonal component worth exploring.',
+    high: 'Significant estrogen/progesterone-related symptoms. Hot flashes, mood swings, and physical changes can be deeply disruptive. These are real physiological experiences, not "all in your head."',
+    relationshipImpact: 'Hormonal fluctuations directly affect emotional reactivity, patience, desire, and physical comfort. When your partner seems "different" at certain times, hormones may be a major factor. Understanding this reduces blame and increases compassion — for yourself and from your partner.',
+    actionSteps: ['Track symptoms alongside your cycle to identify patterns', 'Consider hormone panel testing (estradiol, progesterone, FSH, LH)', 'Discuss findings with a hormone-literate healthcare provider', 'Communicate with your partner about cyclical patterns — awareness reduces conflict', 'Explore lifestyle factors: sleep, stress management, nutrition, and exercise all influence hormonal balance']
+  },
+  cortisol_stress: {
+    title: 'Cortisol/Stress Symptoms',
+    description: 'These symptoms may indicate cortisol dysregulation — your stress response system running too hot for too long.',
+    low: 'Your stress response appears well-regulated. You seem to manage stress without it dominating your physiology.',
+    moderate: 'Some signs of cortisol dysregulation. The "wired but tired" pattern, afternoon crashes, and belly fat accumulation suggest your stress response may need attention.',
+    high: 'Significant cortisol-related symptoms. Chronic stress has likely shifted your body into survival mode — affecting sleep, weight, energy, cravings, and your ability to be emotionally present.',
+    relationshipImpact: 'Cortisol is the relationship killer hiding in plain sight. When your body is in chronic stress mode, you have LESS capacity for patience, empathy, intimacy, and emotional availability. You\'re literally running on survival brain — and relationships require thriving brain.',
+    actionSteps: ['Consider a 4-point cortisol saliva test (morning, noon, evening, night)', 'Implement a daily nervous system regulation practice (breathwork, meditation, cold exposure)', 'Audit your stress load — what can be eliminated, delegated, or reduced?', 'Protect your sleep — cortisol disruption and sleep disruption form a vicious cycle', 'Reduce stimulant intake — excessive caffeine keeps cortisol elevated']
+  },
+  thyroid_energy: {
+    title: 'Thyroid/Energy Symptoms',
+    description: 'These symptoms may suggest thyroid dysfunction — the "master regulator" of metabolism, energy, and mood.',
+    low: 'Minimal thyroid-related symptoms. Your metabolic energy appears healthy.',
+    moderate: 'Some thyroid-related symptoms present. Persistent fatigue, temperature sensitivity, weight resistance, and low mood can all indicate thyroid changes worth investigating.',
+    high: 'Significant thyroid-related symptoms. If you\'re doing "everything right" but still feel sluggish, cold, foggy, and heavy — your thyroid may need attention. This is one of the most commonly missed and undertreated hormonal issues.',
+    relationshipImpact: 'Thyroid dysfunction drains the energy you need to invest in your relationship. It\'s hard to be an engaged, present, passionate partner when your body feels like it\'s running on 50% power. Getting this checked could be transformative.',
+    actionSteps: ['Request comprehensive thyroid panel (TSH, Free T3, Free T4, TPO antibodies, reverse T3)', 'Don\'t accept "normal" TSH alone — optimal and "normal range" are not the same thing', 'Review diet for thyroid-supporting nutrients (selenium, zinc, iodine)', 'Address gut health — a significant portion of T4-to-T3 conversion happens in the gut', 'Consider working with a functional medicine practitioner if standard tests seem "normal" but symptoms persist']
+  },
+  libido_drive: {
+    title: 'Libido & Drive',
+    description: 'These symptoms relate to sexual desire, physical responsiveness, and intimate connection — the intersection of hormones and relationship.',
+    low: 'Your libido and drive appear healthy. You maintain desire and physical responsiveness.',
+    moderate: 'Some libido-related changes. Decreased desire, slower arousal, or feeling disconnected from your body may reflect hormonal shifts, stress, or relational factors.',
+    high: 'Significant libido and drive symptoms. Loss of desire is one of the most relationship-impacting hormonal symptoms — and one of the least discussed. This is NOT a character flaw. It often has a physiological root.',
+    relationshipImpact: 'Desire is the spark of romantic connection. When it fades, both partners feel it — one feels rejected, the other feels pressured. Understanding that libido has PHYSIOLOGICAL drivers (not just emotional ones) changes the entire conversation from blame to problem-solving.',
+    actionSteps: ['Get hormone levels tested — low testosterone, estrogen imbalance, and high cortisol all suppress desire', 'Address the "desire killers": poor sleep, chronic stress, medication side effects, and body image', 'Have an honest conversation with your partner about what you\'re experiencing — vulnerability builds connection', 'Explore whether responsive desire (vs. spontaneous) is your natural pattern — this is normal and healthy', 'Consider whether relationship dynamics are also contributing — desire is both physical AND emotional']
+  }
+};
+
+// ============================================================
+// PHYSICAL VITALITY INTERPRETATIONS
+// ============================================================
+const physicalVitalityInterpretations = {
+  fitness_activity: {
+    title: 'Fitness & Activity',
+    description: 'Your engagement with structured exercise and daily physical movement.',
+    high: 'You maintain a strong fitness practice. Regular exercise is one of the most powerful things you can do for your relationship — it boosts mood, confidence, energy, and desire.',
+    moderate: 'Your fitness is developing but inconsistent. Building a sustainable exercise habit will create a positive cascade across every other area of vitality.',
+    low: 'Physical fitness is a significant growth area. Starting a movement practice — even 20 minutes, 3 times a week — can transform your energy, mood, and how you show up in your relationship.',
+    relationshipImpact: 'Physical fitness directly affects attraction, energy for connection, stress resilience, and sexual vitality. Partners who exercise together report higher relationship satisfaction.',
+    actionSteps: ['Start with consistency over intensity — 3 sessions per week, any movement you enjoy', 'Include resistance training — it\'s the #1 anti-aging, hormone-optimizing exercise', 'Find an activity you can do with your partner — shared physical activity builds connection', 'Track your progress — visible results fuel motivation']
+  },
+  weight_body_composition: {
+    title: 'Weight & Body Confidence',
+    description: 'Your satisfaction with your body and physical confidence, especially in intimate contexts.',
+    high: 'You feel confident and comfortable in your body. This confidence radiates into your relationship and intimate life.',
+    moderate: 'Mixed feelings about your body. Some dissatisfaction is normal, but it may be affecting your willingness to be vulnerable and present during intimacy.',
+    low: 'Body image is significantly impacting your confidence and likely your relationship. Remember: your partner chose YOU. And you have the power to change what you want to change.',
+    relationshipImpact: 'How you feel about your body directly affects how present and confident you are during intimacy. Body shame causes withdrawal, avoidance, and disconnection. Taking action on your physical health is an act of love — for yourself AND your partner.',
+    actionSteps: ['Focus on body composition (muscle + fat ratio), not just the scale', 'Set process goals (exercise 3x/week) rather than just outcome goals (lose X pounds)', 'Practice body gratitude — your body does incredible things for you daily', 'Have an honest conversation with your partner about body image — vulnerability builds connection']
+  },
+  nutrition_diet: {
+    title: 'Nutrition & Diet',
+    description: 'The quality of fuel you give your body — and how it affects everything else.',
+    high: 'Strong nutritional habits. You understand that what you eat directly powers your energy, mood, hormones, and vitality.',
+    moderate: 'Room for improvement in nutrition. Inconsistent eating patterns or reliance on processed food may be quietly undermining your energy and mood.',
+    low: 'Nutrition is a critical growth area. Poor nutrition is the silent saboteur of energy, hormones, mood, and desire. Small changes here create outsized results everywhere else.',
+    relationshipImpact: 'You can\'t pour from an empty cup — and nutrition fills the cup. Blood sugar crashes cause irritability. Nutrient deficiencies cause fatigue and low mood. Eating well isn\'t vanity — it\'s the foundation of having energy for your partner.',
+    actionSteps: ['Prioritize protein at every meal — it stabilizes energy and supports hormone production', 'Hydrate intentionally — aim for half your body weight in ounces of water daily', 'Reduce processed food gradually — swap one thing per week', 'Cook together with your partner — shared meal prep is quality time AND better nutrition']
+  },
+  sleep_recovery: {
+    title: 'Sleep & Recovery',
+    description: 'The quality and consistency of your sleep — the foundation of all other vitality.',
+    high: 'Excellent sleep habits. You\'re giving your body the recovery it needs, which pays dividends in every area of life and love.',
+    moderate: 'Sleep is inconsistent. You may be functional but not optimal. Even small improvements in sleep quality can dramatically improve mood, patience, and desire.',
+    low: 'Sleep is a critical issue. Poor sleep affects EVERYTHING — hormones, mood, patience, weight, desire, and your ability to be emotionally present. This may be your highest-leverage improvement area.',
+    relationshipImpact: 'Sleep-deprived partners are more reactive, less empathetic, more critical, and less interested in intimacy. Gottman\'s research shows that sleep quality predicts relationship quality. Fixing your sleep might be the single best thing you can do for your relationship.',
+    actionSteps: ['Set a consistent bedtime and wake time — even on weekends', 'Create a screen-free wind-down routine 60 minutes before bed', 'Optimize your sleep environment: cool (65-68°F), dark, and quiet', 'Consider a sleep study if you snore heavily or never feel rested despite adequate hours', 'Share a bedtime ritual with your partner — this builds connection AND better sleep']
+  },
+  energy_stamina: {
+    title: 'Energy & Stamina',
+    description: 'Your sustained physical and mental energy throughout the day — the fuel for relationship investment.',
+    high: 'Strong energy levels. You have the physical and mental reserves to be fully present in your relationship after the demands of daily life.',
+    moderate: 'Energy is adequate but not abundant. You may be "surviving" your days rather than thriving — leaving little reserves for your partner by evening.',
+    low: 'Low energy is significantly impacting your life and relationship. When you\'re running on empty, your partner gets the worst version of you. Addressing the root cause (sleep, nutrition, hormones, stress) is essential.',
+    relationshipImpact: 'Your partner deserves more than your leftovers. If you\'re giving your best energy to work and responsibilities and coming home depleted, your relationship slowly starves. Energy management is relationship management.',
+    actionSteps: ['Identify your energy drains — what can be eliminated or reduced?', 'Structure your day to protect energy for your partner (not just your work)', 'Address root causes: sleep, nutrition, exercise, and stress all feed energy', 'Consider a comprehensive health checkup if fatigue persists despite lifestyle changes', 'Build in micro-recovery throughout the day — short walks, breathwork, brief rest']
+  }
+};
+
+// ============================================================
 // PERSONALITY TYPE INTERPRETATIONS (brief)
 // ============================================================
 const personalityInterpretations = {
@@ -608,6 +710,117 @@ function getInterpretation(type, score) {
       };
     }
 
+    case 'hormonal_health': {
+      const hhResults = {};
+      for (const [domain, info] of Object.entries(hormonalHealthInterpretations)) {
+        const domainData = score.subscores ? score.subscores[domain] : null;
+        const domainScore = domainData ? domainData.percentage : 50;
+        let level;
+        if (domainScore >= 60) level = 'high';
+        else if (domainScore >= 40) level = 'moderate';
+        else level = 'low';
+
+        hhResults[domain] = {
+          ...info,
+          score: domainScore,
+          level,
+          interpretation: info[level]
+        };
+      }
+
+      // Identify top areas of concern
+      const hhSorted = Object.entries(hhResults).sort((a, b) => b[1].score - a[1].score);
+      const topConcerns = hhSorted.filter(([_, data]) => data.score >= 50).slice(0, 3);
+
+      return {
+        title: 'Hormonal Wellness Assessment',
+        description: score.level === 'high_concern'
+          ? 'Your responses suggest significant hormonal symptoms across multiple areas. This is valuable self-awareness — and a strong signal to get comprehensive bloodwork done.'
+          : score.level === 'moderate_concern'
+            ? 'Your responses suggest moderate hormonal symptoms. Some areas are more affected than others. Targeted investigation could uncover easy wins.'
+            : score.level === 'mild_symptoms'
+              ? 'Your responses suggest mild hormonal symptoms. Your body is functioning reasonably well, with some areas worth monitoring.'
+              : 'Your responses suggest minimal hormonal symptoms. Your hormonal health appears to be supporting you well.',
+        disclaimer: '⚕️ This is a wellness self-screener, NOT medical advice. It identifies patterns worth exploring with a qualified healthcare provider. Always get proper bloodwork and professional evaluation before making health decisions.',
+        overall: score.overallSymptomLoad || score.overall,
+        level: score.level,
+        domains: hhResults,
+        topConcerns: topConcerns.map(([domain, data]) => ({
+          domain,
+          title: data.title,
+          score: data.score,
+          interpretation: data.interpretation,
+          relationshipImpact: data.relationshipImpact,
+          actionSteps: data.actionSteps
+        })),
+        subscores: score.subscores,
+        strengths: (score.strengths || []).map(s => hormonalHealthInterpretations[s]?.title || s),
+        growthEdges: (score.areasOfConcern || []).map(a => hormonalHealthInterpretations[a]?.title || a),
+        actionSteps: [
+          'Schedule comprehensive bloodwork — hormone panel, thyroid panel, metabolic panel',
+          'Track your symptoms for 30 days to identify patterns',
+          'Optimize the foundations: sleep, stress, exercise, and nutrition',
+          'Discuss results with a hormone-literate healthcare provider',
+          'Communicate with your partner about what you\'re learning — this is a team effort'
+        ],
+        creatorReframe: 'Your body is not betraying you — it\'s communicating. Hormonal symptoms are signals, not sentences. The same way you invest in understanding your emotional patterns, investing in understanding your physiology is an act of love for yourself and your relationship. You can\'t be the partner you want to be if your body is working against you. Get the data. Take ownership. This is what creators do.',
+        connectedFrameworks: ['Andrew Huberman (Hormones & Neuroscience)', 'Dr. Peter Attia (Longevity & Metabolic Health)', 'Dr. Sara Gottfried (Hormone Cure)']
+      };
+    }
+
+    case 'physical_vitality': {
+      const pvResults = {};
+      for (const [domain, info] of Object.entries(physicalVitalityInterpretations)) {
+        const domainData = score.subscores ? score.subscores[domain] : null;
+        const domainScore = domainData ? domainData.percentage : 50;
+        let level;
+        if (domainScore >= 65) level = 'high';
+        else if (domainScore >= 40) level = 'moderate';
+        else level = 'low';
+
+        pvResults[domain] = {
+          ...info,
+          score: domainScore,
+          level,
+          interpretation: info[level]
+        };
+      }
+
+      // Best and worst areas
+      const pvSorted = Object.entries(pvResults).sort((a, b) => b[1].score - a[1].score);
+      const pvStrengths = pvSorted.filter(([_, data]) => data.score >= 65);
+      const pvGrowth = pvSorted.filter(([_, data]) => data.score < 50);
+
+      return {
+        title: 'Physical Vitality Assessment',
+        description: score.level === 'thriving'
+          ? 'Your physical vitality is exceptional. You\'re investing in your body, and it\'s paying dividends in your energy, confidence, and capacity for connection.'
+          : score.level === 'strong'
+            ? 'Your physical vitality is strong with room to optimize. You have a solid foundation — now fine-tune the areas that could elevate your energy and presence even further.'
+            : score.level === 'developing'
+              ? 'Your physical vitality is developing. You have strengths to build on and clear areas where investment will yield significant returns for your energy and relationship.'
+              : score.level === 'struggling'
+                ? 'Your physical vitality needs attention. Low vitality affects everything — mood, patience, desire, and the energy you bring home to your partner. The good news: small changes create big results.'
+                : 'Your physical vitality is critically low. Your body is asking for help. Addressing this isn\'t optional — it\'s the foundation everything else is built on.',
+        overall: score.overall,
+        level: score.level,
+        domains: pvResults,
+        subscores: score.subscores,
+        strengths: pvStrengths.map(([domain, data]) => `${data.title}: ${data.interpretation}`),
+        growthEdges: pvGrowth.map(([domain, data]) => `${data.title}: ${data.interpretation}`),
+        actionSteps: [
+          'Pick your lowest-scoring area and commit to ONE small change this week',
+          'Build a daily "vitality stack": move, eat well, sleep well, recover',
+          'Make your physical health a shared goal with your partner — accountability accelerates results',
+          'Schedule a comprehensive health checkup if you haven\'t had one recently',
+          'Remember: your partner deserves your best energy, not your leftovers'
+        ],
+        creatorReframe: 'Your body is the vehicle for your love. Every hug, every conversation, every intimate moment, every adventure — it all happens through your physical body. Neglecting it isn\'t "no big deal" — it\'s slowly withdrawing from the relationship\'s energy bank. Taking radical ownership of your physical health is one of the most loving things you can do. Not because your partner demands it — because you respect yourself and your relationship enough to show up at your best.',
+        connectedFrameworks: ['Andrew Huberman (Neuroscience of Performance)', 'Peter Attia (Longevity)', 'Kelly Starrett (Movement & Mobility)', 'Matthew Walker (Sleep Science)'],
+        dailyPractice: 'Each morning ask: "What am I doing today for my body that will make me a better partner tonight?" Then do it.'
+      };
+    }
+
     // Legacy types
     case 'wellness_behavior': {
       let level;
@@ -648,5 +861,7 @@ module.exports = {
   eqInterpretations,
   conflictStyleInterpretations,
   differentiationInterpretations,
-  personalityInterpretations
+  personalityInterpretations,
+  hormonalHealthInterpretations,
+  physicalVitalityInterpretations
 };
