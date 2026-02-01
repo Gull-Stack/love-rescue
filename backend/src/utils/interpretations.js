@@ -572,7 +572,7 @@ const personalityInterpretations = {
 // ============================================================
 // MASTER INTERPRETATION FUNCTION
 // ============================================================
-function getInterpretation(type, score) {
+function getInterpretation(type, score, options = {}) {
   switch (type) {
     case 'attachment': {
       const style = score.style || 'secure';

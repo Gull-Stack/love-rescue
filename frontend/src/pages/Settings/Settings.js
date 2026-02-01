@@ -25,7 +25,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import PaymentIcon from '@mui/icons-material/Payment';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { useAuth } from '../../contexts/AuthContext';
-import { calendarApi, paymentsApi, therapistApi } from '../../services/api';
+import api, { calendarApi, paymentsApi, therapistApi } from '../../services/api';
 
 const Settings = () => {
   const [searchParams] = useSearchParams();
@@ -41,6 +41,7 @@ const Settings = () => {
   const [therapistConsent, setTherapistConsent] = useState(false);
   const [cancelDialog, setCancelDialog] = useState(false);
   const [legalDialog, setLegalDialog] = useState(null); // 'privacy' or 'terms'
+  const [gender, setGender] = useState(user?.gender || '');
 
   useEffect(() => {
     fetchSettings();
@@ -79,6 +80,25 @@ const Settings = () => {
       setTherapistConsent(consentRes.data.consent);
     } catch (err) {
       console.error('Failed to fetch settings');
+    }
+  };
+
+  useEffect(() => {
+    if (user?.gender) setGender(user.gender);
+  }, [user?.gender]);
+
+  const handleGenderUpdate = async (newGender) => {
+    setLoading({ ...loading, gender: true });
+    setError('');
+    try {
+      await api.patch('/auth/update-profile', { gender: newGender });
+      setGender(newGender);
+      refreshUser();
+      setSuccess('Gender updated successfully');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update gender');
+    } finally {
+      setLoading({ ...loading, gender: false });
     }
   };
 
@@ -216,6 +236,39 @@ const Settings = () => {
             </Typography>
             <Typography>
               {user?.firstName} {user?.lastName}
+            </Typography>
+          </Box>
+          <Box mb={2}>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Gender
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {[
+                { value: 'male', label: '👨 Male' },
+                { value: 'female', label: '👩 Female' },
+                { value: 'prefer_not_to_say', label: 'Prefer not to say' },
+              ].map((option) => (
+                <Button
+                  key={option.value}
+                  size="small"
+                  variant={gender === option.value ? 'contained' : 'outlined'}
+                  onClick={() => handleGenderUpdate(option.value)}
+                  disabled={loading.gender}
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    ...(gender !== option.value ? {
+                      borderColor: 'divider',
+                      color: 'text.secondary',
+                    } : {})
+                  }}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+              Used to personalize your hormonal wellness assessment
             </Typography>
           </Box>
           <Box>

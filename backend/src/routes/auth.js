@@ -27,7 +27,7 @@ const origin = process.env.WEBAUTHN_ORIGIN || 'http://localhost:3000';
  */
 router.post('/signup', async (req, res, next) => {
   try {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, gender } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
@@ -60,6 +60,7 @@ router.post('/signup', async (req, res, next) => {
         passwordHash,
         firstName,
         lastName,
+        gender: gender || null,
         subscriptionStatus: 'trial',
         trialEndsAt
       },
@@ -68,6 +69,7 @@ router.post('/signup', async (req, res, next) => {
         email: true,
         firstName: true,
         lastName: true,
+        gender: true,
         subscriptionStatus: true
       }
     });
@@ -152,6 +154,7 @@ router.post('/login', async (req, res, next) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        gender: user.gender,
         subscriptionStatus: user.subscriptionStatus
       },
       token
@@ -254,6 +257,7 @@ router.post('/google', async (req, res, next) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        gender: user.gender,
         subscriptionStatus: user.subscriptionStatus
       },
       token,
@@ -465,6 +469,7 @@ router.post('/webauthn/login/verify', async (req, res, next) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        gender: user.gender,
         subscriptionStatus: user.subscriptionStatus
       },
       token
@@ -587,6 +592,7 @@ router.get('/me', authenticate, async (req, res, next) => {
         email: true,
         firstName: true,
         lastName: true,
+        gender: true,
         subscriptionStatus: true,
         authProvider: true,
         trialEndsAt: true,
@@ -617,6 +623,50 @@ router.get('/me', authenticate, async (req, res, next) => {
         partner: relationship.user1Id === req.user.id ? relationship.user2 : relationship.user1
       } : null
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PATCH /api/auth/update-profile
+ * Update user profile fields (gender, name, etc.)
+ */
+router.patch('/update-profile', authenticate, async (req, res, next) => {
+  try {
+    const { gender, firstName, lastName } = req.body;
+
+    const updateData = {};
+    if (gender !== undefined) {
+      const validGenders = ['male', 'female', 'other', 'prefer_not_to_say', ''];
+      if (!validGenders.includes(gender)) {
+        return res.status(400).json({ error: 'Invalid gender value' });
+      }
+      updateData.gender = gender || null;
+    }
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    const user = await req.prisma.user.update({
+      where: { id: req.user.id },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        gender: true,
+        subscriptionStatus: true
+      }
+    });
+
+    logger.info('Profile updated', { userId: req.user.id, fields: Object.keys(updateData) });
+
+    res.json({ message: 'Profile updated', user });
   } catch (error) {
     next(error);
   }

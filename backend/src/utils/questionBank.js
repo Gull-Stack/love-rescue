@@ -427,45 +427,54 @@ const differentiationQuestions = [
 //    NOT medical advice — a self-awareness mirror for your body.
 // ═══════════════════════════════════════════════════════════════
 const hormonalHealthQuestions = [
-  // --- TESTOSTERONE SYMPTOMS (6) ---
-  { id: 'hh_1',  text: 'I notice that my muscle mass and physical strength have decreased over time, even without changes to my activity level.', category: 'testosterone_symptoms' },
-  { id: 'hh_2',  text: 'I tend to feel less motivated and driven than I used to — a general loss of ambition or competitive fire.', category: 'testosterone_symptoms' },
-  { id: 'hh_3',  text: 'I notice that I carry more body fat than I\'d like, especially around my midsection and chest.', category: 'testosterone_symptoms' },
-  { id: 'hh_4',  text: 'I tend to feel mentally foggy or have difficulty concentrating, especially in the afternoon.', category: 'testosterone_symptoms' },
-  { id: 'hh_5',  text: 'I notice that my confidence and assertiveness have declined compared to earlier in my life.', category: 'testosterone_symptoms' },
-  { id: 'hh_6',  text: 'I tend to feel emotionally flat or less resilient — things that didn\'t bother me before now get under my skin.', category: 'testosterone_symptoms' },
+  // --- TESTOSTERONE SYMPTOMS — primarily male-focused, some universal ---
+  { id: 'hh_1',  text: 'I notice that my muscle mass and physical strength have decreased over time, even without changes to my activity level.', category: 'testosterone_symptoms', gender: 'all' },
+  { id: 'hh_2',  text: 'I tend to feel less motivated and driven than I used to — a general loss of ambition or competitive fire.', category: 'testosterone_symptoms', gender: 'all' },
+  { id: 'hh_3',  text: 'I notice that I carry more body fat than I\'d like, especially around my midsection and chest.', category: 'testosterone_symptoms', gender: 'male' },
+  { id: 'hh_4',  text: 'I tend to feel mentally foggy or have difficulty concentrating, especially in the afternoon.', category: 'testosterone_symptoms', gender: 'all' },
+  { id: 'hh_5',  text: 'I notice that my confidence and assertiveness have declined compared to earlier in my life.', category: 'testosterone_symptoms', gender: 'all' },
+  { id: 'hh_6',  text: 'I tend to feel emotionally flat or less resilient — things that didn\'t bother me before now get under my skin.', category: 'testosterone_symptoms', gender: 'all' },
+  // Male-specific testosterone questions
+  { id: 'hh_m1', text: 'I notice difficulty achieving or maintaining erections, or a significant decline in sexual performance.', category: 'testosterone_symptoms', gender: 'male' },
+  { id: 'hh_m2', text: 'I tend to feel like I\'ve lost my edge — less competitive, less assertive, less willing to take risks or lead.', category: 'testosterone_symptoms', gender: 'male' },
+  { id: 'hh_m3', text: 'I notice increased body fat around my chest area that seems out of proportion to my overall fitness.', category: 'testosterone_symptoms', gender: 'male' },
 
-  // --- ESTROGEN / PROGESTERONE (6) ---
-  { id: 'hh_7',  text: 'I notice significant mood shifts that seem to follow a cyclical pattern throughout the month.', category: 'estrogen_progesterone' },
-  { id: 'hh_8',  text: 'I tend to experience bloating, water retention, or breast tenderness that fluctuates over time.', category: 'estrogen_progesterone' },
-  { id: 'hh_9',  text: 'I notice that I feel more anxious, irritable, or emotionally reactive during certain times of the month or certain life phases.', category: 'estrogen_progesterone' },
-  { id: 'hh_10', text: 'I tend to experience hot flashes, night sweats, or sudden temperature changes that disrupt my comfort or sleep.', category: 'estrogen_progesterone' },
-  { id: 'hh_11', text: 'I notice that my skin, hair, or nails have changed in quality — dryness, thinning, or breakouts that seem hormonally driven.', category: 'estrogen_progesterone' },
-  { id: 'hh_12', text: 'I tend to feel like my emotional reactions are disproportionate to the situation, and I can\'t always explain why.', category: 'estrogen_progesterone' },
+  // --- ESTROGEN / PROGESTERONE — primarily female-focused ---
+  { id: 'hh_7',  text: 'I notice significant mood shifts that seem to follow a cyclical pattern throughout the month.', category: 'estrogen_progesterone', gender: 'female' },
+  { id: 'hh_8',  text: 'I tend to experience bloating, water retention, or breast tenderness that fluctuates over time.', category: 'estrogen_progesterone', gender: 'female' },
+  { id: 'hh_9',  text: 'I notice that I feel more anxious, irritable, or emotionally reactive during certain times of the month or certain life phases.', category: 'estrogen_progesterone', gender: 'female' },
+  { id: 'hh_10', text: 'I tend to experience hot flashes, night sweats, or sudden temperature changes that disrupt my comfort or sleep.', category: 'estrogen_progesterone', gender: 'female' },
+  { id: 'hh_11', text: 'I notice that my skin, hair, or nails have changed in quality — dryness, thinning, or breakouts that seem hormonally driven.', category: 'estrogen_progesterone', gender: 'all' },
+  { id: 'hh_12', text: 'I tend to feel like my emotional reactions are disproportionate to the situation, and I can\'t always explain why.', category: 'estrogen_progesterone', gender: 'all' },
+  // Female-specific estrogen/progesterone questions
+  { id: 'hh_f1', text: 'I notice changes in my menstrual cycle — irregular periods, heavier flow, or missed periods that weren\'t typical for me before.', category: 'estrogen_progesterone', gender: 'female' },
+  { id: 'hh_f2', text: 'I feel like I\'m experiencing perimenopause or menopause symptoms — brain fog, dryness, weight changes, or mood swings that feel hormonally driven.', category: 'estrogen_progesterone', gender: 'female' },
+  { id: 'hh_f3', text: 'I tend to feel depressed, anxious, or emotionally overwhelmed from comparing myself to others on social media or in my social circles.', category: 'estrogen_progesterone', gender: 'female' },
+  { id: 'hh_f4', text: 'I notice a significant loss of desire or libido that doesn\'t match how I feel emotionally about my partner.', category: 'estrogen_progesterone', gender: 'female' },
 
-  // --- CORTISOL / STRESS (6) ---
-  { id: 'hh_13', text: 'I notice that I feel "wired but tired" — exhausted yet unable to fully relax or fall asleep.', category: 'cortisol_stress' },
-  { id: 'hh_14', text: 'I tend to carry tension in my body — tight shoulders, clenched jaw, or a knotted stomach — even when nothing specific is wrong.', category: 'cortisol_stress' },
-  { id: 'hh_15', text: 'I notice that I crave sugar, caffeine, or comfort food, especially in the afternoon or evening.', category: 'cortisol_stress' },
-  { id: 'hh_16', text: 'I tend to feel overwhelmed by tasks that I used to handle easily — my stress threshold feels lower.', category: 'cortisol_stress' },
-  { id: 'hh_17', text: 'I notice that I gain weight around my belly even when my eating and exercise habits haven\'t changed much.', category: 'cortisol_stress' },
-  { id: 'hh_18', text: 'I tend to feel a crash in energy between 2-4pm that makes me want to nap or reach for stimulants.', category: 'cortisol_stress' },
+  // --- CORTISOL / STRESS — universal ---
+  { id: 'hh_13', text: 'I notice that I feel "wired but tired" — exhausted yet unable to fully relax or fall asleep.', category: 'cortisol_stress', gender: 'all' },
+  { id: 'hh_14', text: 'I tend to carry tension in my body — tight shoulders, clenched jaw, or a knotted stomach — even when nothing specific is wrong.', category: 'cortisol_stress', gender: 'all' },
+  { id: 'hh_15', text: 'I notice that I crave sugar, caffeine, or comfort food, especially in the afternoon or evening.', category: 'cortisol_stress', gender: 'all' },
+  { id: 'hh_16', text: 'I tend to feel overwhelmed by tasks that I used to handle easily — my stress threshold feels lower.', category: 'cortisol_stress', gender: 'all' },
+  { id: 'hh_17', text: 'I notice that I gain weight around my belly even when my eating and exercise habits haven\'t changed much.', category: 'cortisol_stress', gender: 'all' },
+  { id: 'hh_18', text: 'I tend to feel a crash in energy between 2-4pm that makes me want to nap or reach for stimulants.', category: 'cortisol_stress', gender: 'all' },
 
-  // --- THYROID / ENERGY (6) ---
-  { id: 'hh_19', text: 'I notice that I feel cold more often than others around me, especially in my hands and feet.', category: 'thyroid_energy' },
-  { id: 'hh_20', text: 'I tend to feel sluggish and fatigued in the morning, regardless of how much sleep I get.', category: 'thyroid_energy' },
-  { id: 'hh_21', text: 'I notice that my weight fluctuates or is difficult to manage despite consistent eating and exercise.', category: 'thyroid_energy' },
-  { id: 'hh_22', text: 'I tend to experience constipation, dry skin, or hair thinning that doesn\'t respond well to typical remedies.', category: 'thyroid_energy' },
-  { id: 'hh_23', text: 'I notice that my mood feels heavy or low — a persistent low-grade sadness or apathy that\'s hard to shake.', category: 'thyroid_energy' },
-  { id: 'hh_24', text: 'I tend to feel mentally slow — processing information takes more effort than it used to.', category: 'thyroid_energy' },
+  // --- THYROID / ENERGY — universal ---
+  { id: 'hh_19', text: 'I notice that I feel cold more often than others around me, especially in my hands and feet.', category: 'thyroid_energy', gender: 'all' },
+  { id: 'hh_20', text: 'I tend to feel sluggish and fatigued in the morning, regardless of how much sleep I get.', category: 'thyroid_energy', gender: 'all' },
+  { id: 'hh_21', text: 'I notice that my weight fluctuates or is difficult to manage despite consistent eating and exercise.', category: 'thyroid_energy', gender: 'all' },
+  { id: 'hh_22', text: 'I tend to experience constipation, dry skin, or hair thinning that doesn\'t respond well to typical remedies.', category: 'thyroid_energy', gender: 'all' },
+  { id: 'hh_23', text: 'I notice that my mood feels heavy or low — a persistent low-grade sadness or apathy that\'s hard to shake.', category: 'thyroid_energy', gender: 'all' },
+  { id: 'hh_24', text: 'I tend to feel mentally slow — processing information takes more effort than it used to.', category: 'thyroid_energy', gender: 'all' },
 
-  // --- LIBIDO / DRIVE (6) ---
-  { id: 'hh_25', text: 'I notice that my desire for physical intimacy has significantly decreased compared to earlier in my life or relationship.', category: 'libido_drive' },
-  { id: 'hh_26', text: 'I tend to feel disconnected from my body — less aware of or responsive to physical sensations and pleasure.', category: 'libido_drive' },
-  { id: 'hh_27', text: 'I notice that I rarely initiate physical intimacy, even when I know it would benefit my relationship.', category: 'libido_drive' },
-  { id: 'hh_28', text: 'I tend to feel like physical intimacy is more of an obligation than something I genuinely look forward to.', category: 'libido_drive' },
-  { id: 'hh_29', text: 'I notice that my physical arousal response is weaker or slower than it used to be.', category: 'libido_drive' },
-  { id: 'hh_30', text: 'I tend to feel that stress, fatigue, or body image concerns significantly dampen my desire for intimacy.', category: 'libido_drive' },
+  // --- LIBIDO / DRIVE — universal ---
+  { id: 'hh_25', text: 'I notice that my desire for physical intimacy has significantly decreased compared to earlier in my life or relationship.', category: 'libido_drive', gender: 'all' },
+  { id: 'hh_26', text: 'I tend to feel disconnected from my body — less aware of or responsive to physical sensations and pleasure.', category: 'libido_drive', gender: 'all' },
+  { id: 'hh_27', text: 'I notice that I rarely initiate physical intimacy, even when I know it would benefit my relationship.', category: 'libido_drive', gender: 'all' },
+  { id: 'hh_28', text: 'I tend to feel like physical intimacy is more of an obligation than something I genuinely look forward to.', category: 'libido_drive', gender: 'all' },
+  { id: 'hh_29', text: 'I notice that my physical arousal response is weaker or slower than it used to be.', category: 'libido_drive', gender: 'all' },
+  { id: 'hh_30', text: 'I tend to feel that stress, fatigue, or body image concerns significantly dampen my desire for intimacy.', category: 'libido_drive', gender: 'all' },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -582,16 +591,33 @@ const questionBank = {
 /**
  * Get questions for a given assessment type
  * @param {string} type - Assessment type key
+ * @param {string} [userGender] - Optional gender to filter gender-specific questions ('male', 'female')
  * @returns {Object} - { questions, scale, description, estimatedMinutes }
  */
-function getQuestions(type) {
+function getQuestions(type, userGender) {
   const assessment = questionBank[type];
   if (!assessment) {
     throw new Error(`Unknown assessment type: "${type}". Valid types: ${Object.keys(questionBank).join(', ')}`);
   }
+
+  let questions = assessment.questions;
+
+  // Filter hormonal_health questions by gender if provided
+  if (type === 'hormonal_health' && userGender) {
+    const normalizedGender = userGender.toLowerCase();
+    if (normalizedGender === 'male' || normalizedGender === 'female') {
+      questions = questions.filter(q => {
+        if (!q.gender || q.gender === 'all') return true;
+        return q.gender === normalizedGender;
+      });
+    }
+    // If gender is 'other', 'prefer_not_to_say', or unset — show all questions
+  }
+
   return {
     type,
     ...assessment,
+    questions,
   };
 }
 

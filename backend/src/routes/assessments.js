@@ -63,7 +63,17 @@ router.get('/questions/:type', authenticate, async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid assessment type' });
     }
 
-    const result = getQuestions(type);
+    // For hormonal_health, pass user's gender to filter gender-specific questions
+    let userGender = null;
+    if (type === 'hormonal_health') {
+      const user = await req.prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { gender: true }
+      });
+      userGender = user?.gender || null;
+    }
+
+    const result = getQuestions(type, userGender);
 
     if (!result || !result.questions) {
       return res.status(400).json({ error: 'Questions not available for this type' });
@@ -136,8 +146,16 @@ router.post('/submit', authenticate, requireSubscription, async (req, res, next)
       });
     }
 
-    // Get interpretation
-    const interpretation = getInterpretation(type, score);
+    // Get interpretation (pass gender for hormonal_health)
+    let interpretationOptions = {};
+    if (type === 'hormonal_health') {
+      const userRecord = await req.prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { gender: true }
+      });
+      if (userRecord?.gender) interpretationOptions.gender = userRecord.gender;
+    }
+    const interpretation = getInterpretation(type, score, interpretationOptions);
 
     logger.info('Assessment submitted', { userId: req.user.id, type });
 
@@ -226,8 +244,16 @@ router.get('/results/:type', authenticate, async (req, res, next) => {
       return res.status(404).json({ error: 'Assessment not found' });
     }
 
-    // Get rich interpretation
-    const interpretation = getInterpretation(type, assessment.score);
+    // Get rich interpretation (pass gender for hormonal_health)
+    let interpOptions = {};
+    if (type === 'hormonal_health') {
+      const userRecord = await req.prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { gender: true }
+      });
+      if (userRecord?.gender) interpOptions.gender = userRecord.gender;
+    }
+    const interpretation = getInterpretation(type, assessment.score, interpOptions);
 
     res.json({
       assessment: {
@@ -263,7 +289,16 @@ router.get('/results/:type/detailed', authenticate, async (req, res, next) => {
       return res.status(404).json({ error: 'Assessment not found' });
     }
 
-    const interpretation = getInterpretation(type, assessment.score);
+    // Pass gender for hormonal_health detailed results
+    let detailedOptions = {};
+    if (type === 'hormonal_health') {
+      const userRecord = await req.prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { gender: true }
+      });
+      if (userRecord?.gender) detailedOptions.gender = userRecord.gender;
+    }
+    const interpretation = getInterpretation(type, assessment.score, detailedOptions);
 
     // Get previous attempts for comparison
     const history = await req.prisma.assessment.findMany({

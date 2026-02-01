@@ -353,21 +353,21 @@ const week7Videos = [
 
 // Weekly themes for placeholder content (weeks 8-14)
 const weeklyThemes = [
-  null, // week 0 placeholder
-  'Your Communication Toolkit', // week 1 — Chris Voss core skills
-  'Practice the Toolkit', // week 2 — Voss exercises + Gottman measurement
+  null,
+  'Your Communication Toolkit',
+  'Practice the Toolkit',
+  'Know Your Patterns',
   'Emotional Intelligence',
-  'Conflict Resolution',
-  'Trust Building',
-  'Intimacy and Vulnerability',
-  'Shared Values and Goals',
-  'Family Dynamics',
-  'Stress Management Together',
-  'Rebuilding After Ruptures',
-  'Deepening Appreciation',
-  'Future Planning Together',
-  'Growth Mindset in Love',
-  'Sustaining Your Progress',
+  'The Four Horsemen & Their Antidotes',
+  'Desire & Differentiation',
+  'Human Needs Psychology',
+  'Advanced Negotiation',
+  'Love Languages in Action',
+  'Rebuilding Trust',
+  'Communication Mastery',
+  'Creating Shared Meaning',
+  'Sustaining Passion',
+  'Your New Operating System',
 ];
 
 const dayFocus = ['Awareness', 'Practice', 'Deepening', 'Application', 'Challenge', 'Connection', 'Reflection'];

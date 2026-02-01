@@ -24,6 +24,7 @@ const Signup = () => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    gender: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -55,6 +56,7 @@ const Signup = () => {
       await signup({
         firstName: formData.firstName,
         lastName: formData.lastName,
+        gender: formData.gender || undefined,
         email: formData.email,
         password: formData.password,
       });
@@ -117,6 +119,63 @@ const Signup = () => {
                 />
               </Grid>
             </Grid>
+
+            {/* Gender Selection */}
+            <Box sx={{ mt: 2, mb: 1 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1, textAlign: 'center' }}>
+                I am...
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                <Button
+                  variant={formData.gender === 'male' ? 'contained' : 'outlined'}
+                  onClick={() => { setFormData({ ...formData, gender: 'male' }); setError(''); }}
+                  sx={{
+                    flex: 1,
+                    py: 1.5,
+                    fontSize: '1rem',
+                    borderRadius: 2,
+                    ...(formData.gender === 'male' ? {} : {
+                      borderColor: 'divider',
+                      color: 'text.secondary',
+                      '&:hover': { borderColor: 'primary.main', color: 'primary.main' }
+                    })
+                  }}
+                >
+                  👨 Male
+                </Button>
+                <Button
+                  variant={formData.gender === 'female' ? 'contained' : 'outlined'}
+                  onClick={() => { setFormData({ ...formData, gender: 'female' }); setError(''); }}
+                  sx={{
+                    flex: 1,
+                    py: 1.5,
+                    fontSize: '1rem',
+                    borderRadius: 2,
+                    ...(formData.gender === 'female' ? {} : {
+                      borderColor: 'divider',
+                      color: 'text.secondary',
+                      '&:hover': { borderColor: 'primary.main', color: 'primary.main' }
+                    })
+                  }}
+                >
+                  👩 Female
+                </Button>
+              </Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  display: 'block',
+                  textAlign: 'center',
+                  mt: 0.5,
+                  cursor: 'pointer',
+                  '&:hover': { textDecoration: 'underline' }
+                }}
+                onClick={() => { setFormData({ ...formData, gender: 'prefer_not_to_say' }); setError(''); }}
+              >
+                {formData.gender === 'prefer_not_to_say' ? '✓ Prefer not to say' : 'Prefer not to say'}
+              </Typography>
+            </Box>
 
             <TextField
               fullWidth
