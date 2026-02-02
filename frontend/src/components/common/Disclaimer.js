@@ -42,7 +42,7 @@ const Disclaimer = () => {
       </DialogTitle>
       <DialogContent>
         <Typography paragraph>
-          Welcome to Marriage Rescue App. Before you continue, please read and acknowledge the following:
+          Welcome to Love Rescue App. Before you continue, please read and acknowledge the following:
         </Typography>
         <Box sx={{ bgcolor: 'grey.100', p: 2, borderRadius: 2, mb: 2 }}>
           <Typography variant="body2" color="text.secondary">

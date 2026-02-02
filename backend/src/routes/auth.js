@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const {
   generateRegistrationOptions,
@@ -15,6 +16,40 @@ const logger = require('../utils/logger');
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const router = express.Router();
+
+// HIGH-05: Account lockout tracking
+// In-memory store for failed login attempts (in production, use Redis)
+const failedAttempts = new Map(); // email -> { count, lockedUntil }
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
+function checkAccountLockout(email) {
+  const record = failedAttempts.get(email);
+  if (!record) return false;
+  if (record.lockedUntil && record.lockedUntil > Date.now()) {
+    return true; // Account is locked
+  }
+  if (record.lockedUntil && record.lockedUntil <= Date.now()) {
+    // Lockout expired, reset
+    failedAttempts.delete(email);
+    return false;
+  }
+  return false;
+}
+
+function recordFailedAttempt(email) {
+  const record = failedAttempts.get(email) || { count: 0, lockedUntil: null };
+  record.count += 1;
+  if (record.count >= MAX_FAILED_ATTEMPTS) {
+    record.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+    logger.warn('Account locked due to too many failed login attempts', { email });
+  }
+  failedAttempts.set(email, record);
+}
+
+function clearFailedAttempts(email) {
+  failedAttempts.delete(email);
+}
 
 // WebAuthn configuration
 const rpName = process.env.WEBAUTHN_RP_NAME || 'Marriage Rescue App';
@@ -113,23 +148,37 @@ router.post('/login', async (req, res, next) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
+    const normalizedEmail = email.toLowerCase();
+
+    // HIGH-05: Check account lockout
+    if (checkAccountLockout(normalizedEmail)) {
+      return res.status(429).json({ error: 'Account temporarily locked due to too many failed attempts. Try again in 15 minutes.' });
+    }
+
     const user = await req.prisma.user.findUnique({
-      where: { email: email.toLowerCase() }
+      where: { email: normalizedEmail }
     });
 
     if (!user) {
+      // Don't reveal whether account exists
+      recordFailedAttempt(normalizedEmail);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     if (!user.passwordHash) {
-      return res.status(401).json({ error: 'This account uses Google Sign-In. Please sign in with Google.' });
+      // Don't reveal auth provider to avoid account enumeration
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
 
     if (!isValidPassword) {
+      recordFailedAttempt(normalizedEmail);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    // Clear failed attempts on successful login
+    clearFailedAttempts(normalizedEmail);
 
     // Check and update subscription status if trial expired
     if (user.subscriptionStatus === 'trial' && user.trialEndsAt < new Date()) {
@@ -449,6 +498,16 @@ router.post('/webauthn/login/verify', async (req, res, next) => {
     if (!verification.verified) {
       return res.status(401).json({ error: 'Authentication failed' });
     }
+
+    // HIGH-07: TODO - Persist the updated counter from verification to prevent replay attacks.
+    // The User model needs a `biometricCounter` Int field (schema update required).
+    // After schema update, uncomment and use:
+    // const newCounter = verification.authenticationInfo.newCounter;
+    // await req.prisma.user.update({
+    //   where: { id: user.id },
+    //   data: { biometricCounter: newCounter }
+    // });
+    // And pass the stored counter instead of hardcoded 0 in the authenticator config above.
 
     await req.prisma.token.update({
       where: { id: challengeRecord.id },
@@ -861,6 +920,125 @@ router.delete('/delete-account', authenticate, async (req, res, next) => {
     logger.info('Account deleted', { userId: req.user.id });
 
     res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/auth/forgot-password
+ * HIGH-06: Initiate password reset flow
+ */
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const normalizedEmail = email.toLowerCase();
+
+    // Always return success to avoid email enumeration
+    const user = await req.prisma.user.findUnique({
+      where: { email: normalizedEmail }
+    });
+
+    if (user && user.passwordHash) {
+      // Generate a 6-digit reset code
+      const resetCode = crypto.randomInt(100000, 999999).toString();
+
+      await req.prisma.token.create({
+        data: {
+          email: normalizedEmail,
+          token: resetCode,
+          type: 'password_reset',
+          expiresAt: new Date(Date.now() + 60 * 60 * 1000) // 1 hour expiry
+        }
+      });
+
+      // TODO: Send email with reset code via nodemailer/SendGrid
+      // For now, log it (development only)
+      logger.info('Password reset token generated', {
+        email: normalizedEmail,
+        resetCode: process.env.NODE_ENV !== 'production' ? resetCode : '[REDACTED]'
+      });
+    }
+
+    // Always return same response regardless of whether user exists
+    res.json({ message: 'If an account with that email exists, a password reset code has been sent.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/auth/reset-password
+ * HIGH-06: Complete password reset with token
+ */
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const { token: resetToken, newPassword } = req.body;
+
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ error: 'Reset token and new password are required' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    // Find valid, unused reset token
+    const tokenRecord = await req.prisma.token.findFirst({
+      where: {
+        token: resetToken,
+        type: 'password_reset',
+        usedAt: null,
+        expiresAt: { gt: new Date() }
+      }
+    });
+
+    if (!tokenRecord) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    // Find user
+    const user = await req.prisma.user.findUnique({
+      where: { email: tokenRecord.email }
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    // Hash and update password
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await req.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash }
+    });
+
+    // Mark token as used
+    await req.prisma.token.update({
+      where: { id: tokenRecord.id },
+      data: { usedAt: new Date() }
+    });
+
+    // Delete any other unused reset tokens for this email
+    await req.prisma.token.deleteMany({
+      where: {
+        email: tokenRecord.email,
+        type: 'password_reset',
+        usedAt: null
+      }
+    });
+
+    // Clear any lockout
+    clearFailedAttempts(tokenRecord.email);
+
+    logger.info('Password reset completed', { userId: user.id });
+
+    res.json({ message: 'Password has been reset successfully. You can now log in with your new password.' });
   } catch (error) {
     next(error);
   }

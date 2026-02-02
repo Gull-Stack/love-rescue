@@ -58,6 +58,10 @@ const Reports = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    document.title = 'Reports | Love Rescue';
+  }, []);
+
+  useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {

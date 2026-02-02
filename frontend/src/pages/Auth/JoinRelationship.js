@@ -24,7 +24,7 @@ const JoinRelationship = () => {
     if (user && code && !success) {
       handleJoin();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps — handleJoin uses stable refs; intentionally run when user/code change
   }, [user, code]);
 
   const handleJoin = async () => {
@@ -68,7 +68,7 @@ const JoinRelationship = () => {
               Join Your Partner
             </Typography>
             <Typography color="text.secondary">
-              You've been invited to join a relationship on Marriage Rescue
+              You've been invited to join a relationship on Love Rescue
             </Typography>
           </Box>
 

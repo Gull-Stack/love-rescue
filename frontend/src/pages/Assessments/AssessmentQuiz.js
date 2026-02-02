@@ -355,7 +355,15 @@ const LikertScale = ({ value, onChange, labels, color }) => {
 
 // ─── Forced Choice Component (for Love Languages) ────────────────────────────
 const ForcedChoice = ({ question, value, onChange, color }) => {
-  const options = question.options || question.choices || [];
+  let options = question.options || question.choices || [];
+
+  // Handle love language optionA/optionB format from backend
+  if (options.length === 0 && question.optionA && question.optionB) {
+    options = [
+      { text: question.optionA.text, value: 'A' },
+      { text: question.optionB.text, value: 'B' },
+    ];
+  }
 
   return (
     <Box>
@@ -797,7 +805,7 @@ const AssessmentQuiz = () => {
     setResponses({});
     setResult(null);
     setError('');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps — reset quiz state when type changes; fetchQuestions is stable
   }, [type]);
 
   const fetchQuestions = async () => {

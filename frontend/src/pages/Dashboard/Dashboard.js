@@ -52,9 +52,9 @@ const Dashboard = () => {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    document.title = 'Dashboard | Love Rescue';
     fetchDashboardData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // Intentional: run once on mount to fetch data and set title
 
   const fetchDashboardData = async () => {
     try {
@@ -96,8 +96,8 @@ const Dashboard = () => {
         gratitudeStreak: gratStreakRes.data,
         loveNote: loveNoteRes.data.loveNote,
       });
-    } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
+    } catch {
+      // Errors handled via fallback data in individual .catch() blocks above
     } finally {
       setLoading(false);
     }
@@ -107,8 +107,8 @@ const Dashboard = () => {
     try {
       const response = await invitePartner();
       setInviteLink(response.inviteLink);
-    } catch (error) {
-      console.error('Failed to create invite:', error);
+    } catch {
+      // Invite creation failed — user will see no link generated
     }
   };
 
@@ -126,7 +126,10 @@ const Dashboard = () => {
     );
   }
 
-  const totalAssessments = 8;
+  // 10 assessment types: attachment, personality, love_language, human_needs,
+  // gottman_checkup, emotional_intelligence, conflict_style, differentiation,
+  // hormonal_health, physical_vitality
+  const totalAssessments = 10;
   const assessmentProgress = data.assessments
     ? (data.assessments.completed.length / totalAssessments) * 100
     : 0;
@@ -159,7 +162,7 @@ const Dashboard = () => {
               {inviteLink}
             </Typography>
             <Tooltip title={copied ? 'Copied!' : 'Copy link'}>
-              <IconButton size="small" onClick={handleCopyLink}>
+              <IconButton size="small" aria-label="Copy invite link" onClick={handleCopyLink}>
                 <ContentCopyIcon fontSize="small" />
               </IconButton>
             </Tooltip>

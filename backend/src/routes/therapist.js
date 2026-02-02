@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
+const rateLimit = require('express-rate-limit');
 const {
   authenticate,
   authenticateTherapist,
@@ -12,22 +13,91 @@ const logger = require('../utils/logger');
 
 const router = express.Router();
 
+// CRIT-05: Aggressive rate limiting for therapist registration (3/hour/IP)
+const therapistRegisterLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  message: { error: 'Too many registration attempts. Please try again later.' }
+});
+
+// ─── Admin: Generate Therapist Invite Tokens ─────────────────────
+
+/**
+ * POST /api/therapist/admin/generate-invite
+ * Generate a therapist invite token (requires admin role)
+ */
+router.post('/admin/generate-invite', authenticate, async (req, res, next) => {
+  try {
+    // Check if user is admin
+    const user = await req.prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { email } = req.body; // Optional: pre-assign to a specific email
+
+    const inviteToken = uuidv4();
+    await req.prisma.token.create({
+      data: {
+        email: email ? email.toLowerCase() : 'therapist_invite',
+        token: inviteToken,
+        type: 'therapist_invite',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 day expiry
+      }
+    });
+
+    logger.info('Therapist invite token generated', { adminId: req.user.id, email });
+
+    res.status(201).json({
+      message: 'Therapist invite token generated',
+      inviteToken,
+      expiresIn: '7 days'
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // ─── Therapist Registration & Management ─────────────────────────
 
 /**
  * POST /api/therapist/register
  * Register a new therapist account (returns API key — show once)
+ * CRIT-05: Requires a valid invite token and has aggressive rate limiting
  */
-router.post('/register', async (req, res, next) => {
+router.post('/register', therapistRegisterLimiter, async (req, res, next) => {
   try {
-    const { email, password, firstName, lastName, licenseNumber, licenseState } = req.body;
+    const { email, password, firstName, lastName, licenseNumber, licenseState, inviteToken } = req.body;
 
     if (!email || !password || !firstName || !lastName) {
       return res.status(400).json({ error: 'Email, password, first name, and last name are required' });
     }
 
+    if (!inviteToken) {
+      return res.status(400).json({ error: 'An invitation token is required to register as a therapist' });
+    }
+
     if (password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    // Verify the invite token
+    const tokenRecord = await req.prisma.token.findFirst({
+      where: {
+        token: inviteToken,
+        type: 'therapist_invite',
+        usedAt: null,
+        expiresAt: { gt: new Date() }
+      }
+    });
+
+    if (!tokenRecord) {
+      return res.status(403).json({ error: 'Invalid or expired invitation token' });
+    }
+
+    // If the token was pre-assigned to an email, verify it matches
+    if (tokenRecord.email !== 'therapist_invite' && tokenRecord.email !== email.toLowerCase()) {
+      return res.status(403).json({ error: 'This invitation token is not valid for this email' });
     }
 
     const existing = await req.prisma.therapist.findUnique({
@@ -37,6 +107,12 @@ router.post('/register', async (req, res, next) => {
     if (existing) {
       return res.status(409).json({ error: 'Email already registered' });
     }
+
+    // Mark invite token as used
+    await req.prisma.token.update({
+      where: { id: tokenRecord.id },
+      data: { usedAt: new Date() }
+    });
 
     // Generate API key and hash it
     const apiKey = `mrt_${uuidv4().replace(/-/g, '')}`;

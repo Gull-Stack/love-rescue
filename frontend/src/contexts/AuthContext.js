@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
 
+// TODO: HIGH-01 — Move JWT storage from localStorage to httpOnly cookies.
+// This requires backend changes (set-cookie headers, cookie-parser middleware,
+// CORS credentials). localStorage is vulnerable to XSS token theft.
+// Until migrated, ensure no user-generated content is rendered via
+// dangerouslySetInnerHTML anywhere in the app.
+
 const AuthContext = createContext(null);
 
 export const useAuth = () => {

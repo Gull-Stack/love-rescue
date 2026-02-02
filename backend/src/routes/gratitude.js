@@ -4,6 +4,63 @@ const logger = require('../utils/logger');
 
 const router = express.Router();
 
+// MED-09 + MED-10: Shared streak calculation using UTC consistently
+function calculateStreaks(entries) {
+  const totalEntries = entries.length;
+
+  if (totalEntries === 0) {
+    return { currentStreak: 0, longestStreak: 0, totalEntries: 0 };
+  }
+
+  // MED-09: Use UTC consistently for date normalization
+  const dateStrings = entries.map(e => {
+    const d = new Date(e.date);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  });
+
+  // Deduplicate and sort descending
+  const uniqueDates = [...new Set(dateStrings)].sort().reverse();
+
+  // Calculate current streak (must include today or yesterday in UTC)
+  const now = new Date();
+  const todayStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+  const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+  const yesterdayStr = `${yesterday.getUTCFullYear()}-${String(yesterday.getUTCMonth() + 1).padStart(2, '0')}-${String(yesterday.getUTCDate()).padStart(2, '0')}`;
+
+  let currentStreak = 0;
+  if (uniqueDates[0] === todayStr || uniqueDates[0] === yesterdayStr) {
+    currentStreak = 1;
+    for (let i = 1; i < uniqueDates.length; i++) {
+      const prevDate = new Date(uniqueDates[i - 1] + 'T00:00:00Z');
+      const currDate = new Date(uniqueDates[i] + 'T00:00:00Z');
+      const diffDays = Math.round((prevDate - currDate) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Calculate longest streak
+  let longestStreak = 1;
+  let streak = 1;
+  const sortedAsc = [...uniqueDates].reverse();
+  for (let i = 1; i < sortedAsc.length; i++) {
+    const prevDate = new Date(sortedAsc[i - 1] + 'T00:00:00Z');
+    const currDate = new Date(sortedAsc[i] + 'T00:00:00Z');
+    const diffDays = Math.round((currDate - prevDate) / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) {
+      streak++;
+      longestStreak = Math.max(longestStreak, streak);
+    } else {
+      streak = 1;
+    }
+  }
+
+  return { currentStreak, longestStreak, totalEntries };
+}
+
 /**
  * POST /api/gratitude
  * Save today's gratitude entry (upsert)
@@ -125,62 +182,10 @@ router.get('/streak', authenticate, async (req, res, next) => {
       select: { date: true }
     });
 
-    const totalEntries = entries.length;
+    // MED-10: Use shared streak calculation function
+    const streaks = calculateStreaks(entries);
 
-    if (totalEntries === 0) {
-      return res.json({ currentStreak: 0, longestStreak: 0, totalEntries: 0 });
-    }
-
-    // Normalize dates to YYYY-MM-DD strings for comparison
-    const dateStrings = entries.map(e => {
-      const d = new Date(e.date);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    });
-
-    // Deduplicate (shouldn't be needed with unique constraint, but safe)
-    const uniqueDates = [...new Set(dateStrings)].sort().reverse();
-
-    // Calculate current streak (must include today or yesterday)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-
-    let currentStreak = 0;
-    if (uniqueDates[0] === todayStr || uniqueDates[0] === yesterdayStr) {
-      currentStreak = 1;
-      for (let i = 1; i < uniqueDates.length; i++) {
-        const prevDate = new Date(uniqueDates[i - 1]);
-        const currDate = new Date(uniqueDates[i]);
-        const diffDays = Math.round((prevDate - currDate) / (1000 * 60 * 60 * 24));
-        if (diffDays === 1) {
-          currentStreak++;
-        } else {
-          break;
-        }
-      }
-    }
-
-    // Calculate longest streak
-    let longestStreak = 1;
-    let streak = 1;
-    const sortedAsc = [...uniqueDates].reverse();
-    for (let i = 1; i < sortedAsc.length; i++) {
-      const prevDate = new Date(sortedAsc[i - 1]);
-      const currDate = new Date(sortedAsc[i]);
-      const diffDays = Math.round((currDate - prevDate) / (1000 * 60 * 60 * 24));
-      if (diffDays === 1) {
-        streak++;
-        longestStreak = Math.max(longestStreak, streak);
-      } else {
-        streak = 1;
-      }
-    }
-
-    res.json({ currentStreak, longestStreak, totalEntries });
+    res.json(streaks);
   } catch (error) {
     next(error);
   }
@@ -192,58 +197,14 @@ router.get('/streak', authenticate, async (req, res, next) => {
  */
 router.get('/stats', authenticate, async (req, res, next) => {
   try {
-    // Get streak data
     const entries = await req.prisma.gratitudeEntry.findMany({
       where: { userId: req.user.id },
       orderBy: { date: 'desc' },
       select: { date: true, category: true }
     });
 
-    const totalEntries = entries.length;
-
-    // Calculate streaks (reuse logic)
-    const dateStrings = entries.map(e => {
-      const d = new Date(e.date);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    });
-    const uniqueDates = [...new Set(dateStrings)].sort().reverse();
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-
-    let currentStreak = 0;
-    if (uniqueDates.length > 0 && (uniqueDates[0] === todayStr || uniqueDates[0] === yesterdayStr)) {
-      currentStreak = 1;
-      for (let i = 1; i < uniqueDates.length; i++) {
-        const prevDate = new Date(uniqueDates[i - 1]);
-        const currDate = new Date(uniqueDates[i]);
-        const diffDays = Math.round((prevDate - currDate) / (1000 * 60 * 60 * 24));
-        if (diffDays === 1) {
-          currentStreak++;
-        } else {
-          break;
-        }
-      }
-    }
-
-    let longestStreak = uniqueDates.length > 0 ? 1 : 0;
-    let streak = 1;
-    const sortedAsc = [...uniqueDates].reverse();
-    for (let i = 1; i < sortedAsc.length; i++) {
-      const prevDate = new Date(sortedAsc[i - 1]);
-      const currDate = new Date(sortedAsc[i]);
-      const diffDays = Math.round((currDate - prevDate) / (1000 * 60 * 60 * 24));
-      if (diffDays === 1) {
-        streak++;
-        longestStreak = Math.max(longestStreak, streak);
-      } else {
-        streak = 1;
-      }
-    }
+    // MED-10: Use shared streak calculation function
+    const { currentStreak, longestStreak, totalEntries } = calculateStreaks(entries);
 
     // Top categories
     const categoryCounts = {};
@@ -258,6 +219,8 @@ router.get('/stats', authenticate, async (req, res, next) => {
       .slice(0, 5);
 
     // This week count
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const startOfWeek = new Date(today);
     startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
     startOfWeek.setHours(0, 0, 0, 0);
@@ -297,7 +260,6 @@ router.get('/stats', authenticate, async (req, res, next) => {
  */
 router.get('/shared', authenticate, async (req, res, next) => {
   try {
-    // Find relationship to get partner ID
     const relationship = await req.prisma.relationship.findFirst({
       where: {
         OR: [
@@ -337,7 +299,6 @@ router.get('/shared', authenticate, async (req, res, next) => {
  */
 router.get('/love-note', authenticate, async (req, res, next) => {
   try {
-    // Find relationship to get partner ID
     const relationship = await req.prisma.relationship.findFirst({
       where: {
         OR: [
@@ -356,7 +317,6 @@ router.get('/love-note', authenticate, async (req, res, next) => {
       ? relationship.user2Id
       : relationship.user1Id;
 
-    // Get partner's name
     const partner = await req.prisma.user.findUnique({
       where: { id: partnerId },
       select: { firstName: true }
@@ -364,7 +324,6 @@ router.get('/love-note', authenticate, async (req, res, next) => {
 
     const partnerName = partner?.firstName || 'Your Partner';
 
-    // Get shared entries from past 7 days
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     sevenDaysAgo.setHours(0, 0, 0, 0);
@@ -389,13 +348,11 @@ router.get('/love-note', authenticate, async (req, res, next) => {
       return res.json({ loveNote: null, hasPartner: true, message: 'No shared gratitudes from your partner this week' });
     }
 
-    // Format week range
     const formatShortDate = (d) => {
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
     const weekOf = `${formatShortDate(sevenDaysAgo)} - ${formatShortDate(today)}`;
 
-    // Find top categories
     const categoryCounts = {};
     entries.forEach(e => {
       if (e.category) {
@@ -407,7 +364,6 @@ router.get('/love-note', authenticate, async (req, res, next) => {
       .map(([cat]) => cat);
     const topCategory = sortedCategories[0] || null;
 
-    // Build summary
     let summary = `This week, ${partnerName} appreciated ${entries.length} thing${entries.length !== 1 ? 's' : ''} about you`;
     if (sortedCategories.length >= 2) {
       summary += `, especially your ${sortedCategories[0]} and ${sortedCategories[1]}.`;
@@ -440,7 +396,6 @@ router.patch('/:id/share', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Verify entry belongs to user
     const entry = await req.prisma.gratitudeEntry.findUnique({
       where: { id }
     });

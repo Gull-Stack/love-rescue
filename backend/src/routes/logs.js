@@ -23,6 +23,20 @@ router.post('/daily', authenticate, requireSubscription, async (req, res, next) 
       therapistVisible
     } = req.body;
 
+    // HIGH-08: Input validation
+    if (positiveCount !== undefined && (typeof positiveCount !== 'number' || positiveCount < 0 || positiveCount > 1000)) {
+      return res.status(400).json({ error: 'positiveCount must be a number between 0 and 1000' });
+    }
+    if (negativeCount !== undefined && (typeof negativeCount !== 'number' || negativeCount < 0 || negativeCount > 1000)) {
+      return res.status(400).json({ error: 'negativeCount must be a number between 0 and 1000' });
+    }
+    if (closenessScore !== undefined && (typeof closenessScore !== 'number' || closenessScore < 1 || closenessScore > 10)) {
+      return res.status(400).json({ error: 'closenessScore must be between 1 and 10' });
+    }
+    if (mood !== undefined && (typeof mood !== 'number' || mood < 1 || mood > 10)) {
+      return res.status(400).json({ error: 'mood must be between 1 and 10' });
+    }
+
     let logDate;
     if (date) {
       // Parse date string as local timezone (new Date('YYYY-MM-DD') parses as UTC, causing mismatches)

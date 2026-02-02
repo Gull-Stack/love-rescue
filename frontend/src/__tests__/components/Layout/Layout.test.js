@@ -57,7 +57,7 @@ describe('Layout', () => {
   test('renders navigation bar with app title', () => {
     renderWithProviders(<Layout />);
 
-    expect(screen.getByText('Marriage Rescue')).toBeInTheDocument();
+    expect(screen.getByText('Love Rescue')).toBeInTheDocument();
   });
 
   test('shows user initials avatar in the nav bar', () => {

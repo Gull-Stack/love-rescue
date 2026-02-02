@@ -44,9 +44,10 @@ const Settings = () => {
   const [gender, setGender] = useState(user?.gender || '');
 
   useEffect(() => {
+    document.title = 'Settings | Love Rescue';
     fetchSettings();
     handleUrlParams();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps — handleUrlParams reads searchParams on mount only
   }, []);
 
   const handleUrlParams = () => {
@@ -78,8 +79,8 @@ const Settings = () => {
       setCalendarStatus(calRes.data);
       setSubscription(subRes.data);
       setTherapistConsent(consentRes.data.consent);
-    } catch (err) {
-      console.error('Failed to fetch settings');
+    } catch {
+      // Settings fetch failed — individual catches above provide fallback defaults
     }
   };
 
@@ -315,7 +316,7 @@ const Settings = () => {
                       InputProps={{ readOnly: true }}
                     />
                     <Tooltip title={copied ? 'Copied!' : 'Copy'}>
-                      <IconButton onClick={handleCopyLink}>
+                      <IconButton aria-label="Copy invite link" onClick={handleCopyLink}>
                         <ContentCopyIcon />
                       </IconButton>
                     </Tooltip>
@@ -414,7 +415,7 @@ const Settings = () => {
           ) : (
             <Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Choose a plan to continue using Marriage Rescue:
+                Choose a plan to continue using Love Rescue:
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={4}>
@@ -612,7 +613,7 @@ const Settings = () => {
         <DialogTitle>Privacy Policy</DialogTitle>
         <DialogContent>
           <Typography variant="h6" gutterBottom sx={{ mt: 1 }}>
-            Marriage Rescue App - Privacy Policy
+            Love Rescue App - Privacy Policy
           </Typography>
           <Typography paragraph variant="body2">
             <strong>Last Updated:</strong> January 2026
@@ -675,19 +676,19 @@ const Settings = () => {
         <DialogTitle>Terms of Service</DialogTitle>
         <DialogContent>
           <Typography variant="h6" gutterBottom sx={{ mt: 1 }}>
-            Marriage Rescue App - Terms of Service
+            Love Rescue App - Terms of Service
           </Typography>
           <Typography paragraph variant="body2">
             <strong>Last Updated:</strong> January 2026
           </Typography>
           <Typography paragraph variant="body2">
             <strong>1. Acceptance of Terms</strong><br />
-            By creating an account and using Marriage Rescue App, you agree to these
+            By creating an account and using Love Rescue App, you agree to these
             Terms of Service. If you do not agree, do not use the application.
           </Typography>
           <Typography paragraph variant="body2">
             <strong>2. Service Description</strong><br />
-            Marriage Rescue App provides relationship assessment tools, daily interaction
+            Love Rescue App provides relationship assessment tools, daily interaction
             tracking, personalized strategy plans, and progress reports. The app is
             designed for educational and informational purposes only.
           </Typography>
@@ -701,10 +702,11 @@ const Settings = () => {
           </Typography>
           <Typography paragraph variant="body2">
             <strong>4. Subscription and Payments</strong><br />
-            After a 14-day free trial, a subscription of $9.99/month per couple is
-            required to continue using the app. Payments are processed securely via
-            Stripe. You may cancel at any time; access continues until the end of the
-            current billing period.
+            After a 14-day free trial, a paid subscription is required to continue
+            using the app. Plans include Standard ($29.99/month), Premium ($249/month),
+            and Annual Unlimited ($200/month billed monthly). Payments are processed
+            securely via Stripe. You may cancel at any time; access continues until the
+            end of the current billing period.
           </Typography>
           <Typography paragraph variant="body2">
             <strong>5. User Responsibilities</strong><br />
@@ -714,7 +716,7 @@ const Settings = () => {
           </Typography>
           <Typography paragraph variant="body2">
             <strong>6. Limitation of Liability</strong><br />
-            Marriage Rescue App and its creators are not liable for any relationship
+            Love Rescue App and its creators are not liable for any relationship
             outcomes, emotional distress, or decisions made based on app recommendations.
             Use of the app is at your own risk.
           </Typography>

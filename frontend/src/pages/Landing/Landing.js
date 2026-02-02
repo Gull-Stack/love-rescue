@@ -117,7 +117,7 @@ const steps = [
   {
     number: '02',
     title: 'Invite Your Partner',
-    description: 'Share a simple invite link. When both partners complete assessments, the full power of Marriage Rescue unlocks — matchup scores, shared strategies, and more.',
+    description: 'Share a simple invite link. When both partners complete assessments, the full power of Love Rescue unlocks — matchup scores, shared strategies, and more.',
   },
   {
     number: '03',
@@ -188,6 +188,10 @@ const Landing = () => {
   const heroRef = useRef(null);
 
   useEffect(() => {
+    document.title = 'Love Rescue — Science-Backed Relationship Transformation';
+  }, []);
+
+  useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -240,7 +244,7 @@ const Landing = () => {
                 letterSpacing: '-0.02em',
               }}
             >
-              Marriage Rescue
+              Love Rescue
             </Typography>
           </Box>
 
@@ -296,7 +300,7 @@ const Landing = () => {
               {isSmall ? 'Start Free' : 'Start Free Trial'}
             </Button>
             {isMobile && (
-              <IconButton onClick={() => setMobileMenuOpen(true)} sx={{ color: '#fff' }}>
+              <IconButton aria-label="Open menu" onClick={() => setMobileMenuOpen(true)} sx={{ color: '#fff' }}>
                 <MenuIcon />
               </IconButton>
             )}
@@ -318,7 +322,7 @@ const Landing = () => {
         }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 2 }}>
-          <IconButton onClick={() => setMobileMenuOpen(false)} sx={{ color: '#fff' }}>
+          <IconButton aria-label="Close menu" onClick={() => setMobileMenuOpen(false)} sx={{ color: '#fff' }}>
             <CloseIcon />
           </IconButton>
         </Box>
@@ -465,7 +469,7 @@ const Landing = () => {
               WebkitTextFillColor: 'transparent',
             }}
           >
-            Marriage Rescue
+            Love Rescue
           </Box>
         </Typography>
 
@@ -907,7 +911,7 @@ const Landing = () => {
                 mb: 4,
               }}
             >
-              Marriage Rescue is grounded in the research of Dr. John Gottman, Dr. Sue Johnson,
+              Love Rescue is grounded in the research of Dr. John Gottman, Dr. Sue Johnson,
               and leading attachment theorists. Our assessments, insights, and strategies are
               drawn from peer-reviewed studies on what actually makes relationships thrive.
             </Typography>
@@ -1410,7 +1414,7 @@ const Landing = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <FavoriteIcon sx={{ color: ACCENT_PINK, fontSize: 28 }} />
               <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '1.2rem' }}>
-                Marriage Rescue
+                Love Rescue
               </Typography>
             </Box>
             <Typography
@@ -1552,7 +1556,7 @@ const Landing = () => {
           }}
         >
           <Typography sx={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.8rem' }}>
-            {new Date().getFullYear()} Marriage Rescue. All rights reserved.
+            {new Date().getFullYear()} Love Rescue. All rights reserved.
           </Typography>
           <Typography
             sx={{

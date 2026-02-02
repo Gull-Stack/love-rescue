@@ -97,6 +97,7 @@ const Layout = () => {
             <IconButton
               edge="start"
               color="inherit"
+              aria-label="Open navigation menu"
               onClick={() => setDrawerOpen(true)}
               sx={{ mr: 2 }}
             >
@@ -106,10 +107,10 @@ const Layout = () => {
 
           <FavoriteIcon color="primary" sx={{ mr: 1 }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
-            Marriage Rescue
+            Love Rescue
           </Typography>
 
-          <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
+          <IconButton aria-label="Account menu" onClick={(e) => setAnchorEl(e.currentTarget)}>
             <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
               {userInitials}
             </Avatar>

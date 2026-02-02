@@ -38,7 +38,7 @@ describe('Disclaimer', () => {
 
     expect(screen.getByText('Important Notice')).toBeInTheDocument();
     expect(
-      screen.getByText(/Welcome to Marriage Rescue App/)
+      screen.getByText(/Welcome to Love Rescue App/)
     ).toBeInTheDocument();
     expect(
       screen.getByText(/It is not a substitute for professional therapy./)

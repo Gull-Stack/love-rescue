@@ -648,6 +648,7 @@ const CategorySection = ({
                             <Tooltip title={isExpanded ? 'Collapse' : 'Show details'}>
                               <IconButton
                                 size="small"
+                                aria-label={isExpanded ? 'Collapse details' : 'Show details'}
                                 onClick={() => toggleExpanded(assessment.type)}
                               >
                                 {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
@@ -711,15 +712,16 @@ const Assessments = () => {
   const [expandedResults, setExpandedResults] = useState({});
 
   useEffect(() => {
+    document.title = 'Assessments | Love Rescue';
     fetchResults();
-  }, []);
+  }, []); // Intentional: run once on mount
 
   const fetchResults = async () => {
     try {
       const response = await assessmentsApi.getResults();
       setResults(response.data);
-    } catch (error) {
-      console.error('Failed to fetch results:', error);
+    } catch {
+      // Assessment results fetch failed — page will show empty state
     } finally {
       setLoading(false);
     }
@@ -908,7 +910,7 @@ const Assessments = () => {
               <Button
                 variant="contained"
                 size="large"
-                onClick={() => navigate('/profile')}
+                onClick={() => navigate('/matchup')}
                 sx={{
                   bgcolor: 'white',
                   color: '#00c9a7',
@@ -916,7 +918,7 @@ const Assessments = () => {
                   '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
                 }}
               >
-                View Unified Profile
+                View Matchup Score
               </Button>
               <Button
                 variant="outlined"

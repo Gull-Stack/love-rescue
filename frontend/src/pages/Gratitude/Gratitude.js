@@ -56,9 +56,9 @@ const Gratitude = () => {
   const [category, setCategory] = useState(null);
 
   useEffect(() => {
+    document.title = 'Daily Gratitude | Love Rescue';
     fetchAllData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // Intentional: run once on mount to load gratitude data
 
   const fetchAllData = async () => {
     try {
@@ -272,6 +272,7 @@ const Gratitude = () => {
                     <Box display="flex" gap={0.5}>
                       <Tooltip title={todayEntry.isShared ? 'Shared with partner' : 'Share with partner'}>
                         <IconButton
+                          aria-label={todayEntry.isShared ? 'Unshare with partner' : 'Share with partner'}
                           onClick={() => handleToggleShare(todayEntry.id)}
                           sx={{ color: todayEntry.isShared ? '#e11d48' : '#9ca3af' }}
                         >
@@ -279,7 +280,7 @@ const Gratitude = () => {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Edit">
-                        <IconButton onClick={() => setEditing(true)} sx={{ color: '#92400e' }}>
+                        <IconButton aria-label="Edit gratitude entry" onClick={() => setEditing(true)} sx={{ color: '#92400e' }}>
                           <EditIcon />
                         </IconButton>
                       </Tooltip>
@@ -485,6 +486,7 @@ const Gratitude = () => {
                           <Tooltip title={entry.isShared ? 'Unshare' : 'Share with partner'}>
                             <IconButton
                               size="small"
+                              aria-label={entry.isShared ? 'Unshare with partner' : 'Share with partner'}
                               onClick={() => handleToggleShare(entry.id)}
                               sx={{ color: entry.isShared ? '#e11d48' : '#d1d5db' }}
                             >

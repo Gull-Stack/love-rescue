@@ -39,8 +39,9 @@ const DailyLog = () => {
   });
 
   useEffect(() => {
+    document.title = 'Daily Log | Love Rescue';
     fetchTodayData();
-  }, []);
+  }, []); // Intentional: run once on mount
 
   const fetchTodayData = async () => {
     try {

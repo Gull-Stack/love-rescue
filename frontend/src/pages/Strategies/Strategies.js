@@ -39,13 +39,22 @@ const Strategies = () => {
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
+    document.title = 'Strategies | Love Rescue';
     fetchStrategy();
-  }, []);
+  }, []); // Intentional: run once on mount to load current strategy
 
   const fetchStrategy = async () => {
     try {
       const response = await strategiesApi.getCurrent();
-      setStrategy(response.data.strategy);
+      const loadedStrategy = response.data.strategy;
+      setStrategy(loadedStrategy);
+
+      // Restore completed tasks from localStorage
+      if (loadedStrategy?.id) {
+        const storageKey = `strategy_tasks_${loadedStrategy.id}`;
+        const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        setCompletedTasks(new Set(saved));
+      }
     } catch (err) {
       if (err.response?.status !== 404) {
         setError('Failed to load strategy');
@@ -98,7 +107,13 @@ const Strategies = () => {
     }
     setCompletedTasks(newCompleted);
 
-    // Update progress
+    // Persist completed tasks to localStorage
+    if (strategy?.id) {
+      const storageKey = `strategy_tasks_${strategy.id}`;
+      localStorage.setItem(storageKey, JSON.stringify([...newCompleted]));
+    }
+
+    // Update progress on backend
     if (strategy) {
       const totalTasks = Object.values(strategy.dailyActivities).flat().length +
                          strategy.weeklyGoals.length;
@@ -106,8 +121,8 @@ const Strategies = () => {
 
       try {
         await strategiesApi.updateProgress(strategy.id, { progress });
-      } catch (err) {
-        console.error('Failed to update progress');
+      } catch {
+        // Progress update failed silently — local state is still correct
       }
     }
   };

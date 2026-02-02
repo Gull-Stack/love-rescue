@@ -301,17 +301,31 @@ router.get('/couple-dashboard', authenticate, async (req, res, next) => {
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    // Fetch both partners' logs (aggregated — no raw journals)
-    const [user1Logs, user2Logs] = await Promise.all([
+    // HIGH-03: Check sharedConsent before returning partner data (IDOR fix)
+    const hasConsent = relationship.sharedConsent === true;
+
+    // Determine which user is requesting and who is the partner
+    const isUser1 = relationship.user1Id === req.user.id;
+    const myUserId = isUser1 ? relationship.user1Id : relationship.user2Id;
+    const partnerUserId = isUser1 ? relationship.user2Id : relationship.user1Id;
+
+    // Always fetch requesting user's logs; only fetch partner's if consent is granted
+    const [myLogs, partnerLogs] = await Promise.all([
       req.prisma.dailyLog.findMany({
-        where: { userId: relationship.user1Id, date: { gte: thirtyDaysAgo } },
+        where: { userId: myUserId, date: { gte: thirtyDaysAgo } },
         select: { date: true, mood: true, closenessScore: true, positiveCount: true, negativeCount: true }
       }),
-      req.prisma.dailyLog.findMany({
-        where: { userId: relationship.user2Id, date: { gte: thirtyDaysAgo } },
-        select: { date: true, mood: true, closenessScore: true, positiveCount: true, negativeCount: true }
-      })
+      hasConsent
+        ? req.prisma.dailyLog.findMany({
+            where: { userId: partnerUserId, date: { gte: thirtyDaysAgo } },
+            select: { date: true, mood: true, closenessScore: true, positiveCount: true, negativeCount: true }
+          })
+        : Promise.resolve([])
     ]);
+
+    // Map to user1/user2 for backward compatibility
+    const user1Logs = isUser1 ? myLogs : partnerLogs;
+    const user2Logs = isUser1 ? partnerLogs : myLogs;
 
     const avgMetric = (logs, field) => {
       const valid = logs.filter(l => l[field] !== null && l[field] !== undefined);
@@ -348,12 +362,13 @@ router.get('/couple-dashboard', authenticate, async (req, res, next) => {
       orderBy: { week: 'desc' }
     });
 
-    // Log access
+    // MED-11: Log access with resourceId included
     await req.prisma.accessLog.create({
       data: {
         accessorId: req.user.id,
         accessorRole: 'user',
         resourceType: 'couple_dashboard',
+        resourceId: relationship.id,
         resourceOwnerId: relationship.id,
         action: 'read',
         accessGranted: true,

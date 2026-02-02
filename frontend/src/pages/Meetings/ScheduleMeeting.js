@@ -52,6 +52,7 @@ const ScheduleMeeting = () => {
   const [loadingMeetings, setLoadingMeetings] = useState(true);
 
   useEffect(() => {
+    document.title = 'Mediated Meetings | Love Rescue';
     fetchMediators();
     fetchMeetings();
   }, []);

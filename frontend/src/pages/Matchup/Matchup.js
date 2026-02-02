@@ -28,8 +28,9 @@ const Matchup = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    document.title = 'Matchup Score | Love Rescue';
     fetchData();
-  }, []);
+  }, []); // Intentional: run once on mount
 
   const fetchData = async () => {
     try {
@@ -113,11 +114,11 @@ const Matchup = () => {
                   {status.user1.name}
                 </Typography>
                 <Box display="flex" gap={1} flexWrap="wrap">
-                  {['attachment', 'personality', 'wellness_behavior', 'negative_patterns_closeness'].map(
+                  {['attachment', 'personality', 'love_language', 'gottman_checkup'].map(
                     (type) => (
                       <Chip
                         key={type}
-                        label={type.replace('_', ' ')}
+                        label={type.replace(/_/g, ' ')}
                         size="small"
                         color={status.user1.completed.includes(type) ? 'success' : 'default'}
                         icon={
@@ -136,11 +137,11 @@ const Matchup = () => {
                     {status.user2.name}
                   </Typography>
                   <Box display="flex" gap={1} flexWrap="wrap">
-                    {['attachment', 'personality', 'wellness_behavior', 'negative_patterns_closeness'].map(
+                    {['attachment', 'personality', 'love_language', 'gottman_checkup'].map(
                       (type) => (
                         <Chip
                           key={type}
-                          label={type.replace('_', ' ')}
+                          label={type.replace(/_/g, ' ')}
                           size="small"
                           color={status.user2.completed.includes(type) ? 'success' : 'default'}
                           icon={

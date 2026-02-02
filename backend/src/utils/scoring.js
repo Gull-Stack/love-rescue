@@ -429,7 +429,7 @@ function scoreHumanNeeds(responses) {
  */
 function scoreGottmanCheckup(responses) {
   const questions = questionBank.gottman_checkup.questions;
-  const scaleMax = 5;
+  const scaleMax = 7;
 
   // Separate horsemen questions from strength questions
   const horsemenQuestions = questions.filter(q => q.category === 'four_horsemen');

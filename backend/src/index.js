@@ -36,15 +36,17 @@ if (process.env.NODE_ENV === 'production') {
 
 // Security middleware
 app.use(helmet());
+
+// MED-04: Use env-based CORS origins instead of hardcoded IPs
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : [process.env.FRONTEND_URL || 'http://localhost:3000'];
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'http://10.0.0.219:3000'
-  ],
+  origin: allowedOrigins,
   credentials: true
 }));
 
-// Rate limiting
+// Rate limiting (general)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
@@ -52,8 +54,25 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Body parsing
-app.use(express.json({ limit: '10kb' }));
+// HIGH-04: Stricter rate limiting for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: { error: 'Too many login attempts, please try again later.' }
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/signup', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
+
+// CRIT-02: Conditionally skip JSON parsing for Stripe webhook (needs raw body)
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/payments/webhook') {
+    next(); // skip json parsing for stripe webhook — route uses express.raw()
+  } else {
+    express.json({ limit: '10kb' })(req, res, next);
+  }
+});
 app.use(express.urlencoded({ extended: true }));
 
 // Audit logging for HIPAA compliance
@@ -87,13 +106,27 @@ app.use('/api/meetings', meetingsRoutes);
 app.use('/api/goals', goalsRoutes);
 app.use('/api/gratitude', gratitudeRoutes);
 
-// Error handling
-app.use(errorHandler);
-
-// 404 handler
+// MED-15: 404 handler BEFORE error handler so unmatched routes get a proper 404
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
+
+// Error handling
+app.use(errorHandler);
+
+// MED-05: Clean expired tokens on startup and periodically
+async function cleanExpiredTokens() {
+  try {
+    const result = await prisma.token.deleteMany({
+      where: { expiresAt: { lt: new Date() } }
+    });
+    if (result.count > 0) {
+      logger.info(`Cleaned ${result.count} expired tokens`);
+    }
+  } catch (err) {
+    logger.error('Failed to clean expired tokens', { error: err.message });
+  }
+}
 
 // Graceful shutdown
 const gracefulShutdown = async () => {
@@ -109,6 +142,10 @@ process.on('SIGINT', gracefulShutdown);
 app.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+
+  // Clean expired tokens on startup
+  cleanExpiredTokens();
+  // TODO: Run cleanExpiredTokens() periodically (e.g., every hour via setInterval or a cron job)
 });
 
 module.exports = app;

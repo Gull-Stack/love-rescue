@@ -197,9 +197,12 @@ router.post('/update-progress', authenticate, async (req, res, next) => {
       calculatedProgress = Math.round((completedActivities / totalActivities) * 100);
     }
 
+    // LOW-12: Clamp progress to 0-100 range
+    calculatedProgress = Math.min(100, Math.max(0, calculatedProgress || 0));
+
     const updated = await req.prisma.strategy.update({
       where: { id: strategyId },
-      data: { progress: calculatedProgress || 0 }
+      data: { progress: calculatedProgress }
     });
 
     res.json({

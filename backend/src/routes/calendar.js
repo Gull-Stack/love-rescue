@@ -1,6 +1,8 @@
 const express = require('express');
+const crypto = require('crypto');
 const { google } = require('googleapis');
 const { authenticate, requireSubscription } = require('../middleware/auth');
+const { encrypt, decrypt } = require('../utils/encryption');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -28,6 +30,7 @@ const oauth2Client = new google.auth.OAuth2(
 /**
  * GET /api/calendar/auth-url
  * Get Google OAuth URL for calendar authorization
+ * CRIT-03: Uses a signed CSRF token in the state parameter instead of raw userId
  */
 router.get('/auth-url', authenticate, async (req, res, next) => {
   try {
@@ -40,10 +43,22 @@ router.get('/auth-url', authenticate, async (req, res, next) => {
 
     const scopes = ['https://www.googleapis.com/auth/calendar.events'];
 
+    // Generate a signed CSRF token and store it mapped to the userId
+    const csrfToken = crypto.randomBytes(32).toString('hex');
+
+    await req.prisma.token.create({
+      data: {
+        email: req.user.id, // Store userId for lookup on callback
+        token: csrfToken,
+        type: 'calendar_oauth_csrf',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minute expiry
+      }
+    });
+
     const url = oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
-      state: req.user.id, // Pass user ID for callback
+      state: csrfToken, // Pass CSRF token, not raw userId
       prompt: 'consent'
     });
 
@@ -56,23 +71,46 @@ router.get('/auth-url', authenticate, async (req, res, next) => {
 /**
  * GET /api/calendar/callback
  * Handle Google OAuth callback
+ * CRIT-03: Verifies CSRF token from state parameter to extract userId securely
  */
 router.get('/callback', async (req, res, next) => {
   try {
-    const { code, state: userId } = req.query;
+    const { code, state: csrfToken } = req.query;
 
-    if (!code) {
+    if (!code || !csrfToken) {
       return res.redirect(`${process.env.FRONTEND_URL}/settings?calendar=error`);
     }
 
+    // Verify the CSRF token exists, hasn't expired, and hasn't been used
+    const tokenRecord = await req.prisma.token.findFirst({
+      where: {
+        token: csrfToken,
+        type: 'calendar_oauth_csrf',
+        usedAt: null,
+        expiresAt: { gt: new Date() }
+      }
+    });
+
+    if (!tokenRecord) {
+      logger.warn('Invalid or expired calendar OAuth CSRF token');
+      return res.redirect(`${process.env.FRONTEND_URL}/settings?calendar=error`);
+    }
+
+    const userId = tokenRecord.email; // userId was stored in email field
+
+    // Delete the CSRF token (single-use)
+    await req.prisma.token.delete({ where: { id: tokenRecord.id } });
+
     const { tokens } = await oauth2Client.getToken(code);
 
-    // Store tokens securely (in production, encrypt these)
-    // For now, store in a token record
+    // CRIT-04: Encrypt tokens before storing
+    const encryptedTokens = encrypt(JSON.stringify(tokens));
+
+    // Store encrypted tokens
     await req.prisma.token.create({
       data: {
-        email: userId, // Using userId as identifier
-        token: JSON.stringify(tokens),
+        email: userId,
+        token: encryptedTokens,
         type: 'google_calendar',
         expiresAt: new Date(tokens.expiry_date || Date.now() + 30 * 24 * 60 * 60 * 1000)
       }
@@ -110,7 +148,8 @@ router.post('/sync', authenticate, requireSubscription, async (req, res, next) =
       });
     }
 
-    const tokens = JSON.parse(tokenRecord.token);
+    // CRIT-04: Decrypt tokens before use
+    const tokens = JSON.parse(decrypt(tokenRecord.token));
     oauth2Client.setCredentials(tokens);
 
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });

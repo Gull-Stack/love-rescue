@@ -552,7 +552,7 @@ const questionBank = {
   },
   gottman_checkup: {
     questions: gottmanCheckupQuestions,
-    scale: { min: 1, max: 5, labels: ['Never', 'Rarely', 'Sometimes', 'Often', 'Always'] },
+    scale: { min: 1, max: 7, labels: ['Strongly Disagree', 'Disagree', 'Slightly Disagree', 'Neutral', 'Slightly Agree', 'Agree', 'Strongly Agree'] },
     description: 'Gottman Relationship Checkup — Based on the Sound Relationship House. Evaluates relationship health across key dimensions.',
     estimatedMinutes: 12,
   },
