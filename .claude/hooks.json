@@ -1,0 +1,49 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/hooks.schema.json",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx agentkits-memory-hook context"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx agentkits-memory-hook session-init"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx agentkits-memory-hook observation"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx agentkits-memory-hook summarize"
+          }
+        ]
+      }
+    ]
+  }
+}

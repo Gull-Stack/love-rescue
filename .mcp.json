@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": [
+        "agentkits-memory-server"
+      ]
+    }
+  }
+}
