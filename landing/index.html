@@ -3,13 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Google Tag Manager - Replace GTM-XXXXXXX with your GTM container ID -->
-  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-  })(window,document,'script','dataLayer','GTM-XXXXXXX');</script>
-  <!-- End Google Tag Manager -->
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LOVERESCUE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-LOVERESCUE'); // TODO: Replace with actual GA4 property ID
+  </script>
+  
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://loverescue.app/" />
   <title>Love Rescue — The World's Best Relationship Experts. One Program. Real Results.</title>
   <meta name="description" content="Love Rescue combines insights from 11+ world-class behavior specialists into one couples program with a custom weekly strategy. Work on yourself. See real progress. No more aimless therapy." />
   <meta property="og:title" content="Love Rescue — Stop Wasting Time. Start Making Progress." />
@@ -223,13 +227,11 @@
         linear-gradient(180deg, var(--dark-1) 0%, var(--dark-2) 50%, var(--dark-3) 100%);
     }
     .hero-bg {
-      position: absolute; inset: 0;
-      background: url('assets/couple-hero.jpg') center/cover no-repeat;
-      opacity: 0; /* hidden when video plays — fallback only */
-      transition: opacity 0.5s ease;
+      /* Removed static image overlay — video only per feedback */
+      display: none !important;
     }
     .hero-bg.no-video {
-      opacity: 0.18; /* show only if video fails to load */
+      display: none !important;
     }
     .hero-bg::after {
       content: ''; position: absolute; inset: 0;
