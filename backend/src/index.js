@@ -20,6 +20,7 @@ const mediatorsRoutes = require('./routes/mediators');
 const meetingsRoutes = require('./routes/meetings');
 const goalsRoutes = require('./routes/goals');
 const gratitudeRoutes = require('./routes/gratitude');
+const pushRoutes = require('./routes/push');
 
 const { auditLogger } = require('./middleware/auditLogger');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -105,6 +106,25 @@ app.use('/api/mediators', mediatorsRoutes);
 app.use('/api/meetings', meetingsRoutes);
 app.use('/api/goals', goalsRoutes);
 app.use('/api/gratitude', gratitudeRoutes);
+app.use('/api/push', pushRoutes);
+
+// Cron endpoint for daily reminders (called by external scheduler)
+app.post('/api/cron/daily-reminders', async (req, res) => {
+  // Verify cron secret to prevent unauthorized calls
+  const cronSecret = req.headers['x-cron-secret'];
+  if (cronSecret !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    const { sendDailyReminders } = require('./utils/pushNotifications');
+    const result = await sendDailyReminders();
+    res.json({ success: true, ...result });
+  } catch (error) {
+    logger.error('Daily reminder cron failed:', error);
+    res.status(500).json({ error: 'Failed to send reminders' });
+  }
+});
 
 // MED-15: 404 handler BEFORE error handler so unmatched routes get a proper 404
 app.use((req, res) => {

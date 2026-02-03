@@ -39,3 +39,87 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
+
+// ========================================
+// PUSH NOTIFICATION HANDLERS
+// ========================================
+
+// Handle incoming push notifications
+self.addEventListener('push', (event) => {
+  console.log('[SW] Push notification received', event);
+
+  let data = {
+    title: 'Love Rescue',
+    body: 'You have a new notification',
+    icon: '/logo192.png',
+    badge: '/logo192.png',
+    tag: 'default',
+    data: { url: '/dashboard' }
+  };
+
+  // Parse the push data if available
+  if (event.data) {
+    try {
+      data = { ...data, ...event.data.json() };
+    } catch (e) {
+      console.error('[SW] Error parsing push data:', e);
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon,
+    badge: data.badge,
+    tag: data.tag,
+    renotify: true,
+    requireInteraction: data.tag === 'daily-reminder', // Keep reminder until dismissed
+    data: data.data,
+    actions: data.tag === 'daily-reminder' 
+      ? [
+          { action: 'open', title: 'Check In Now' },
+          { action: 'dismiss', title: 'Later' }
+        ]
+      : []
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// Handle notification clicks
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked', event);
+  event.notification.close();
+
+  // Handle action button clicks
+  if (event.action === 'dismiss') {
+    return; // Just close
+  }
+
+  // Determine URL to open
+  const urlToOpen = event.notification.data?.url || '/dashboard';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // Check if app is already open
+        for (const client of clientList) {
+          if (client.url.includes('loverescue.app') && 'focus' in client) {
+            client.navigate(urlToOpen);
+            return client.focus();
+          }
+        }
+        // Open new window
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+        }
+      })
+  );
+});
+
+// Handle notification close (for analytics)
+self.addEventListener('notificationclose', (event) => {
+  console.log('[SW] Notification closed', event.notification.tag);
+});

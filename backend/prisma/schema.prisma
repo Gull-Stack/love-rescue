@@ -101,16 +101,18 @@ model User {
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
   // Relations
-  assessments          Assessment[]
-  dailyLogs            DailyLog[]
-  gratitudeEntries     GratitudeEntry[]
-  auditLogs            AuditLog[]
-  videoCompletions     VideoCompletion[]
-  relationshipsAsUser1 Relationship[]    @relation("User1Relationship")
-  relationshipsAsUser2 Relationship[]    @relation("User2Relationship")
-  consentLogs          ConsentLog[]
-  sharedGoalsCreated   SharedGoal[]      @relation("GoalCreator")
-  assignedTasks        TherapistTask[]   @relation("TaskAssignee")
+  assessments             Assessment[]
+  dailyLogs               DailyLog[]
+  gratitudeEntries        GratitudeEntry[]
+  auditLogs               AuditLog[]
+  videoCompletions        VideoCompletion[]
+  relationshipsAsUser1    Relationship[]    @relation("User1Relationship")
+  relationshipsAsUser2    Relationship[]    @relation("User2Relationship")
+  consentLogs             ConsentLog[]
+  sharedGoalsCreated      SharedGoal[]      @relation("GoalCreator")
+  assignedTasks           TherapistTask[]   @relation("TaskAssignee")
+  pushSubscriptions       PushSubscription[]
+  notificationPreferences NotificationPreferences?
 
   @@map("users")
   @@index([email])
@@ -516,4 +518,43 @@ model GratitudeEntry {
   @@index([userId])
   @@index([date])
   @@index([userId, date])
+}
+
+// Push notification subscriptions for PWA
+model PushSubscription {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  endpoint     String   @unique @db.Text  // Push service endpoint URL
+  p256dh       String   @db.VarChar(255)  // Public key for encryption
+  auth         String   @db.VarChar(255)  // Auth secret
+  userAgent    String?  @map("user_agent") @db.VarChar(500)  // Device info
+  enabled      Boolean  @default(true)    // User can disable without deleting
+  lastUsed     DateTime? @map("last_used")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
+  @@index([userId])
+  @@index([enabled])
+}
+
+// Notification preferences per user
+model NotificationPreferences {
+  id                    String   @id @default(uuid()) @db.Uuid
+  userId                String   @unique @map("user_id") @db.Uuid
+  dailyReminderEnabled  Boolean  @default(true) @map("daily_reminder_enabled")
+  dailyReminderTime     String   @default("09:00") @map("daily_reminder_time") @db.VarChar(5)  // HH:MM format
+  timezone              String   @default("America/Denver") @db.VarChar(50)
+  partnerActivityAlerts Boolean  @default(true) @map("partner_activity_alerts")
+  weeklyDigest          Boolean  @default(true) @map("weekly_digest")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
 }
