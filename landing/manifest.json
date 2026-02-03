@@ -1,0 +1,32 @@
+{
+  "short_name": "Love Rescue",
+  "name": "Love Rescue - Relationship Growth",
+  "description": "Daily relationship check-ins, assessments, and growth tools for couples",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#e91e63",
+  "background_color": "#ffffff",
+  "categories": ["lifestyle", "health"],
+  "prefer_related_applications": false
+}
