@@ -41,8 +41,8 @@ router.post('/generate', authenticate, requireSubscription, async (req, res, nex
       where: { userId: relationship.user2Id }
     });
 
-    // Check if both have completed all assessments
-    const requiredTypes = ['attachment', 'personality', 'wellness_behavior', 'negative_patterns_closeness'];
+    // Check if both have completed all core assessments
+    const requiredTypes = ['attachment', 'personality', 'love_language', 'gottman_checkup'];
 
     const user1Types = new Set(user1Assessments.map(a => a.type));
     const user2Types = new Set(user2Assessments.map(a => a.type));
@@ -202,7 +202,7 @@ router.get('/status', authenticate, async (req, res, next) => {
       return res.status(404).json({ error: 'Relationship not found' });
     }
 
-    const requiredTypes = ['attachment', 'personality', 'wellness_behavior', 'negative_patterns_closeness'];
+    const requiredTypes = ['attachment', 'personality', 'love_language', 'gottman_checkup'];
 
     // User 1 progress
     const user1Assessments = await req.prisma.assessment.findMany({
