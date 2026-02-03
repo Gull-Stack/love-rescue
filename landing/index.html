@@ -852,9 +852,10 @@
     .fade-up-delay-5 { transition-delay: 0.5s; }
     .fade-up-delay-6 { transition-delay: 0.6s; }
 
-    /* Announcement bar shifts header down */
+    /* Announcement bar shifts header down (only when not scrolled) */
     .header { top: 0; }
-    body.has-announcement .header { top: 42px; }
+    body.has-announcement .header:not(.scrolled) { top: 42px; }
+    body.has-announcement .header.scrolled { top: 0; }
     body.has-announcement .hero { padding-top: 42px; }
 
     /* ═══════════════════════════════════════════
