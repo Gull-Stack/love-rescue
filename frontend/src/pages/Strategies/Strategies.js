@@ -57,7 +57,12 @@ const Strategies = () => {
       }
     } catch (err) {
       if (err.response?.status !== 404) {
-        setError('Failed to load strategy');
+        // Check if error is due to no assessments
+        if (err.response?.data?.code === 'NO_ASSESSMENTS') {
+          setError('NEEDS_ASSESSMENTS');
+        } else {
+          setError('Failed to load strategy');
+        }
       }
     } finally {
       setLoading(false);
@@ -73,6 +78,13 @@ const Strategies = () => {
       setStrategy(response.data.strategies[0]);
       setSuccess('New 6-week strategy generated!');
     } catch (err) {
+      // If no assessments completed, redirect to assessments page
+      if (err.response?.data?.code === 'NO_ASSESSMENTS') {
+        navigate('/assessments', { 
+          state: { message: 'Complete at least one assessment to generate your personalized strategy!' }
+        });
+        return;
+      }
       setError(err.response?.data?.error || 'Failed to generate strategy');
     } finally {
       setGenerating(false);
@@ -174,7 +186,7 @@ const Strategies = () => {
         </Alert>
       )}
 
-      {error && (
+      {error && error !== 'NEEDS_ASSESSMENTS' && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
           {error}
         </Alert>
@@ -282,6 +294,26 @@ const Strategies = () => {
             );
           })}
         </>
+      ) : error === 'NEEDS_ASSESSMENTS' ? (
+        <Card sx={{ textAlign: 'center', py: 6 }}>
+          <CardContent>
+            <Typography variant="h5" gutterBottom>
+              Complete Your Assessments First
+            </Typography>
+            <Typography color="text.secondary" paragraph>
+              To generate your personalized 6-week strategy, we need to understand your unique patterns and strengths. 
+              Complete at least one assessment to get started!
+            </Typography>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={() => navigate('/assessments')}
+              sx={{ mt: 2 }}
+            >
+              Go to Assessments
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <Card sx={{ textAlign: 'center', py: 6 }}>
           <CardContent>
