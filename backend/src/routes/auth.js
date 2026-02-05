@@ -12,6 +12,7 @@ const {
 const { OAuth2Client } = require('google-auth-library');
 const { authenticate } = require('../middleware/auth');
 const logger = require('../utils/logger');
+const { sendPasswordResetEmail, sendPartnerInviteEmail } = require('../utils/email');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -491,7 +492,7 @@ router.post('/webauthn/login/verify', async (req, res, next) => {
       authenticator: {
         credentialID: Buffer.from(user.biometricKeyId, 'base64'),
         credentialPublicKey: Buffer.from(user.biometricKey, 'base64'),
-        counter: 0
+        counter: user.biometricCounter || 0
       }
     });
 
@@ -499,15 +500,12 @@ router.post('/webauthn/login/verify', async (req, res, next) => {
       return res.status(401).json({ error: 'Authentication failed' });
     }
 
-    // HIGH-07: TODO - Persist the updated counter from verification to prevent replay attacks.
-    // The User model needs a `biometricCounter` Int field (schema update required).
-    // After schema update, uncomment and use:
-    // const newCounter = verification.authenticationInfo.newCounter;
-    // await req.prisma.user.update({
-    //   where: { id: user.id },
-    //   data: { biometricCounter: newCounter }
-    // });
-    // And pass the stored counter instead of hardcoded 0 in the authenticator config above.
+    // Update the counter to prevent replay attacks
+    const newCounter = verification.authenticationInfo.newCounter;
+    await req.prisma.user.update({
+      where: { id: user.id },
+      data: { biometricCounter: newCounter }
+    });
 
     await req.prisma.token.update({
       where: { id: challengeRecord.id },
@@ -576,14 +574,19 @@ router.post('/invite-partner', authenticate, async (req, res, next) => {
       }
     });
 
-    // TODO: Send invite email via nodemailer
+    // Send invite email if partner email provided
+    const inviteLink = `${process.env.FRONTEND_URL}/join/${inviteCode}`;
+    if (partnerEmail) {
+      const inviterName = req.user.firstName || req.user.email.split('@')[0];
+      await sendPartnerInviteEmail(partnerEmail, inviterName, inviteLink);
+    }
 
-    logger.info('Partner invited', { userId: req.user.id, inviteCode });
+    logger.info('Partner invited', { userId: req.user.id, inviteCode, emailSent: !!partnerEmail });
 
     res.json({
       message: 'Invite created',
       inviteCode,
-      inviteLink: `${process.env.FRONTEND_URL}/join/${inviteCode}`
+      inviteLink
     });
   } catch (error) {
     next(error);
@@ -957,10 +960,12 @@ router.post('/forgot-password', async (req, res, next) => {
         }
       });
 
-      // TODO: Send email with reset code via nodemailer/SendGrid
-      // For now, log it (development only)
+      // Send password reset email
+      const emailSent = await sendPasswordResetEmail(normalizedEmail, resetCode);
+      
       logger.info('Password reset token generated', {
         email: normalizedEmail,
+        emailSent,
         resetCode: process.env.NODE_ENV !== 'production' ? resetCode : '[REDACTED]'
       });
     }

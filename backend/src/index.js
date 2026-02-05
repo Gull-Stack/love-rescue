@@ -36,7 +36,20 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Security middleware
-app.use(helmet());
+// HIGH-NEW-03: Configure Helmet with CSP to protect against XSS
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://accounts.google.com", "https://js.stripe.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      frameSrc: ["https://accounts.google.com", "https://js.stripe.com"],
+      connectSrc: ["'self'", process.env.FRONTEND_URL || 'http://localhost:3000', "https://accounts.google.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+    }
+  }
+}));
 
 // MED-04: Use env-based CORS origins instead of hardcoded IPs
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -165,7 +178,8 @@ app.listen(PORT, () => {
 
   // Clean expired tokens on startup
   cleanExpiredTokens();
-  // TODO: Run cleanExpiredTokens() periodically (e.g., every hour via setInterval or a cron job)
+  // HIGH-NEW-04: Run token cleanup periodically (every hour)
+  setInterval(cleanExpiredTokens, 60 * 60 * 1000);
 });
 
 module.exports = app;

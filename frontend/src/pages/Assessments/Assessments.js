@@ -923,7 +923,7 @@ const Assessments = () => {
               <Button
                 variant="outlined"
                 size="large"
-                onClick={() => navigate('/matchup')}
+                onClick={() => navigate('/strategies')}
                 sx={{
                   borderColor: 'white',
                   color: 'white',
@@ -931,7 +931,7 @@ const Assessments = () => {
                   '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' },
                 }}
               >
-                View Matchup Score
+                View Your Strategies
               </Button>
             </Box>
           </Paper>

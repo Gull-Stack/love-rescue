@@ -656,7 +656,7 @@ const Settings = () => {
           </Typography>
           <Typography paragraph variant="body2">
             <strong>7. Contact</strong><br />
-            For privacy inquiries, contact us at privacy@marriagerescue.app.
+            For privacy inquiries, contact us at privacy@loverescue.app.
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -727,7 +727,7 @@ const Settings = () => {
           </Typography>
           <Typography paragraph variant="body2">
             <strong>8. Contact</strong><br />
-            For questions about these terms, contact us at legal@marriagerescue.app.
+            For questions about these terms, contact us at legal@loverescue.app.
           </Typography>
         </DialogContent>
         <DialogActions>

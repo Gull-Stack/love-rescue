@@ -90,6 +90,7 @@ model User {
   authProvider       String             @default("email") @map("auth_provider") @db.VarChar(20)
   biometricKey       String?            @map("biometric_key") @db.VarChar(500)
   biometricKeyId     String?            @map("biometric_key_id") @db.VarChar(255)
+  biometricCounter   Int                @default(0) @map("biometric_counter")
   firstName          String?            @map("first_name") @db.VarChar(100)
   lastName           String?            @map("last_name") @db.VarChar(100)
   gender             String?            @db.VarChar(20)
