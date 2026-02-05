@@ -40,8 +40,8 @@ import { useAuth } from '../../contexts/AuthContext';
 
 // Platform admin emails (sync with backend)
 const PLATFORM_ADMIN_EMAILS = [
-  'josh@augmentadvertise.com',
-  'bryce@augmentadvertise.com'
+  'josh@gullstack.com',
+  'bryce@gullstack.com'
 ];
 
 const getNavItems = (isPlatformAdmin) => {

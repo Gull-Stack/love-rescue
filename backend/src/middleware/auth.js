@@ -153,8 +153,8 @@ const requireRole = (...roles) => {
  * Checks if user is a platform admin by isPlatformAdmin flag or email allowlist
  */
 const PLATFORM_ADMIN_EMAILS = [
-  'josh@augmentadvertise.com',
-  'bryce@augmentadvertise.com'
+  'josh@gullstack.com',
+  'bryce@gullstack.com'
 ];
 
 const requirePlatformAdmin = (req, res, next) => {
