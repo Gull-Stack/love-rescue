@@ -28,9 +28,16 @@ const authenticate = async (req, res, next) => {
         role: true,
         subscriptionStatus: true,
         stripeCustomerId: true,
+        isPlatformAdmin: true,
+        isDisabled: true,
         createdAt: true
       }
     });
+
+    // Check if account is disabled
+    if (user && user.isDisabled) {
+      return res.status(403).json({ error: 'Account is disabled' });
+    }
 
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
@@ -139,6 +146,33 @@ const requireRole = (...roles) => {
 
     next();
   };
+};
+
+/**
+ * Platform admin middleware
+ * Checks if user is a platform admin by isPlatformAdmin flag or email allowlist
+ */
+const PLATFORM_ADMIN_EMAILS = [
+  'josh@augmentadvertise.com',
+  'bryce@augmentadvertise.com'
+];
+
+const requirePlatformAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const isAdmin = req.user.isPlatformAdmin || PLATFORM_ADMIN_EMAILS.includes(req.user.email.toLowerCase());
+  
+  if (!isAdmin) {
+    logger.warn('Unauthorized admin access attempt', { userId: req.user.id, email: req.user.email });
+    return res.status(403).json({
+      error: 'Platform admin access required',
+      code: 'ADMIN_REQUIRED'
+    });
+  }
+
+  next();
 };
 
 /**
@@ -302,8 +336,10 @@ module.exports = {
   requirePremium,
   optionalAuth,
   requireRole,
+  requirePlatformAdmin,
   authenticateTherapist,
   requireTherapistAssignment,
   requireBothConsent,
-  loadRelationship
+  loadRelationship,
+  PLATFORM_ADMIN_EMAILS
 };

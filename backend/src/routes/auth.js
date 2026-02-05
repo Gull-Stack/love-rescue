@@ -734,9 +734,16 @@ router.get('/me', authenticate, async (req, res, next) => {
         subscriptionStatus: true,
         authProvider: true,
         trialEndsAt: true,
+        isPlatformAdmin: true,
         createdAt: true
       }
     });
+
+    // Update lastActiveAt
+    await req.prisma.user.update({
+      where: { id: req.user.id },
+      data: { lastActiveAt: new Date() }
+    }).catch(() => {}); // Non-blocking
 
     const relationship = await req.prisma.relationship.findFirst({
       where: {
