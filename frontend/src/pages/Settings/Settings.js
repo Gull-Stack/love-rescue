@@ -399,7 +399,8 @@ const Settings = () => {
                     onClick={() => handleSubscribe('premium')}
                     disabled={loading.payment}
                   >
-                    {loading.payment ? <CircularProgress size={20} /> : 'Upgrade to Premium - $19.99/month'}
+                    {/* LOW-02: Fixed pricing consistency - Premium is $249/month */}
+                    {loading.payment ? <CircularProgress size={20} /> : 'Upgrade to Premium - $249/month'}
                   </Button>
                 </Alert>
               )}

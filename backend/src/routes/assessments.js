@@ -116,35 +116,16 @@ router.post('/submit', authenticate, requireSubscription, async (req, res, next)
       return res.status(500).json({ error: 'Failed to calculate score' });
     }
 
-    // Check if assessment already exists (update) or create new
-    const existing = await req.prisma.assessment.findFirst({
-      where: {
+    // MED-02: Always create new records to preserve assessment history
+    // This allows tracking progress over time with retakes
+    const assessment = await req.prisma.assessment.create({
+      data: {
         userId: req.user.id,
-        type
-      },
-      orderBy: { completedAt: 'desc' }
+        type,
+        responses,
+        score
+      }
     });
-
-    let assessment;
-    if (existing) {
-      assessment = await req.prisma.assessment.update({
-        where: { id: existing.id },
-        data: {
-          responses,
-          score,
-          completedAt: new Date()
-        }
-      });
-    } else {
-      assessment = await req.prisma.assessment.create({
-        data: {
-          userId: req.user.id,
-          type,
-          responses,
-          score
-        }
-      });
-    }
 
     // Get interpretation (pass gender for hormonal_health)
     let interpretationOptions = {};

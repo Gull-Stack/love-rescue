@@ -42,7 +42,19 @@ router.post('/generate', authenticate, requireSubscription, async (req, res, nex
     });
 
     // Check if both have completed all core assessments
-    const requiredTypes = ['attachment', 'personality', 'love_language', 'gottman_checkup'];
+    // CRIT-01: Updated to match frontend's 10 modern assessment types
+    const requiredTypes = [
+      'attachment',
+      'personality', 
+      'love_language',
+      'human_needs',
+      'gottman_checkup',
+      'emotional_intelligence',
+      'conflict_style',
+      'differentiation',
+      'hormonal_health',
+      'physical_vitality'
+    ];
 
     const user1Types = new Set(user1Assessments.map(a => a.type));
     const user2Types = new Set(user2Assessments.map(a => a.type));
@@ -202,7 +214,19 @@ router.get('/status', authenticate, async (req, res, next) => {
       return res.status(404).json({ error: 'Relationship not found' });
     }
 
-    const requiredTypes = ['attachment', 'personality', 'love_language', 'gottman_checkup'];
+    // CRIT-01: Updated to match frontend's 10 modern assessment types
+    const requiredTypes = [
+      'attachment',
+      'personality', 
+      'love_language',
+      'human_needs',
+      'gottman_checkup',
+      'emotional_intelligence',
+      'conflict_style',
+      'differentiation',
+      'hormonal_health',
+      'physical_vitality'
+    ];
 
     // User 1 progress
     const user1Assessments = await req.prisma.assessment.findMany({

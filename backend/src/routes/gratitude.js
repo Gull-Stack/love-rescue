@@ -139,10 +139,11 @@ router.get('/today', authenticate, async (req, res, next) => {
 /**
  * GET /api/gratitude/history
  * Get gratitude history
+ * MED-05: Added pagination support with limit/offset
  */
 router.get('/history', authenticate, async (req, res, next) => {
   try {
-    const { limit = 30, startDate, endDate } = req.query;
+    const { limit = 30, offset = 0, startDate, endDate } = req.query;
 
     const where = { userId: req.user.id };
 
@@ -158,13 +159,25 @@ router.get('/history', authenticate, async (req, res, next) => {
       }
     }
 
-    const entries = await req.prisma.gratitudeEntry.findMany({
-      where,
-      orderBy: { date: 'desc' },
-      take: parseInt(limit)
-    });
+    const [entries, total] = await Promise.all([
+      req.prisma.gratitudeEntry.findMany({
+        where,
+        orderBy: { date: 'desc' },
+        take: Math.min(parseInt(limit), 100), // Cap at 100
+        skip: parseInt(offset)
+      }),
+      req.prisma.gratitudeEntry.count({ where })
+    ]);
 
-    res.json({ entries });
+    res.json({ 
+      entries,
+      pagination: {
+        total,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: parseInt(offset) + entries.length < total
+      }
+    });
   } catch (error) {
     next(error);
   }

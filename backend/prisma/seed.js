@@ -414,7 +414,7 @@ const mediators = [
   {
     name: 'Dr. Sarah Mitchell',
     bio: 'Licensed marriage and family therapist with 15 years of experience facilitating couple discussions. Specializes in communication patterns and conflict resolution.',
-    googleCalendarId: 'mediator.sarah@marriagerescue.app',
+    googleCalendarId: 'mediator.sarah@loverescue.app',
     availabilityRules: { monday: [{ start: '09:00', end: '17:00' }], wednesday: [{ start: '09:00', end: '17:00' }], friday: [{ start: '09:00', end: '13:00' }] },
     rate: 0,
     status: 'active',
@@ -422,7 +422,7 @@ const mediators = [
   {
     name: 'James Rodriguez, LMFT',
     bio: 'Bilingual (English/Spanish) family therapist specializing in intercultural relationships and blended family dynamics.',
-    googleCalendarId: 'mediator.james@marriagerescue.app',
+    googleCalendarId: 'mediator.james@loverescue.app',
     availabilityRules: { tuesday: [{ start: '10:00', end: '18:00' }], thursday: [{ start: '10:00', end: '18:00' }], saturday: [{ start: '09:00', end: '12:00' }] },
     rate: 0,
     status: 'active',
@@ -430,7 +430,7 @@ const mediators = [
   {
     name: 'Dr. Amira Patel',
     bio: 'Clinical psychologist focused on attachment theory and emotionally focused therapy. Warm, structured approach to guided conversations.',
-    googleCalendarId: 'mediator.amira@marriagerescue.app',
+    googleCalendarId: 'mediator.amira@loverescue.app',
     availabilityRules: { monday: [{ start: '11:00', end: '19:00' }], wednesday: [{ start: '11:00', end: '19:00' }], friday: [{ start: '11:00', end: '16:00' }] },
     rate: 0,
     status: 'active',
@@ -438,7 +438,7 @@ const mediators = [
   {
     name: 'Lisa Chen, MSW',
     bio: 'Social worker and relationship coach with expertise in stress management, work-life balance, and rebuilding trust after conflict.',
-    googleCalendarId: 'mediator.lisa@marriagerescue.app',
+    googleCalendarId: 'mediator.lisa@loverescue.app',
     availabilityRules: { tuesday: [{ start: '08:00', end: '16:00' }], thursday: [{ start: '08:00', end: '16:00' }] },
     rate: 0,
     status: 'active',
@@ -446,7 +446,7 @@ const mediators = [
   {
     name: 'Dr. Marcus Thompson',
     bio: 'Gottman-certified therapist with a focus on helping couples build shared meaning systems and navigate major life transitions.',
-    googleCalendarId: 'mediator.marcus@marriagerescue.app',
+    googleCalendarId: 'mediator.marcus@loverescue.app',
     availabilityRules: { monday: [{ start: '13:00', end: '20:00' }], wednesday: [{ start: '13:00', end: '20:00' }], saturday: [{ start: '10:00', end: '14:00' }] },
     rate: 0,
     status: 'active',
@@ -454,7 +454,7 @@ const mediators = [
   {
     name: 'Rachel Goldstein, LCSW',
     bio: 'Licensed clinical social worker specializing in interfaith and intergenerational relationship challenges. Compassionate, nonjudgmental style.',
-    googleCalendarId: 'mediator.rachel@marriagerescue.app',
+    googleCalendarId: 'mediator.rachel@loverescue.app',
     availabilityRules: { tuesday: [{ start: '09:00', end: '17:00' }], friday: [{ start: '09:00', end: '17:00' }] },
     rate: 0,
     status: 'active',
@@ -462,7 +462,7 @@ const mediators = [
   {
     name: 'David Kim, PhD',
     bio: 'Relationship researcher and facilitator. Expert in mindfulness-based relationship enhancement and positive psychology interventions for couples.',
-    googleCalendarId: 'mediator.david@marriagerescue.app',
+    googleCalendarId: 'mediator.david@loverescue.app',
     availabilityRules: { thursday: [{ start: '10:00', end: '18:00' }], saturday: [{ start: '09:00', end: '15:00' }] },
     rate: 0,
     status: 'active',

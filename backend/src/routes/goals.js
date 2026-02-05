@@ -7,25 +7,39 @@ const router = express.Router();
 /**
  * GET /api/goals
  * Get shared goals for the couple
+ * MED-05: Added pagination support with limit/offset
  */
 router.get('/', authenticate, loadRelationship, async (req, res, next) => {
   try {
-    const { status } = req.query; // 'active', 'completed', 'abandoned', or omit for all
+    const { status, limit = 50, offset = 0 } = req.query; // 'active', 'completed', 'abandoned', or omit for all
 
     const where = { relationshipId: req.relationship.id };
     if (status) {
       where.status = status;
     }
 
-    const goals = await req.prisma.sharedGoal.findMany({
-      where,
-      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-      include: {
-        creator: { select: { id: true, firstName: true, lastName: true } }
+    const [goals, total] = await Promise.all([
+      req.prisma.sharedGoal.findMany({
+        where,
+        orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+        include: {
+          creator: { select: { id: true, firstName: true, lastName: true } }
+        },
+        take: Math.min(parseInt(limit), 100), // Cap at 100
+        skip: parseInt(offset)
+      }),
+      req.prisma.sharedGoal.count({ where })
+    ]);
+
+    res.json({ 
+      goals,
+      pagination: {
+        total,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: parseInt(offset) + goals.length < total
       }
     });
-
-    res.json({ goals });
   } catch (error) {
     next(error);
   }

@@ -14,42 +14,113 @@ const { authenticate } = require('../middleware/auth');
 const logger = require('../utils/logger');
 const { sendPasswordResetEmail, sendPartnerInviteEmail } = require('../utils/email');
 
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+// LOW-04: Only initialize Google OAuth2Client if GOOGLE_CLIENT_ID is configured
+// This prevents errors when Google OAuth is not set up
+const googleClient = process.env.GOOGLE_CLIENT_ID 
+  ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+  : null;
 
 const router = express.Router();
 
-// HIGH-05: Account lockout tracking
-// In-memory store for failed login attempts (in production, use Redis)
-const failedAttempts = new Map(); // email -> { count, lockedUntil }
+// HIGH-04: Account lockout tracking with Redis support
+// Uses Redis if REDIS_URL is configured, otherwise falls back to in-memory
 const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const LOCKOUT_DURATION_SECONDS = 15 * 60; // 15 minutes
 
-function checkAccountLockout(email) {
-  const record = failedAttempts.get(email);
+let redisClient = null;
+
+// Initialize Redis if configured
+if (process.env.REDIS_URL) {
+  try {
+    const Redis = require('ioredis');
+    redisClient = new Redis(process.env.REDIS_URL);
+    redisClient.on('error', (err) => {
+      logger.error('Redis connection error', { error: err.message });
+    });
+    redisClient.on('connect', () => {
+      logger.info('Redis connected for account lockout');
+    });
+  } catch (err) {
+    logger.warn('Redis not available, using in-memory lockout', { error: err.message });
+  }
+}
+
+// Fallback in-memory store when Redis is not available
+const failedAttemptsMemory = new Map(); // email -> { count, lockedUntil }
+
+async function checkAccountLockout(email) {
+  const key = `lockout:${email.toLowerCase()}`;
+  
+  if (redisClient) {
+    try {
+      const lockUntil = await redisClient.get(`${key}:locked`);
+      if (lockUntil && parseInt(lockUntil) > Date.now()) {
+        return true;
+      }
+      return false;
+    } catch (err) {
+      logger.error('Redis lockout check failed, using memory', { error: err.message });
+    }
+  }
+  
+  // Fallback to memory
+  const record = failedAttemptsMemory.get(email.toLowerCase());
   if (!record) return false;
   if (record.lockedUntil && record.lockedUntil > Date.now()) {
-    return true; // Account is locked
+    return true;
   }
   if (record.lockedUntil && record.lockedUntil <= Date.now()) {
-    // Lockout expired, reset
-    failedAttempts.delete(email);
+    failedAttemptsMemory.delete(email.toLowerCase());
     return false;
   }
   return false;
 }
 
-function recordFailedAttempt(email) {
-  const record = failedAttempts.get(email) || { count: 0, lockedUntil: null };
+async function recordFailedAttempt(email) {
+  const key = `lockout:${email.toLowerCase()}`;
+  
+  if (redisClient) {
+    try {
+      const count = await redisClient.incr(`${key}:count`);
+      // Set TTL on count key so it auto-expires
+      await redisClient.expire(`${key}:count`, LOCKOUT_DURATION_SECONDS);
+      
+      if (count >= MAX_FAILED_ATTEMPTS) {
+        const lockUntil = Date.now() + (LOCKOUT_DURATION_SECONDS * 1000);
+        await redisClient.setex(`${key}:locked`, LOCKOUT_DURATION_SECONDS, lockUntil.toString());
+        logger.warn('Account locked due to too many failed login attempts', { email });
+      }
+      return;
+    } catch (err) {
+      logger.error('Redis lockout record failed, using memory', { error: err.message });
+    }
+  }
+  
+  // Fallback to memory
+  const normalizedEmail = email.toLowerCase();
+  const record = failedAttemptsMemory.get(normalizedEmail) || { count: 0, lockedUntil: null };
   record.count += 1;
   if (record.count >= MAX_FAILED_ATTEMPTS) {
-    record.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+    record.lockedUntil = Date.now() + (LOCKOUT_DURATION_SECONDS * 1000);
     logger.warn('Account locked due to too many failed login attempts', { email });
   }
-  failedAttempts.set(email, record);
+  failedAttemptsMemory.set(normalizedEmail, record);
 }
 
-function clearFailedAttempts(email) {
-  failedAttempts.delete(email);
+async function clearFailedAttempts(email) {
+  const key = `lockout:${email.toLowerCase()}`;
+  
+  if (redisClient) {
+    try {
+      await redisClient.del(`${key}:count`, `${key}:locked`);
+      return;
+    } catch (err) {
+      logger.error('Redis lockout clear failed, using memory', { error: err.message });
+    }
+  }
+  
+  // Fallback to memory
+  failedAttemptsMemory.delete(email.toLowerCase());
 }
 
 // WebAuthn configuration
@@ -151,8 +222,8 @@ router.post('/login', async (req, res, next) => {
 
     const normalizedEmail = email.toLowerCase();
 
-    // HIGH-05: Check account lockout
-    if (checkAccountLockout(normalizedEmail)) {
+    // HIGH-04: Check account lockout (now Redis-backed if configured)
+    if (await checkAccountLockout(normalizedEmail)) {
       return res.status(429).json({ error: 'Account temporarily locked due to too many failed attempts. Try again in 15 minutes.' });
     }
 
@@ -162,7 +233,7 @@ router.post('/login', async (req, res, next) => {
 
     if (!user) {
       // Don't reveal whether account exists
-      recordFailedAttempt(normalizedEmail);
+      await recordFailedAttempt(normalizedEmail);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -174,12 +245,12 @@ router.post('/login', async (req, res, next) => {
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
 
     if (!isValidPassword) {
-      recordFailedAttempt(normalizedEmail);
+      await recordFailedAttempt(normalizedEmail);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Clear failed attempts on successful login
-    clearFailedAttempts(normalizedEmail);
+    await clearFailedAttempts(normalizedEmail);
 
     // Check and update subscription status if trial expired
     if (user.subscriptionStatus === 'trial' && user.trialEndsAt < new Date()) {
@@ -224,6 +295,11 @@ router.post('/google', async (req, res, next) => {
 
     if (!credential) {
       return res.status(400).json({ error: 'Google credential is required' });
+    }
+
+    // LOW-04: Check if Google OAuth is configured
+    if (!googleClient) {
+      return res.status(503).json({ error: 'Google authentication is not configured' });
     }
 
     // Verify the Google ID token
@@ -1039,7 +1115,7 @@ router.post('/reset-password', async (req, res, next) => {
     });
 
     // Clear any lockout
-    clearFailedAttempts(tokenRecord.email);
+    await clearFailedAttempts(tokenRecord.email);
 
     logger.info('Password reset completed', { userId: user.id });
 
