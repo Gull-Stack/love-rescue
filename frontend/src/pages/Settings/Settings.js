@@ -47,7 +47,7 @@ const Settings = () => {
     document.title = 'Settings | Love Rescue';
     fetchSettings();
     handleUrlParams();
-    // eslint-disable-next-line react-hooks/exhaustive-deps — handleUrlParams reads searchParams on mount only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleUrlParams = () => {

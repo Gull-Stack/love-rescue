@@ -805,7 +805,7 @@ const AssessmentQuiz = () => {
     setResponses({});
     setResult(null);
     setError('');
-    // eslint-disable-next-line react-hooks/exhaustive-deps — reset quiz state when type changes; fetchQuestions is stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
 
   const fetchQuestions = async () => {

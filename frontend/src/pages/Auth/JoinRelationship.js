@@ -24,7 +24,7 @@ const JoinRelationship = () => {
     if (user && code && !success) {
       handleJoin();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps — handleJoin uses stable refs; intentionally run when user/code change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, code]);
 
   const handleJoin = async () => {
