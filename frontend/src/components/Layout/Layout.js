@@ -35,19 +35,34 @@ import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { useAuth } from '../../contexts/AuthContext';
 
-const navItems = [
-  { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
-  { label: 'Strategies', path: '/strategies', icon: <TipsAndUpdatesIcon /> },
-  { label: 'Daily Log', path: '/daily', icon: <EditNoteIcon /> },
-  { label: 'Gratitude', path: '/gratitude', icon: <VolunteerActivismIcon /> },
-  { label: 'Matchup', path: '/matchup', icon: <FavoriteIcon /> },
-  { label: 'Assessments', path: '/assessments', icon: <AssignmentIcon /> },
-  { label: 'Reports', path: '/reports', icon: <AssessmentIcon /> },
-  { label: 'Meetings', path: '/meetings', icon: <VideocamIcon /> },
-  { label: 'Settings', path: '/settings', icon: <SettingsIcon /> },
+// Platform admin emails (sync with backend)
+const PLATFORM_ADMIN_EMAILS = [
+  'josh@augmentadvertise.com',
+  'bryce@augmentadvertise.com'
 ];
+
+const getNavItems = (isPlatformAdmin) => {
+  const items = [
+    { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
+    { label: 'Strategies', path: '/strategies', icon: <TipsAndUpdatesIcon /> },
+    { label: 'Daily Log', path: '/daily', icon: <EditNoteIcon /> },
+    { label: 'Gratitude', path: '/gratitude', icon: <VolunteerActivismIcon /> },
+    { label: 'Matchup', path: '/matchup', icon: <FavoriteIcon /> },
+    { label: 'Assessments', path: '/assessments', icon: <AssignmentIcon /> },
+    { label: 'Reports', path: '/reports', icon: <AssessmentIcon /> },
+    { label: 'Meetings', path: '/meetings', icon: <VideocamIcon /> },
+    { label: 'Settings', path: '/settings', icon: <SettingsIcon /> },
+  ];
+  
+  if (isPlatformAdmin) {
+    items.push({ label: 'Admin', path: '/admin', icon: <AdminPanelSettingsIcon />, isAdmin: true });
+  }
+  
+  return items;
+};
 
 const bottomNavItems = [
   { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
@@ -66,6 +81,13 @@ const Layout = () => {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
+
+  // Check if user is platform admin
+  const isPlatformAdmin = user?.isPlatformAdmin || 
+    (user?.email && PLATFORM_ADMIN_EMAILS.includes(user.email.toLowerCase()));
+
+  // Get nav items based on admin status
+  const navItems = getNavItems(isPlatformAdmin);
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -155,27 +177,36 @@ const Layout = () => {
         }}
       >
         <List>
-          {navItems.map((item) => (
-            <ListItem key={item.path} disablePadding>
-              <ListItemButton
-                selected={location.pathname === item.path}
-                onClick={() => handleNavigation(item.path)}
-                sx={{
-                  mx: 1,
-                  borderRadius: 2,
-                  '&.Mui-selected': {
-                    bgcolor: 'primary.light',
-                    color: 'primary.contrastText',
-                    '& .MuiListItemIcon-root': {
-                      color: 'primary.contrastText',
+          {navItems.map((item, index) => (
+            <React.Fragment key={item.path}>
+              {item.isAdmin && <Divider sx={{ my: 1 }} />}
+              <ListItem disablePadding>
+                <ListItemButton
+                  selected={location.pathname.startsWith(item.path)}
+                  onClick={() => handleNavigation(item.path)}
+                  sx={{
+                    mx: 1,
+                    borderRadius: 2,
+                    ...(item.isAdmin && {
+                      bgcolor: 'warning.light',
+                      '&:hover': { bgcolor: 'warning.main', color: 'warning.contrastText' },
+                    }),
+                    '&.Mui-selected': {
+                      bgcolor: item.isAdmin ? 'warning.main' : 'primary.light',
+                      color: item.isAdmin ? 'warning.contrastText' : 'primary.contrastText',
+                      '& .MuiListItemIcon-root': {
+                        color: item.isAdmin ? 'warning.contrastText' : 'primary.contrastText',
+                      },
                     },
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.label} />
-              </ListItemButton>
-            </ListItem>
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 40, color: item.isAdmin ? 'warning.main' : undefined }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              </ListItem>
+            </React.Fragment>
           ))}
         </List>
       </Drawer>

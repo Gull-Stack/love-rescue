@@ -134,3 +134,13 @@ export const meetingsApi = {
   cancel: (id) => api.post(`/meetings/${id}/cancel`),
   consent: (id) => api.post(`/meetings/${id}/consent`),
 };
+
+// Admin API
+export const adminApi = {
+  getStats: () => api.get('/admin/stats'),
+  getUsers: (params) => api.get('/admin/users', { params }),
+  getUser: (id) => api.get(`/admin/users/${id}`),
+  updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
+  getUsage: () => api.get('/admin/usage'),
+  getRecentSignups: (limit = 10) => api.get('/admin/recent-signups', { params: { limit } }),
+};

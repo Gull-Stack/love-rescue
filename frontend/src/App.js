@@ -27,6 +27,12 @@ const Settings = React.lazy(() => import('./pages/Settings/Settings'));
 const ScheduleMeeting = React.lazy(() => import('./pages/Meetings/ScheduleMeeting'));
 const Gratitude = React.lazy(() => import('./pages/Gratitude/Gratitude'));
 
+// Admin pages (lazy loaded)
+const AdminDashboard = React.lazy(() => import('./pages/Admin'));
+const AdminUsers = React.lazy(() => import('./pages/Admin/Users'));
+const AdminUserDetail = React.lazy(() => import('./pages/Admin/UserDetail'));
+const AdminAnalytics = React.lazy(() => import('./pages/Admin/Analytics'));
+
 // Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -129,6 +135,11 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="meetings" element={<ScheduleMeeting />} />
           <Route path="gratitude" element={<Gratitude />} />
+          {/* Admin routes - protected by backend + frontend checks */}
+          <Route path="admin" element={<AdminDashboard />} />
+          <Route path="admin/users" element={<AdminUsers />} />
+          <Route path="admin/users/:id" element={<AdminUserDetail />} />
+          <Route path="admin/analytics" element={<AdminAnalytics />} />
         </Route>
 
         {/* Catch all — send unauthenticated to landing, authenticated to dashboard */}
