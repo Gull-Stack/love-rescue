@@ -143,4 +143,9 @@ export const adminApi = {
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   getUsage: () => api.get('/admin/usage'),
   getRecentSignups: (limit = 10) => api.get('/admin/recent-signups', { params: { limit } }),
+  // Subscription management
+  getSubscriptions: () => api.get('/admin/subscriptions'),
+  // Push notifications
+  sendPush: (data) => api.post('/admin/push/send', data),
+  getPushStats: () => api.get('/admin/push/stats'),
 };

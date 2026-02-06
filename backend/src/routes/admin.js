@@ -571,4 +571,304 @@ router.get('/recent-signups', async (req, res) => {
   }
 });
 
+// ─── Subscription Stats ───────────────────────────────────────────
+
+/**
+ * GET /api/admin/subscriptions
+ * Subscription statistics and revenue metrics (placeholder until Stripe)
+ */
+router.get('/subscriptions', async (req, res) => {
+  try {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+
+    // Subscription breakdown
+    const subscriptionBreakdown = await req.prisma.user.groupBy({
+      by: ['subscriptionStatus'],
+      _count: true
+    });
+
+    const subscriptions = { trial: 0, paid: 0, premium: 0, expired: 0 };
+    subscriptionBreakdown.forEach(item => {
+      subscriptions[item.subscriptionStatus] = item._count;
+    });
+
+    // Trial users expiring soon (within 7 days)
+    const trialsExpiringSoon = await req.prisma.user.count({
+      where: {
+        subscriptionStatus: 'trial',
+        trialEndsAt: {
+          gte: now,
+          lte: sevenDaysAgo
+        }
+      }
+    });
+
+    // Stripe customers (have stripeCustomerId)
+    const stripeCustomers = await req.prisma.user.count({
+      where: { stripeCustomerId: { not: null } }
+    });
+
+    // Conversion rate: paid+premium / total
+    const totalUsers = subscriptions.trial + subscriptions.paid + subscriptions.premium + subscriptions.expired;
+    const paidUsers = subscriptions.paid + subscriptions.premium;
+    const conversionRate = totalUsers > 0 ? Math.round((paidUsers / totalUsers) * 100) : 0;
+
+    // Recent subscription changes (users who became paid in last 30 days)
+    // This is a proxy - would be more accurate with Stripe webhooks
+    const recentPaidUsers = await req.prisma.user.findMany({
+      where: {
+        subscriptionStatus: { in: ['paid', 'premium'] },
+        stripeCustomerId: { not: null }
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        subscriptionStatus: true,
+        updatedAt: true
+      }
+    });
+
+    // MRR estimate (placeholder - $9.99/month per paid user)
+    const estimatedMRR = paidUsers * 9.99;
+
+    res.json({
+      subscriptions: {
+        breakdown: subscriptions,
+        total: totalUsers,
+        paidUsers,
+        conversionRate,
+        trialsExpiringSoon,
+        stripeCustomers,
+        estimatedMRR: Math.round(estimatedMRR * 100) / 100,
+        recentPaidUsers
+      }
+    });
+  } catch (error) {
+    logger.error('Admin subscription stats error', { error: error.message });
+    res.status(500).json({ error: 'Failed to fetch subscription stats' });
+  }
+});
+
+// ─── Push Notification Broadcasting ───────────────────────────────
+
+/**
+ * POST /api/admin/push/send
+ * Send push notification to all users or specific segments
+ */
+router.post('/push/send', async (req, res) => {
+  try {
+    const { title, body, segment, icon, data } = req.body;
+
+    if (!title || !body) {
+      return res.status(400).json({ error: 'Title and body are required' });
+    }
+
+    // Build query for subscriptions based on segment
+    let subscriptionWhere = { enabled: true };
+
+    if (segment) {
+      switch (segment) {
+        case 'trial':
+          subscriptionWhere.user = { subscriptionStatus: 'trial' };
+          break;
+        case 'paid':
+          subscriptionWhere.user = { subscriptionStatus: { in: ['paid', 'premium'] } };
+          break;
+        case 'expired':
+          subscriptionWhere.user = { subscriptionStatus: 'expired' };
+          break;
+        case 'couples':
+          // Users who have a partner connected
+          subscriptionWhere.user = {
+            OR: [
+              { relationshipsAsUser1: { some: { user2Id: { not: null }, status: 'active' } } },
+              { relationshipsAsUser2: { some: { status: 'active' } } }
+            ]
+          };
+          break;
+        case 'singles':
+          // Users without a partner
+          subscriptionWhere.user = {
+            relationshipsAsUser1: { every: { user2Id: null } },
+            relationshipsAsUser2: { none: {} }
+          };
+          break;
+        case 'inactive':
+          // Users who haven't logged in 7+ days
+          const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+          subscriptionWhere.user = {
+            OR: [
+              { lastActiveAt: { lt: sevenDaysAgo } },
+              { lastActiveAt: null }
+            ]
+          };
+          break;
+        // 'all' or undefined = no additional filter
+      }
+    }
+
+    // Get all eligible subscriptions
+    const subscriptions = await req.prisma.pushSubscription.findMany({
+      where: subscriptionWhere,
+      include: { user: { select: { id: true, email: true } } }
+    });
+
+    if (subscriptions.length === 0) {
+      return res.json({
+        success: true,
+        sent: 0,
+        failed: 0,
+        message: 'No subscribers in selected segment'
+      });
+    }
+
+    // Send notifications (using web-push)
+    const webpush = require('web-push');
+    
+    // Configure VAPID if not already done
+    const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
+    const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+    const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:support@loverescue.app';
+
+    if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+      return res.status(500).json({ error: 'VAPID keys not configured' });
+    }
+
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+
+    const payload = JSON.stringify({
+      title,
+      body,
+      icon: icon || '/logo192.png',
+      badge: '/logo192.png',
+      tag: 'admin-broadcast',
+      data: data || { url: '/dashboard' }
+    });
+
+    let sent = 0;
+    let failed = 0;
+    const errors = [];
+
+    for (const sub of subscriptions) {
+      try {
+        await webpush.sendNotification({
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.p256dh, auth: sub.auth }
+        }, payload);
+
+        await req.prisma.pushSubscription.update({
+          where: { id: sub.id },
+          data: { lastUsed: new Date() }
+        });
+
+        sent++;
+      } catch (error) {
+        failed++;
+        
+        // Remove invalid subscriptions
+        if (error.statusCode === 410 || error.statusCode === 404) {
+          await req.prisma.pushSubscription.delete({ where: { id: sub.id } });
+        } else {
+          errors.push({ userId: sub.user?.id, error: error.message });
+        }
+      }
+    }
+
+    // Audit log
+    await req.prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'ADMIN_PUSH_BROADCAST',
+        resource: 'push_notification',
+        metadata: {
+          title,
+          body,
+          segment: segment || 'all',
+          sent,
+          failed,
+          totalTargeted: subscriptions.length
+        },
+        ipAddress: req.ip
+      }
+    });
+
+    logger.info('Admin push broadcast', { adminId: req.user.id, segment, sent, failed });
+
+    res.json({
+      success: true,
+      sent,
+      failed,
+      total: subscriptions.length,
+      message: `Sent ${sent} notifications to ${segment || 'all'} segment`
+    });
+  } catch (error) {
+    logger.error('Admin push send error', { error: error.message });
+    res.status(500).json({ error: 'Failed to send notifications' });
+  }
+});
+
+/**
+ * GET /api/admin/push/stats
+ * Push notification statistics
+ */
+router.get('/push/stats', async (req, res) => {
+  try {
+    // Total subscriptions
+    const totalSubscriptions = await req.prisma.pushSubscription.count();
+    const enabledSubscriptions = await req.prisma.pushSubscription.count({
+      where: { enabled: true }
+    });
+
+    // Subscriptions by segment
+    const trialSubs = await req.prisma.pushSubscription.count({
+      where: { enabled: true, user: { subscriptionStatus: 'trial' } }
+    });
+    const paidSubs = await req.prisma.pushSubscription.count({
+      where: { enabled: true, user: { subscriptionStatus: { in: ['paid', 'premium'] } } }
+    });
+
+    // Recent broadcasts from audit log
+    const recentBroadcasts = await req.prisma.auditLog.findMany({
+      where: { action: 'ADMIN_PUSH_BROADCAST' },
+      orderBy: { timestamp: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        metadata: true,
+        timestamp: true,
+        user: { select: { email: true } }
+      }
+    });
+
+    res.json({
+      stats: {
+        totalSubscriptions,
+        enabledSubscriptions,
+        segments: {
+          trial: trialSubs,
+          paid: paidSubs
+        },
+        recentBroadcasts: recentBroadcasts.map(b => ({
+          id: b.id,
+          title: b.metadata?.title,
+          segment: b.metadata?.segment,
+          sent: b.metadata?.sent,
+          failed: b.metadata?.failed,
+          timestamp: b.timestamp,
+          sentBy: b.user?.email
+        }))
+      }
+    });
+  } catch (error) {
+    logger.error('Admin push stats error', { error: error.message });
+    res.status(500).json({ error: 'Failed to fetch push stats' });
+  }
+});
+
 module.exports = router;

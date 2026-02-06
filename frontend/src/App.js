@@ -32,6 +32,8 @@ const AdminDashboard = React.lazy(() => import('./pages/Admin'));
 const AdminUsers = React.lazy(() => import('./pages/Admin/Users'));
 const AdminUserDetail = React.lazy(() => import('./pages/Admin/UserDetail'));
 const AdminAnalytics = React.lazy(() => import('./pages/Admin/Analytics'));
+const AdminPushNotifications = React.lazy(() => import('./pages/Admin/PushNotifications'));
+const AdminSubscriptions = React.lazy(() => import('./pages/Admin/Subscriptions'));
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -140,6 +142,8 @@ function App() {
           <Route path="admin/users" element={<AdminUsers />} />
           <Route path="admin/users/:id" element={<AdminUserDetail />} />
           <Route path="admin/analytics" element={<AdminAnalytics />} />
+          <Route path="admin/push" element={<AdminPushNotifications />} />
+          <Route path="admin/subscriptions" element={<AdminSubscriptions />} />
         </Route>
 
         {/* Catch all — send unauthenticated to landing, authenticated to dashboard */}
