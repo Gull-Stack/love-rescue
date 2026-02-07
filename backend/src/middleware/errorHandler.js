@@ -41,12 +41,16 @@ const errorHandler = (err, req, res, next) => {
 
   // Default error
   const statusCode = err.statusCode || 500;
-  // TEMP: Show real error for debugging
-  const message = err.message || 'An unexpected error occurred';
+  
+  // In production, hide internal errors but show Prisma migration issues
+  const isPrismaSchemaError = err.code === 'P2022' || err.code === 'P2021' || err.code === 'P2025';
+  const message = (process.env.NODE_ENV === 'production' && !isPrismaSchemaError)
+    ? 'An unexpected error occurred'
+    : err.message;
 
   res.status(statusCode).json({
     error: message,
-    debug: err.code || err.name || 'unknown'
+    ...(isPrismaSchemaError && { hint: 'Database schema mismatch - migrations may need to run' })
   });
 };
 

@@ -1,4 +1,35 @@
 require('dotenv').config();
+
+// ============================================
+// REQUIRED ENV VARS - Fail fast if missing
+// ============================================
+const REQUIRED_ENV_VARS = [
+  'DATABASE_URL',
+  'JWT_SECRET',
+];
+
+const RECOMMENDED_ENV_VARS = [
+  'GOOGLE_CLIENT_ID',
+  'ALLOWED_ORIGINS',
+  'FRONTEND_URL',
+];
+
+const missing = REQUIRED_ENV_VARS.filter(key => !process.env[key]);
+if (missing.length > 0) {
+  console.error('❌ FATAL: Missing required environment variables:');
+  missing.forEach(key => console.error(`   - ${key}`));
+  console.error('\nAdd these to Railway Variables and redeploy.');
+  process.exit(1);
+}
+
+const missingRecommended = RECOMMENDED_ENV_VARS.filter(key => !process.env[key]);
+if (missingRecommended.length > 0) {
+  console.warn('⚠️  WARNING: Missing recommended environment variables:');
+  missingRecommended.forEach(key => console.warn(`   - ${key}`));
+  console.warn('Some features may not work correctly.\n');
+}
+// ============================================
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
