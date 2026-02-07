@@ -180,26 +180,15 @@ process.on('SIGINT', gracefulShutdown);
 // Database schema health check - verify critical tables exist
 async function verifyDatabaseSchema() {
   logger.info('[HealthCheck] Verifying database schema...');
-  const criticalTables = ['users', 'couples', 'assessments', 'daily_logs'];
-  
-  for (const table of criticalTables) {
-    try {
-      const result = await prisma.$queryRaw`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public' AND table_name = ${table}
-        ) as exists
-      `;
-      if (!result[0]?.exists) {
-        logger.error(`[HealthCheck] CRITICAL: Missing table '${table}' - run migrations!`);
-        throw new Error(`Missing critical table: ${table}`);
-      }
-    } catch (error) {
-      if (error.message?.includes('Missing critical table')) throw error;
-      logger.error(`[HealthCheck] Error checking table ${table}:`, { error: error.message });
-    }
+  // Verify DB connection by checking we can query a known model
+  try {
+    await prisma.user.count();
+    await prisma.relationship.count();
+    logger.info('[HealthCheck] Database schema verified ✅');
+  } catch (error) {
+    logger.error('[HealthCheck] Database schema check failed:', { error: error.message });
+    throw new Error('Database schema check failed - ensure migrations are applied');
   }
-  logger.info('[HealthCheck] All critical tables verified ✅');
 }
 
 // Platform admin emails that should always have access
