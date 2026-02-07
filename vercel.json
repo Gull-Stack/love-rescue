@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cd frontend && npm install && CI=false npm run build && cd .. && cp -r frontend/build/* ./ && mv index.html app.html && cp -r landing/* ./",
-  "outputDirectory": ".",
+  "buildCommand": "chmod +x build.sh && ./build.sh",
+  "outputDirectory": "dist",
   "installCommand": "echo 'skip root install'",
   "framework": null,
   "cleanUrls": false,
