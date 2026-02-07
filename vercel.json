@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm install --prefix frontend && CI=false npm run build --prefix frontend && mkdir -p dist && cp -r frontend/build/* dist/ && mv dist/index.html dist/app.html && cp -r landing/* dist/",
+  "buildCommand": "(cd frontend && npm install && CI=false npm run build) && mkdir -p dist && cp -r frontend/build/* dist/ && mv dist/index.html dist/app.html && cp -r landing/* dist/",
   "outputDirectory": "dist",
   "installCommand": "echo 'skip root install'",
   "framework": null,
