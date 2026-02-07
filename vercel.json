@@ -1,12 +1,11 @@
 {
-  "buildCommand": "cd frontend && npm install && CI=false npm run build && cd .. && mkdir -p dist && cp -r frontend/build/* dist/ && mv landing/index.html landing/home.html && cp -r landing/* dist/ && mv dist/home.html dist/landing.html",
+  "buildCommand": "cd frontend && npm install && CI=false npm run build && cd .. && mkdir -p dist && cp -r frontend/build/* dist/ && cp dist/index.html dist/app.html && cp -r landing/* dist/",
   "outputDirectory": "dist",
   "installCommand": "echo 'skip root install'",
   "framework": null,
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/", "destination": "/landing.html" },
     { "source": "/api/:path*", "destination": "https://backend-production-76f0e.up.railway.app/api/:path*" },
     { "source": "/services/:path*", "destination": "/services/:path*.html" },
     { "source": "/blog/:path*", "destination": "/blog/:path*.html" },
@@ -14,7 +13,21 @@
     { "source": "/experts/:path*", "destination": "/experts/:path*.html" },
     { "source": "/problems/:path*", "destination": "/problems/:path*.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
-    { "source": "/terms", "destination": "/terms.html" }
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/login", "destination": "/app.html" },
+    { "source": "/signup", "destination": "/app.html" },
+    { "source": "/dashboard/:path*", "destination": "/app.html" },
+    { "source": "/settings/:path*", "destination": "/app.html" },
+    { "source": "/assessments/:path*", "destination": "/app.html" },
+    { "source": "/join/:path*", "destination": "/app.html" },
+    { "source": "/admin/:path*", "destination": "/app.html" },
+    { "source": "/reset-password/:path*", "destination": "/app.html" },
+    { "source": "/daily-log", "destination": "/app.html" },
+    { "source": "/gratitude", "destination": "/app.html" },
+    { "source": "/goals", "destination": "/app.html" },
+    { "source": "/videos", "destination": "/app.html" },
+    { "source": "/reports/:path*", "destination": "/app.html" },
+    { "source": "/partner/:path*", "destination": "/app.html" }
   ],
   "headers": [
     {
