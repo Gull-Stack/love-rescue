@@ -1,14 +1,17 @@
 {
-  "buildCommand": "cd frontend && npm install && npm run build && cd .. && mkdir -p dist && cp -r landing/* dist/ && cp -r frontend/build/* dist/",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": "dist",
+  "installCommand": "npm install && cd frontend && npm install",
+  "framework": null,
   "cleanUrls": true,
+  "trailingSlash": false,
   "rewrites": [
-    { "source": "/services/:path*", "destination": "/services/:path*" },
-    { "source": "/blog/:path*", "destination": "/blog/:path*" },
-    { "source": "/privacy", "destination": "/privacy.html" },
-    { "source": "/terms", "destination": "/terms.html" },
-    { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
-    { "source": "/robots.txt", "destination": "/robots.txt" },
+    { "source": "/api/:path*", "destination": "https://backend-production-76f0e.up.railway.app/api/:path*" },
+    { "source": "/services/:path*", "destination": "/services/:path*.html" },
+    { "source": "/blog/:path*", "destination": "/blog/:path*.html" },
+    { "source": "/guides/:path*", "destination": "/guides/:path*.html" },
+    { "source": "/experts/:path*", "destination": "/experts/:path*.html" },
+    { "source": "/problems/:path*", "destination": "/problems/:path*.html" },
     { "source": "/login", "destination": "/index.html" },
     { "source": "/signup", "destination": "/index.html" },
     { "source": "/dashboard/:path*", "destination": "/index.html" },
@@ -21,14 +24,16 @@
     { "source": "/gratitude", "destination": "/index.html" },
     { "source": "/goals", "destination": "/index.html" },
     { "source": "/videos", "destination": "/index.html" },
-    { "source": "/reports/:path*", "destination": "/index.html" }
+    { "source": "/reports/:path*", "destination": "/index.html" },
+    { "source": "/partner/:path*", "destination": "/index.html" }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" }
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" }
       ]
     }
   ]

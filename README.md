@@ -1,70 +1,51 @@
-# Marriage Rescue
+# LoveRescue
 
-A mobile-friendly web application to help married or committed couples monitor and improve their relationship health.
+Relationship wellness platform helping couples build stronger connections.
 
-## Features
-
-- **User Accounts**: Secure authentication with biometrics (WebAuthn)
-- **Assessments**: 4 comprehensive quizzes (Attachment Style, 16 Personalities, Wellness Behavior, Negative Patterns/Closeness)
-- **Matchup Score**: Compatibility analysis once both partners complete assessments
-- **Daily Tracking**: Log positive/negative interactions, journal entries
-- **Weekly Summaries**: Progress reports with charts and strategy adjustments
-- **Personalized Strategies**: AI-generated daily/weekly activities
-- **Google Calendar Integration**: Schedule relationship activities
-- **Therapist API**: Allow licensed therapists to assign custom tasks
-
-## Tech Stack
-
-- **Frontend**: React, Material-UI, React Router, Chart.js
-- **Backend**: Node.js, Express.js, JWT, Prisma ORM
-- **Database**: PostgreSQL
-- **Integrations**: Google Calendar API, Stripe, SendGrid
-- **Security**: WebAuthn, HIPAA-compliant encryption
-
-## Project Structure
+## Architecture
 
 ```
-marriage-rescue-app/
-├── frontend/          # React application
-├── backend/           # Node.js/Express API
-├── prisma/            # Database schema and migrations
-└── docs/              # Documentation
+loverescue/
+├── frontend/       → React app (Vercel)
+├── backend/        → Express API + Prisma (Railway)
+├── landing/        → Static marketing pages (merged into frontend build)
+├── vercel.json     → Frontend + landing deployment config
+└── railway.json    → Backend deployment config
 ```
 
-## Getting Started
+## Domains
 
-### Prerequisites
+- **App:** https://loverescue.app
+- **API:** https://backend-production-76f0e.up.railway.app
 
-- Node.js 18+
-- PostgreSQL 14+
-- npm or yarn
+## Development
 
-### Installation
+```bash
+# Frontend (localhost:3000)
+npm run dev:frontend
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   cd backend && npm install
-   cd ../frontend && npm install
-   ```
-3. Set up environment variables (see `.env.example` files)
-4. Run database migrations:
-   ```bash
-   cd backend && npx prisma migrate dev
-   ```
-5. Start development servers:
-   ```bash
-   # Terminal 1 - Backend
-   cd backend && npm run dev
+# Backend (localhost:3001)
+npm run dev:backend
 
-   # Terminal 2 - Frontend
-   cd frontend && npm start
-   ```
+# Database migrations
+npm run db:migrate
+```
 
-## Disclaimer
+## Deployment
 
-This app provides general strategies based on relationship research. It is not a substitute for professional therapy. Consult a licensed counselor for personalized advice.
+Push to `main` branch triggers:
+1. **Vercel:** Builds frontend + merges landing pages → loverescue.app
+2. **Railway:** Deploys backend → api endpoint
 
-## License
+## Environment Variables
 
-Proprietary - All rights reserved
+### Vercel (Frontend)
+- `REACT_APP_API_URL` - Backend API URL
+- `REACT_APP_GOOGLE_CLIENT_ID` - Google OAuth client ID
+- `REACT_APP_STRIPE_PUBLISHABLE_KEY` - Stripe public key
+
+### Railway (Backend)
+- `DATABASE_URL` - PostgreSQL connection string
+- `JWT_SECRET` - Auth token secret
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` - OAuth
+- `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` - Payments

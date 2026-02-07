@@ -1,0 +1,22 @@
+{
+  "name": "loverescue",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LoveRescue - Relationship wellness platform",
+  "scripts": {
+    "dev:frontend": "cd frontend && npm start",
+    "dev:backend": "cd backend && npm run dev",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "build:backend": "cd backend && npm install && npm run build",
+    "start:backend": "cd backend && npm start",
+    "db:migrate": "cd backend && npx prisma migrate deploy",
+    "db:generate": "cd backend && npx prisma generate",
+    "vercel-build": "npm run build:frontend && mkdir -p dist && cp -r landing/* dist/ && cp -r frontend/build/* dist/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Gull-Stack/love-rescue.git"
+  },
+  "author": "GullStack",
+  "license": "UNLICENSED"
+}
