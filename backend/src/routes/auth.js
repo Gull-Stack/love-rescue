@@ -22,6 +22,10 @@ const googleClient = process.env.GOOGLE_CLIENT_ID
 
 const router = express.Router();
 
+// Token expiration configuration
+const ACCESS_TOKEN_EXPIRY = '30d'; // Extended from 7d for PWA persistence
+const REFRESH_TOKEN_EXPIRY_DAYS = 90; // Refresh tokens last 90 days
+
 // HIGH-04: Account lockout tracking with Redis support
 // Uses Redis if REDIS_URL is configured, otherwise falls back to in-memory
 const MAX_FAILED_ATTEMPTS = 5;
@@ -129,6 +133,36 @@ const rpID = process.env.WEBAUTHN_RP_ID || 'localhost';
 const origin = process.env.WEBAUTHN_ORIGIN || 'http://localhost:3000';
 
 /**
+ * Generate access and refresh tokens for a user
+ */
+async function generateTokenPair(userId, prisma) {
+  const accessToken = jwt.sign(
+    { userId },
+    process.env.JWT_SECRET,
+    { expiresIn: ACCESS_TOKEN_EXPIRY }
+  );
+
+  // Generate a secure refresh token
+  const refreshToken = crypto.randomBytes(64).toString('hex');
+  const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+
+  // Store refresh token in database
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
+
+  await prisma.token.create({
+    data: {
+      email: `user:${userId}`, // Using email field to store user reference
+      token: refreshTokenHash,
+      type: 'refresh_token',
+      expiresAt
+    }
+  });
+
+  return { accessToken, refreshToken };
+}
+
+/**
  * POST /api/auth/signup
  * Create new user account
  */
@@ -189,19 +223,16 @@ router.post('/signup', async (req, res, next) => {
       }
     });
 
-    // Generate JWT
-    const token = jwt.sign(
-      { userId: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    // Generate token pair
+    const { accessToken, refreshToken } = await generateTokenPair(user.id, req.prisma);
 
     logger.info('User signed up', { userId: user.id });
 
     res.status(201).json({
       message: 'Account created successfully',
       user,
-      token
+      token: accessToken,
+      refreshToken
     });
   } catch (error) {
     next(error);
@@ -261,11 +292,8 @@ router.post('/login', async (req, res, next) => {
       user.subscriptionStatus = 'expired';
     }
 
-    const token = jwt.sign(
-      { userId: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    // Generate token pair
+    const { accessToken, refreshToken } = await generateTokenPair(user.id, req.prisma);
 
     logger.info('User logged in', { userId: user.id });
 
@@ -278,7 +306,8 @@ router.post('/login', async (req, res, next) => {
         gender: user.gender,
         subscriptionStatus: user.subscriptionStatus
       },
-      token
+      token: accessToken,
+      refreshToken
     });
   } catch (error) {
     next(error);
@@ -369,11 +398,8 @@ router.post('/google', async (req, res, next) => {
       }
     }
 
-    const token = jwt.sign(
-      { userId: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    // Generate token pair
+    const { accessToken, refreshToken } = await generateTokenPair(user.id, req.prisma);
 
     logger.info('Google auth', { userId: user.id, isNewUser });
 
@@ -386,7 +412,8 @@ router.post('/google', async (req, res, next) => {
         gender: user.gender,
         subscriptionStatus: user.subscriptionStatus
       },
-      token,
+      token: accessToken,
+      refreshToken,
       isNewUser
     });
   } catch (error) {
@@ -588,11 +615,8 @@ router.post('/webauthn/login/verify', async (req, res, next) => {
       data: { usedAt: new Date() }
     });
 
-    const token = jwt.sign(
-      { userId: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    // Generate token pair
+    const { accessToken, refreshToken } = await generateTokenPair(user.id, req.prisma);
 
     logger.info('WebAuthn login', { userId: user.id });
 
@@ -605,7 +629,96 @@ router.post('/webauthn/login/verify', async (req, res, next) => {
         gender: user.gender,
         subscriptionStatus: user.subscriptionStatus
       },
-      token
+      token: accessToken,
+      refreshToken
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/auth/refresh
+ * Refresh access token using refresh token
+ */
+router.post('/refresh', async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token is required' });
+    }
+
+    // Hash the provided token for comparison
+    const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+
+    // Find valid refresh token
+    const tokenRecord = await req.prisma.token.findFirst({
+      where: {
+        token: refreshTokenHash,
+        type: 'refresh_token',
+        usedAt: null,
+        expiresAt: { gt: new Date() }
+      }
+    });
+
+    if (!tokenRecord) {
+      return res.status(401).json({ error: 'Invalid or expired refresh token' });
+    }
+
+    // Extract userId from email field (stored as "user:userId")
+    const userId = tokenRecord.email.replace('user:', '');
+
+    // Find user
+    const user = await req.prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    // Mark old refresh token as used
+    await req.prisma.token.update({
+      where: { id: tokenRecord.id },
+      data: { usedAt: new Date() }
+    });
+
+    // Generate new token pair (token rotation for security)
+    const { accessToken, refreshToken: newRefreshToken } = await generateTokenPair(user.id, req.prisma);
+
+    logger.info('Token refreshed', { userId: user.id });
+
+    res.json({
+      token: accessToken,
+      refreshToken: newRefreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        gender: user.gender,
+        subscriptionStatus: user.subscriptionStatus
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/auth/biometric-status
+ * Check if user has biometrics registered
+ */
+router.get('/biometric-status', authenticate, async (req, res, next) => {
+  try {
+    const user = await req.prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { biometricKeyId: true }
+    });
+
+    res.json({
+      biometricEnabled: !!user?.biometricKeyId
     });
   } catch (error) {
     next(error);

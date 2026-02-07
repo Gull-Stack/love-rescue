@@ -24,12 +24,14 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import PaymentIcon from '@mui/icons-material/Payment';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import FingerprintIcon from '@mui/icons-material/Fingerprint';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useAuth } from '../../contexts/AuthContext';
 import api, { calendarApi, paymentsApi, therapistApi } from '../../services/api';
 
 const Settings = () => {
   const [searchParams] = useSearchParams();
-  const { user, relationship, invitePartner, refreshUser } = useAuth();
+  const { user, relationship, invitePartner, refreshUser, biometricEnabled, checkBiometricAvailability, registerBiometric } = useAuth();
   const [loading, setLoading] = useState({});
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -42,13 +44,33 @@ const Settings = () => {
   const [cancelDialog, setCancelDialog] = useState(false);
   const [legalDialog, setLegalDialog] = useState(null); // 'privacy' or 'terms'
   const [gender, setGender] = useState(user?.gender || '');
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
 
   useEffect(() => {
     document.title = 'Settings | Love Rescue';
     fetchSettings();
     handleUrlParams();
+    checkBiometricSupport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const checkBiometricSupport = async () => {
+    const available = await checkBiometricAvailability();
+    setBiometricAvailable(available);
+  };
+
+  const handleSetupBiometric = async () => {
+    setLoading({ ...loading, biometric: true });
+    setError('');
+    try {
+      await registerBiometric();
+      setSuccess('Biometric authentication enabled! You can now sign in with Face ID or Touch ID.');
+    } catch (err) {
+      setError(err.message || 'Failed to set up biometric authentication');
+    } finally {
+      setLoading({ ...loading, biometric: false });
+    }
+  };
 
   const handleUrlParams = () => {
     const payment = searchParams.get('payment');
@@ -282,6 +304,60 @@ const Settings = () => {
                 : 'N/A'}
             </Typography>
           </Box>
+        </CardContent>
+      </Card>
+
+      {/* Security / Biometric Settings */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Security
+          </Typography>
+          
+          {/* Biometric Authentication */}
+          <Box mb={2}>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Biometric Authentication
+            </Typography>
+            {!biometricAvailable ? (
+              <Typography variant="body2" color="text.secondary">
+                Face ID / Touch ID is not available on this device.
+              </Typography>
+            ) : biometricEnabled ? (
+              <Box display="flex" alignItems="center" gap={1}>
+                <CheckCircleIcon color="success" />
+                <Typography color="success.main" fontWeight="medium">
+                  Biometrics Enabled ✓
+                </Typography>
+              </Box>
+            ) : (
+              <Box>
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  Enable Face ID or Touch ID for quick and secure sign-in, especially when using the app as a PWA.
+                </Typography>
+                <Button
+                  variant="outlined"
+                  startIcon={loading.biometric ? <CircularProgress size={20} /> : <FingerprintIcon />}
+                  onClick={handleSetupBiometric}
+                  disabled={loading.biometric}
+                >
+                  {loading.biometric ? 'Setting up...' : 'Set Up Biometrics'}
+                </Button>
+              </Box>
+            )}
+          </Box>
+
+          {/* Password Change (for non-Google users) */}
+          {user?.authProvider !== 'google' && (
+            <Box mt={3}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Password
+              </Typography>
+              <Button variant="text" color="primary" size="small">
+                Change Password
+              </Button>
+            </Box>
+          )}
         </CardContent>
       </Card>
 

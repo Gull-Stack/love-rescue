@@ -9,10 +9,62 @@ const api = axios.create({
   },
 });
 
+// Token storage helpers - respect "Remember Me" preference
+export const getStorageType = () => {
+  // Check if user opted for persistent storage (Remember Me)
+  return localStorage.getItem('rememberMe') === 'true' ? localStorage : sessionStorage;
+};
+
+export const getToken = () => {
+  return localStorage.getItem('token') || sessionStorage.getItem('token');
+};
+
+export const getRefreshToken = () => {
+  return localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
+};
+
+export const setTokens = (token, refreshToken, remember = true) => {
+  const storage = remember ? localStorage : sessionStorage;
+  storage.setItem('token', token);
+  if (refreshToken) {
+    storage.setItem('refreshToken', refreshToken);
+  }
+  if (remember) {
+    localStorage.setItem('rememberMe', 'true');
+  } else {
+    localStorage.removeItem('rememberMe');
+    // Clear from the other storage if switching
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+  }
+};
+
+export const clearTokens = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('refreshToken');
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('refreshToken');
+};
+
+// Flag to prevent multiple refresh attempts
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -23,16 +75,69 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle auth errors
+// Response interceptor to handle auth errors with token refresh
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
-        window.location.href = '/login';
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If 401 and we haven't already tried to refresh
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      // Don't try to refresh on login/signup/refresh endpoints
+      if (originalRequest.url?.includes('/auth/login') ||
+          originalRequest.url?.includes('/auth/signup') ||
+          originalRequest.url?.includes('/auth/refresh') ||
+          originalRequest.url?.includes('/auth/webauthn/login')) {
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        // Queue this request while we're refreshing
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(token => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
+        }).catch(err => {
+          return Promise.reject(err);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const refreshToken = getRefreshToken();
+      
+      if (!refreshToken) {
+        clearTokens();
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+
+      try {
+        const response = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
+        const { token, refreshToken: newRefreshToken } = response.data;
+        
+        const remember = localStorage.getItem('rememberMe') === 'true';
+        setTokens(token, newRefreshToken, remember);
+        
+        processQueue(null, token);
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        clearTokens();
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
+
     return Promise.reject(error);
   }
 );
@@ -154,4 +259,16 @@ export const adminApi = {
   // Push notifications
   sendPush: (data) => api.post('/admin/push/send', data),
   getPushStats: () => api.get('/admin/push/stats'),
+};
+
+// Biometric/WebAuthn API
+export const biometricApi = {
+  // Check if biometrics are registered
+  getStatus: () => api.get('/auth/biometric-status'),
+  // Registration flow
+  getRegisterOptions: () => api.post('/auth/webauthn/register/options'),
+  verifyRegistration: (credential) => api.post('/auth/webauthn/register/verify', { credential }),
+  // Login flow (no auth required)
+  getLoginOptions: (email) => api.post('/auth/webauthn/login/options', { email }),
+  verifyLogin: (email, credential) => api.post('/auth/webauthn/login/verify', { email, credential }),
 };
