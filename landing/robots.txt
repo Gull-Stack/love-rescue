@@ -1,6 +1,9 @@
-# Love Rescue - robots.txt
 User-agent: *
 Allow: /
 
-# Sitemap
 Sitemap: https://loverescue.app/sitemap.xml
+
+# Block admin/app routes from indexing
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /api

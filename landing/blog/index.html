@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relationship Blog | Expert Advice to Save Your Marriage | Love Rescue</title>
+  <meta name="description" content="Science-backed relationship advice from 11+ world-class experts. Learn the skills that actually save marriages—based on 40 years of research.">
+  <meta name="keywords" content="marriage advice, relationship help, save marriage blog, gottman tips, couples therapy advice, marriage counseling alternative">
+  
+  <meta property="og:title" content="Love Rescue Blog | Expert Relationship Advice">
+  <meta property="og:description" content="Science-backed relationship advice from 11+ world-class experts.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://loverescue.app/blog">
+  
+  <link rel="canonical" href="https://loverescue.app/blog">
+  <link rel="icon" href="/favicon.ico">
+  
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #1a1a2e;
+      background: #fafafa;
+    }
+    
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      padding: 1rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .logo {
+      color: #fff;
+      font-size: 1.5rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    
+    .logo span { color: #e91e63; }
+    
+    nav a {
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-left: 2rem;
+    }
+    
+    .cta-btn {
+      background: linear-gradient(135deg, #e91e63, #ff5722);
+      color: #fff;
+      padding: 0.75rem 1.5rem;
+      border-radius: 50px;
+      text-decoration: none;
+      font-weight: 600;
+      margin-left: 2rem;
+    }
+    
+    .hero {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #fff;
+      padding: 4rem 2rem;
+      text-align: center;
+    }
+    
+    .hero h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .hero p {
+      opacity: 0.9;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+    }
+    
+    .featured {
+      margin-bottom: 4rem;
+    }
+    
+    .section-title {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      color: #1a1a2e;
+    }
+    
+    .featured-card {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    
+    .featured-image {
+      background: linear-gradient(135deg, #e91e63, #9c27b0);
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 4rem;
+    }
+    
+    .featured-content {
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    
+    .featured-content .tag {
+      color: #e91e63;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+    
+    .featured-content h2 {
+      font-size: 1.75rem;
+      margin-bottom: 1rem;
+      color: #1a1a2e;
+    }
+    
+    .featured-content h2 a {
+      color: inherit;
+      text-decoration: none;
+    }
+    
+    .featured-content h2 a:hover {
+      color: #e91e63;
+    }
+    
+    .featured-content p {
+      color: #666;
+      margin-bottom: 1.5rem;
+    }
+    
+    .read-more {
+      color: #e91e63;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    
+    .blog-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 2rem;
+    }
+    
+    .blog-card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .blog-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+    
+    .card-image {
+      height: 180px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 3rem;
+    }
+    
+    .card-content {
+      padding: 1.5rem;
+    }
+    
+    .card-content .tag {
+      color: #e91e63;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .card-content h3 {
+      margin: 0.5rem 0;
+      font-size: 1.25rem;
+    }
+    
+    .card-content h3 a {
+      color: #1a1a2e;
+      text-decoration: none;
+    }
+    
+    .card-content h3 a:hover {
+      color: #e91e63;
+    }
+    
+    .card-content p {
+      color: #666;
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+    }
+    
+    .card-meta {
+      color: #999;
+      font-size: 0.85rem;
+    }
+    
+    .categories {
+      margin-bottom: 3rem;
+    }
+    
+    .category-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    
+    .category-pill {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      padding: 0.5rem 1rem;
+      border-radius: 50px;
+      text-decoration: none;
+      color: #666;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    
+    .category-pill:hover, .category-pill.active {
+      background: #e91e63;
+      border-color: #e91e63;
+      color: #fff;
+    }
+    
+    footer {
+      background: #1a1a2e;
+      color: rgba(255,255,255,0.7);
+      padding: 3rem 2rem;
+      text-align: center;
+      margin-top: 4rem;
+    }
+    
+    footer a { color: #e91e63; text-decoration: none; }
+    
+    @media (max-width: 768px) {
+      .featured-card { grid-template-columns: 1fr; }
+      nav { display: none; }
+      .hero h1 { font-size: 1.75rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="/" class="logo">Love<span>Rescue</span></a>
+      <nav>
+        <a href="/blog">Blog</a>
+        <a href="/experts">Our Experts</a>
+        <a href="/#how-it-works">How It Works</a>
+        <a href="/#pricing">Pricing</a>
+      </nav>
+      <a href="https://loverescue.app/signup" class="cta-btn">Start Free →</a>
+    </div>
+  </header>
+  
+  <div class="hero">
+    <h1>Love Rescue Blog</h1>
+    <p>Science-backed relationship advice from 11+ world-class experts. Real skills you can use today—not just theory.</p>
+  </div>
+  
+  <main>
+    <div class="categories">
+      <div class="category-pills">
+        <a href="/blog" class="category-pill active">All Posts</a>
+        <a href="/blog/category/communication" class="category-pill">Communication</a>
+        <a href="/blog/category/conflict" class="category-pill">Conflict Resolution</a>
+        <a href="/blog/category/intimacy" class="category-pill">Intimacy</a>
+        <a href="/blog/category/gottman" class="category-pill">Gottman Method</a>
+        <a href="/blog/category/attachment" class="category-pill">Attachment Styles</a>
+        <a href="/blog/category/success-stories" class="category-pill">Success Stories</a>
+      </div>
+    </div>
+    
+    <section class="featured">
+      <h2 class="section-title">Featured Article</h2>
+      <div class="featured-card">
+        <div class="featured-image">💔→❤️</div>
+        <div class="featured-content">
+          <span class="tag">Research-Backed</span>
+          <h2><a href="/blog/why-marriage-counseling-fails">Why Traditional Marriage Counseling Fails (And What Actually Works)</a></h2>
+          <p>Discover why 75% of couples who try traditional therapy still struggle—and the science-backed approach that's changing everything. Based on 40+ years of Gottman research.</p>
+          <a href="/blog/why-marriage-counseling-fails" class="read-more">Read Article →</a>
+        </div>
+      </div>
+    </section>
+    
+    <section>
+      <h2 class="section-title">Latest Articles</h2>
+      <div class="blog-grid">
+        <article class="blog-card">
+          <div class="card-image" style="background: linear-gradient(135deg, #f44336, #e91e63);">🐴🐴🐴🐴</div>
+          <div class="card-content">
+            <span class="tag">Gottman Research</span>
+            <h3><a href="/blog/four-horsemen-destroying-marriage">The 4 Horsemen Destroying Your Marriage</a></h3>
+            <p>Gottman's research reveals four behaviors that predict divorce with 94% accuracy. Learn to spot them—and stop them.</p>
+            <div class="card-meta">8 min read</div>
+          </div>
+        </article>
+        
+        <article class="blog-card">
+          <div class="card-image" style="background: linear-gradient(135deg, #9c27b0, #673ab7);">🔗</div>
+          <div class="card-content">
+            <span class="tag">Attachment Theory</span>
+            <h3><a href="/blog/attachment-styles-relationships">Attachment Styles: Why You Fight the Way You Do</a></h3>
+            <p>Understanding the hidden patterns that drive your relationship conflicts—and how to break free from them.</p>
+            <div class="card-meta">10 min read</div>
+          </div>
+        </article>
+        
+        <article class="blog-card">
+          <div class="card-image" style="background: linear-gradient(135deg, #4caf50, #8bc34a);">✅</div>
+          <div class="card-content">
+            <span class="tag">Hope & Recovery</span>
+            <h3><a href="/blog/five-signs-marriage-can-be-saved">5 Signs Your Marriage Can Be Saved</a></h3>
+            <p>Research-backed indicators that your relationship has what it takes to come back stronger.</p>
+            <div class="card-meta">6 min read</div>
+          </div>
+        </article>
+        
+        <article class="blog-card">
+          <div class="card-image" style="background: linear-gradient(135deg, #ff9800, #ff5722);">🗣️</div>
+          <div class="card-content">
+            <span class="tag">Communication</span>
+            <h3><a href="/blog/soft-startup-conversation">The Soft Startup: How to Bring Up Issues Without Starting a Fight</a></h3>
+            <p>The first 3 minutes of a conversation predict its outcome 96% of the time. Here's how to start right.</p>
+            <div class="card-meta">7 min read</div>
+          </div>
+        </article>
+        
+        <article class="blog-card">
+          <div class="card-image" style="background: linear-gradient(135deg, #2196f3, #03a9f4);">🔥→❄️</div>
+          <div class="card-content">
+            <span class="tag">Intimacy</span>
+            <h3><a href="/blog/rekindling-desire-long-term-relationship">Rekindling Desire in a Long-Term Relationship</a></h3>
+            <p>Esther Perel's insights on maintaining passion when comfort sets in—and why it requires intentional effort.</p>
+            <div class="card-meta">9 min read</div>
+          </div>
+        </article>
+        
+        <article class="blog-card">
+          <div class="card-image" style="background: linear-gradient(135deg, #607d8b, #455a64);">🛡️</div>
+          <div class="card-content">
+            <span class="tag">Conflict Resolution</span>
+            <h3><a href="/blog/stonewalling-what-it-is-how-to-stop">Stonewalling: What It Is and How to Stop</a></h3>
+            <p>When you shut down during conflict, you're not keeping the peace—you're destroying it. Here's what to do instead.</p>
+            <div class="card-meta">8 min read</div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+  
+  <footer>
+    <p>© 2026 Love Rescue. Built on the research of Gottman, Sue Johnson, Brené Brown, and more.</p>
+    <p style="margin-top: 1rem;">
+      <a href="/">Home</a> · 
+      <a href="/experts">Our Experts</a> · 
+      <a href="/privacy">Privacy</a> · 
+      <a href="/terms">Terms</a>
+    </p>
+  </footer>
+</body>
+</html>
