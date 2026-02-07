@@ -1,20 +1,15 @@
 {
-  "outputDirectory": "landing",
+  "buildCommand": "cp -r landing/. .",
+  "outputDirectory": ".",
   "cleanUrls": true,
-  "trailingSlash": false,
   "redirects": [
     { "source": "/login", "destination": "https://marriage-rescue-frontend.vercel.app/login", "permanent": false },
     { "source": "/signup", "destination": "https://marriage-rescue-frontend.vercel.app/signup", "permanent": false },
-    { "source": "/dashboard", "destination": "https://marriage-rescue-frontend.vercel.app/dashboard", "permanent": false },
     { "source": "/dashboard/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/dashboard/:path*", "permanent": false },
-    { "source": "/settings", "destination": "https://marriage-rescue-frontend.vercel.app/settings", "permanent": false },
     { "source": "/settings/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/settings/:path*", "permanent": false },
-    { "source": "/assessments", "destination": "https://marriage-rescue-frontend.vercel.app/assessments", "permanent": false },
     { "source": "/assessments/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/assessments/:path*", "permanent": false },
     { "source": "/join/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/join/:path*", "permanent": false },
-    { "source": "/admin", "destination": "https://marriage-rescue-frontend.vercel.app/admin", "permanent": false },
     { "source": "/admin/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/admin/:path*", "permanent": false },
-    { "source": "/reset-password", "destination": "https://marriage-rescue-frontend.vercel.app/reset-password", "permanent": false },
     { "source": "/reset-password/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/reset-password/:path*", "permanent": false }
   ]
 }
