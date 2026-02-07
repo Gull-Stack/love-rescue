@@ -1,5 +1,24 @@
 {
-  "outputDirectory": "landing",
-  "buildCommand": "",
-  "framework": null
+  "version": 2,
+  "builds": [
+    {
+      "src": "landing/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/services/(.*)", "dest": "/landing/services/$1.html" },
+    { "src": "/blog/(.*)", "dest": "/landing/blog/$1.html" },
+    { "src": "/sitemap.xml", "dest": "/landing/sitemap.xml" },
+    { "src": "/robots.txt", "dest": "/landing/robots.txt" },
+    { "src": "/login", "dest": "https://marriage-rescue-frontend.vercel.app/login" },
+    { "src": "/signup", "dest": "https://marriage-rescue-frontend.vercel.app/signup" },
+    { "src": "/dashboard(.*)", "dest": "https://marriage-rescue-frontend.vercel.app/dashboard$1" },
+    { "src": "/settings(.*)", "dest": "https://marriage-rescue-frontend.vercel.app/settings$1" },
+    { "src": "/assessments(.*)", "dest": "https://marriage-rescue-frontend.vercel.app/assessments$1" },
+    { "src": "/join/(.*)", "dest": "https://marriage-rescue-frontend.vercel.app/join/$1" },
+    { "src": "/reset-password(.*)", "dest": "https://marriage-rescue-frontend.vercel.app/reset-password$1" },
+    { "src": "/admin(.*)", "dest": "https://marriage-rescue-frontend.vercel.app/admin$1" },
+    { "src": "/(.*)", "dest": "/landing/$1" }
+  ]
 }
