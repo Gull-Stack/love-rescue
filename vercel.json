@@ -1,15 +1,35 @@
 {
-  "buildCommand": "cp -r landing/. .",
-  "outputDirectory": ".",
+  "buildCommand": "cd frontend && npm install && npm run build && cd .. && mkdir -p dist && cp -r landing/* dist/ && cp -r frontend/build/* dist/",
+  "outputDirectory": "dist",
   "cleanUrls": true,
-  "redirects": [
-    { "source": "/login", "destination": "https://marriage-rescue-frontend.vercel.app/login", "permanent": false },
-    { "source": "/signup", "destination": "https://marriage-rescue-frontend.vercel.app/signup", "permanent": false },
-    { "source": "/dashboard/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/dashboard/:path*", "permanent": false },
-    { "source": "/settings/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/settings/:path*", "permanent": false },
-    { "source": "/assessments/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/assessments/:path*", "permanent": false },
-    { "source": "/join/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/join/:path*", "permanent": false },
-    { "source": "/admin/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/admin/:path*", "permanent": false },
-    { "source": "/reset-password/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/reset-password/:path*", "permanent": false }
+  "rewrites": [
+    { "source": "/services/:path*", "destination": "/services/:path*" },
+    { "source": "/blog/:path*", "destination": "/blog/:path*" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
+    { "source": "/robots.txt", "destination": "/robots.txt" },
+    { "source": "/login", "destination": "/index.html" },
+    { "source": "/signup", "destination": "/index.html" },
+    { "source": "/dashboard/:path*", "destination": "/index.html" },
+    { "source": "/settings/:path*", "destination": "/index.html" },
+    { "source": "/assessments/:path*", "destination": "/index.html" },
+    { "source": "/join/:path*", "destination": "/index.html" },
+    { "source": "/admin/:path*", "destination": "/index.html" },
+    { "source": "/reset-password/:path*", "destination": "/index.html" },
+    { "source": "/daily-log", "destination": "/index.html" },
+    { "source": "/gratitude", "destination": "/index.html" },
+    { "source": "/goals", "destination": "/index.html" },
+    { "source": "/videos", "destination": "/index.html" },
+    { "source": "/reports/:path*", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" }
+      ]
+    }
   ]
 }
