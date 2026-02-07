@@ -2,19 +2,19 @@
   "outputDirectory": "landing",
   "cleanUrls": true,
   "trailingSlash": false,
-  "rewrites": [
-    { "source": "/login", "destination": "https://marriage-rescue-frontend.vercel.app/login" },
-    { "source": "/signup", "destination": "https://marriage-rescue-frontend.vercel.app/signup" },
-    { "source": "/dashboard", "destination": "https://marriage-rescue-frontend.vercel.app/dashboard" },
-    { "source": "/dashboard/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/dashboard/:path*" },
-    { "source": "/settings", "destination": "https://marriage-rescue-frontend.vercel.app/settings" },
-    { "source": "/settings/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/settings/:path*" },
-    { "source": "/assessments", "destination": "https://marriage-rescue-frontend.vercel.app/assessments" },
-    { "source": "/assessments/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/assessments/:path*" },
-    { "source": "/join/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/join/:path*" },
-    { "source": "/admin", "destination": "https://marriage-rescue-frontend.vercel.app/admin" },
-    { "source": "/admin/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/admin/:path*" },
-    { "source": "/reset-password", "destination": "https://marriage-rescue-frontend.vercel.app/reset-password" },
-    { "source": "/reset-password/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/reset-password/:path*" }
+  "redirects": [
+    { "source": "/login", "destination": "https://marriage-rescue-frontend.vercel.app/login", "permanent": false },
+    { "source": "/signup", "destination": "https://marriage-rescue-frontend.vercel.app/signup", "permanent": false },
+    { "source": "/dashboard", "destination": "https://marriage-rescue-frontend.vercel.app/dashboard", "permanent": false },
+    { "source": "/dashboard/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/dashboard/:path*", "permanent": false },
+    { "source": "/settings", "destination": "https://marriage-rescue-frontend.vercel.app/settings", "permanent": false },
+    { "source": "/settings/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/settings/:path*", "permanent": false },
+    { "source": "/assessments", "destination": "https://marriage-rescue-frontend.vercel.app/assessments", "permanent": false },
+    { "source": "/assessments/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/assessments/:path*", "permanent": false },
+    { "source": "/join/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/join/:path*", "permanent": false },
+    { "source": "/admin", "destination": "https://marriage-rescue-frontend.vercel.app/admin", "permanent": false },
+    { "source": "/admin/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/admin/:path*", "permanent": false },
+    { "source": "/reset-password", "destination": "https://marriage-rescue-frontend.vercel.app/reset-password", "permanent": false },
+    { "source": "/reset-password/:path*", "destination": "https://marriage-rescue-frontend.vercel.app/reset-password/:path*", "permanent": false }
   ]
 }
