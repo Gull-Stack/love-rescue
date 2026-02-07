@@ -173,15 +173,83 @@ const gracefulShutdown = async () => {
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
-// Start server
-app.listen(PORT, () => {
-  logger.info(`Server running on port ${PORT}`);
-  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+// Platform admin emails that should always have access
+const PLATFORM_ADMIN_EMAILS = [
+  'josh@gullstack.com',
+  'bryce@gullstack.com',
+];
 
-  // Clean expired tokens on startup
-  cleanExpiredTokens();
-  // HIGH-NEW-04: Run token cleanup periodically (every hour)
-  setInterval(cleanExpiredTokens, 60 * 60 * 1000);
-});
+// Self-healing bootstrap: ensures platform admins can always log in
+async function bootstrapPlatformAdmins() {
+  logger.info('[Bootstrap] Checking platform admin accounts...');
+  
+  try {
+    for (const email of PLATFORM_ADMIN_EMAILS) {
+      const existingUser = await prisma.user.findUnique({
+        where: { email },
+      });
+      
+      if (!existingUser) {
+        logger.info(`[Bootstrap] Creating platform admin: ${email}`);
+        const nameParts = email.split('@')[0].split('.');
+        const firstName = nameParts[0]?.charAt(0).toUpperCase() + nameParts[0]?.slice(1) || 'Admin';
+        
+        // Create with a placeholder password - they'll need to reset or use Google OAuth
+        const bcrypt = require('bcryptjs');
+        const tempPassword = await bcrypt.hash(require('crypto').randomBytes(32).toString('hex'), 10);
+        
+        await prisma.user.create({
+          data: {
+            email,
+            password: tempPassword,
+            firstName,
+            lastName: 'Admin',
+            isPlatformAdmin: true,
+            emailVerified: true, // Skip verification for admins
+          },
+        });
+      } else if (!existingUser.isPlatformAdmin) {
+        // Ensure admin flag is set
+        logger.info(`[Bootstrap] Promoting to platform admin: ${email}`);
+        await prisma.user.update({
+          where: { email },
+          data: { isPlatformAdmin: true },
+        });
+      }
+    }
+    
+    logger.info('[Bootstrap] Platform admin check complete.');
+  } catch (error) {
+    logger.error('[Bootstrap] Error (non-fatal):', { error: error.message });
+    // Don't fail startup - this is a safety net, not a requirement
+  }
+}
+
+// Start server
+async function startServer() {
+  try {
+    // Test database connection
+    await prisma.$connect();
+    logger.info('Connected to database');
+
+    // Self-healing: ensure platform admins always exist
+    await bootstrapPlatformAdmins();
+
+    // Clean expired tokens on startup
+    cleanExpiredTokens();
+    // HIGH-NEW-04: Run token cleanup periodically (every hour)
+    setInterval(cleanExpiredTokens, 60 * 60 * 1000);
+
+    app.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT}`);
+      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  } catch (error) {
+    logger.error('Failed to start server:', { error: error.message });
+    process.exit(1);
+  }
+}
+
+startServer();
 
 module.exports = app;
