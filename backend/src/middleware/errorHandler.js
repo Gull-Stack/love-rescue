@@ -41,12 +41,12 @@ const errorHandler = (err, req, res, next) => {
 
   // Default error
   const statusCode = err.statusCode || 500;
-  const message = process.env.NODE_ENV === 'production'
-    ? 'An unexpected error occurred'
-    : err.message;
+  // TEMP: Show real error for debugging
+  const message = err.message || 'An unexpected error occurred';
 
   res.status(statusCode).json({
-    error: message
+    error: message,
+    debug: err.code || err.name || 'unknown'
   });
 };
 
