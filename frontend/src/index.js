@@ -28,11 +28,5 @@ root.render(
   </React.StrictMode>
 );
 
-serviceWorkerRegistration.register({
-  onUpdate: (registration) => {
-    if (registration && registration.waiting) {
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-      window.location.reload();
-    }
-  },
-});
+// Temporarily unregister service worker to fix COOP/Google Sign-In issues
+serviceWorkerRegistration.unregister();
