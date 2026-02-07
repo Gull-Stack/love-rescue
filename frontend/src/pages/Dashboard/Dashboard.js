@@ -184,6 +184,7 @@ const Dashboard = () => {
         pb: 10, // Space for FAB
         maxWidth: 600,
         mx: 'auto',
+        overflowX: 'hidden', // Prevent horizontal scroll
       }}
     >
       {/* Warm gradient header area */}
