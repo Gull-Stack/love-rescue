@@ -48,7 +48,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       frameSrc: ["https://accounts.google.com", "https://js.stripe.com"],
-      connectSrc: ["'self'", process.env.FRONTEND_URL || 'http://localhost:3000', "https://accounts.google.com"],
+      connectSrc: ["'self'", "https://loverescue.app", "https://www.loverescue.app", "https://accounts.google.com"],
       imgSrc: ["'self'", "data:", "https:"],
     }
   }
