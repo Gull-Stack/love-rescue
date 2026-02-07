@@ -135,6 +135,12 @@ export const meetingsApi = {
   consent: (id) => api.post(`/meetings/${id}/consent`),
 };
 
+// Streaks/Gamification API
+export const streaksApi = {
+  getStreak: () => api.get('/streaks'),
+  getBadges: () => api.get('/streaks/badges'),
+};
+
 // Admin API
 export const adminApi = {
   getStats: () => api.get('/admin/stats'),

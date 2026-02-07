@@ -17,9 +17,13 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import SaveIcon from '@mui/icons-material/Save';
-import { logsApi } from '../../services/api';
+import { logsApi, streaksApi } from '../../services/api';
 import DailyInsight from '../../components/common/DailyInsight';
 import DailyVideo from '../../components/common/DailyVideo';
+import StreakCounter from '../../components/gamification/StreakCounter';
+import CelebrationToast from '../../components/gamification/CelebrationToast';
+import { celebration } from '../../components/gamification/Confetti';
+import { PartnerStatusCard, MatchupScoreCard } from '../../components/gamification/PartnerActivity';
 
 const DailyLog = () => {
   const theme = useTheme();
@@ -38,10 +42,36 @@ const DailyLog = () => {
     mood: 5,
   });
 
+  // Gamification state
+  const [streakData, setStreakData] = useState({
+    currentStreak: 0,
+    longestStreak: 0,
+    xp: 0,
+    level: 1,
+    levelName: 'Relationship Rookie',
+    levelProgress: 0,
+    xpToNextLevel: 100,
+    streakAlive: false,
+    loggedToday: false,
+  });
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationType, setCelebrationType] = useState('dailyLog');
+  const [streakMilestone, setStreakMilestone] = useState(null);
+
   useEffect(() => {
     document.title = 'Daily Log | Love Rescue';
     fetchTodayData();
+    fetchStreakData();
   }, []); // Intentional: run once on mount
+
+  const fetchStreakData = async () => {
+    try {
+      const res = await streaksApi.getStreak();
+      setStreakData(res.data);
+    } catch (err) {
+      console.error('Failed to fetch streak data:', err);
+    }
+  };
 
   const fetchTodayData = async () => {
     try {
@@ -92,15 +122,49 @@ const DailyLog = () => {
     }));
   };
 
+  const checkStreakMilestones = (newStreak) => {
+    const milestones = [7, 14, 21, 30, 60, 90];
+    for (const milestone of milestones) {
+      if (newStreak === milestone) {
+        return milestone;
+      }
+    }
+    return null;
+  };
+
   const handleSubmit = async () => {
     setSaving(true);
     setError('');
     setSuccess('');
 
+    const wasFirstLogToday = !hasLoggedToday;
+
     try {
       await logsApi.submitDaily(formData);
       setSuccess('Daily log saved successfully!');
       setHasLoggedToday(true);
+
+      // 🎉 GAMIFICATION: Fire confetti and celebration!
+      if (wasFirstLogToday) {
+        celebration(); // Fire confetti!
+        
+        // Refresh streak data to get updated values
+        const streakRes = await streaksApi.getStreak();
+        const newStreak = streakRes.data;
+        setStreakData(newStreak);
+
+        // Check for streak milestones
+        const milestone = checkStreakMilestones(newStreak.currentStreak);
+        if (milestone) {
+          setCelebrationType('streak');
+          setStreakMilestone(milestone);
+        } else {
+          setCelebrationType('dailyLog');
+          setStreakMilestone(null);
+        }
+        
+        setShowCelebration(true);
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save log');
     } finally {
@@ -138,6 +202,38 @@ const DailyLog = () => {
       <Typography color="text.secondary" paragraph>
         Track your daily interactions and reflect on your relationship.
       </Typography>
+
+      {/* 🔥 STREAK COUNTER - Gamification */}
+      <Box sx={{ mb: 3 }}>
+        <StreakCounter
+          currentStreak={streakData.currentStreak}
+          longestStreak={streakData.longestStreak}
+          xp={streakData.xp}
+          level={streakData.level}
+          levelName={streakData.levelName}
+          levelProgress={streakData.levelProgress}
+          xpToNextLevel={streakData.xpToNextLevel}
+          streakAlive={streakData.streakAlive || streakData.loggedToday}
+        />
+      </Box>
+
+      {/* 🎉 CELEBRATION TOAST */}
+      <CelebrationToast
+        open={showCelebration}
+        onClose={() => setShowCelebration(false)}
+        type={celebrationType}
+        streakDay={streakMilestone}
+      />
+
+      {/* 💕 PARTNER ACTIVITY - FOMO System */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={6}>
+          <PartnerStatusCard />
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <MatchupScoreCard />
+        </Grid>
+      </Grid>
 
       {success && (
         <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>
@@ -342,8 +438,21 @@ const DailyLog = () => {
           startIcon={saving ? <CircularProgress size={20} /> : <SaveIcon />}
           onClick={handleSubmit}
           disabled={saving}
+          sx={{
+            py: 1.5,
+            fontSize: '1.1rem',
+            fontWeight: 'bold',
+            background: hasLoggedToday 
+              ? 'linear-gradient(135deg, #2D5A27 0%, #4A7A44 100%)'
+              : 'linear-gradient(135deg, #FF6B35 0%, #FF8B5A 100%)',
+            '&:hover': {
+              background: hasLoggedToday
+                ? 'linear-gradient(135deg, #1E4019 0%, #3A6A34 100%)'
+                : 'linear-gradient(135deg, #E55A25 0%, #FF7B4A 100%)',
+            },
+          }}
         >
-          {saving ? 'Saving...' : hasLoggedToday ? 'Update Log' : 'Save Log'}
+          {saving ? 'Saving...' : hasLoggedToday ? '✓ Update Log' : '🔥 Save Log & Keep Streak!'}
         </Button>
       </Box>
     </Box>
