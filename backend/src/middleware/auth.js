@@ -29,15 +29,9 @@ const authenticate = async (req, res, next) => {
         subscriptionStatus: true,
         stripeCustomerId: true,
         isPlatformAdmin: true,
-        isDisabled: true,
         createdAt: true
       }
     });
-
-    // Check if account is disabled
-    if (user && user.isDisabled) {
-      return res.status(403).json({ error: 'Account is disabled' });
-    }
 
     if (!user) {
       return res.status(401).json({ error: 'User not found' });

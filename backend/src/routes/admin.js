@@ -165,7 +165,7 @@ router.get('/users', async (req, res) => {
           lastName: true,
           subscriptionStatus: true,
           isPlatformAdmin: true,
-          isDisabled: true,
+          
           lastActiveAt: true,
           createdAt: true,
           _count: {
@@ -200,7 +200,7 @@ router.get('/users', async (req, res) => {
       lastName: user.lastName,
       subscriptionStatus: user.subscriptionStatus,
       isPlatformAdmin: user.isPlatformAdmin,
-      isDisabled: user.isDisabled,
+      
       lastActiveAt: user.lastActiveAt,
       createdAt: user.createdAt,
       assessmentsCompleted: user._count.assessments,
@@ -255,7 +255,7 @@ router.get('/users/:id', async (req, res) => {
         trialEndsAt: true,
         stripeCustomerId: true,
         isPlatformAdmin: true,
-        isDisabled: true,
+        
         lastActiveAt: true,
         createdAt: true,
         updatedAt: true,
@@ -367,12 +367,7 @@ router.get('/users/:id', async (req, res) => {
 router.put('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { subscriptionStatus, isPlatformAdmin, isDisabled } = req.body;
-
-    // Prevent admins from modifying themselves in certain ways
-    if (id === req.user.id && isDisabled === true) {
-      return res.status(400).json({ error: 'Cannot disable your own account' });
-    }
+    const { subscriptionStatus, isPlatformAdmin } = req.body;
 
     const updateData = {};
     if (subscriptionStatus !== undefined) {
@@ -380,9 +375,6 @@ router.put('/users/:id', async (req, res) => {
     }
     if (isPlatformAdmin !== undefined) {
       updateData.isPlatformAdmin = isPlatformAdmin;
-    }
-    if (isDisabled !== undefined) {
-      updateData.isDisabled = isDisabled;
     }
 
     const user = await req.prisma.user.update({
@@ -395,7 +387,7 @@ router.put('/users/:id', async (req, res) => {
         lastName: true,
         subscriptionStatus: true,
         isPlatformAdmin: true,
-        isDisabled: true
+        
       }
     });
 

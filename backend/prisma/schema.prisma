@@ -99,8 +99,6 @@ model User {
   trialEndsAt        DateTime?          @map("trial_ends_at")
   stripeCustomerId   String?            @map("stripe_customer_id") @db.VarChar(255)
   isPlatformAdmin    Boolean            @default(false) @map("is_platform_admin")
-  isDisabled         Boolean            @default(false) @map("is_disabled")
-  lastActiveAt       DateTime?          @map("last_active_at")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
