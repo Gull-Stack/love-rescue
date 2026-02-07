@@ -6,7 +6,7 @@
 const express = require('express');
 const webpush = require('web-push');
 const { PrismaClient } = require('@prisma/client');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -39,7 +39,7 @@ router.get('/vapid-public-key', (req, res) => {
  * POST /api/push/subscribe
  * Save a push subscription for the authenticated user
  */
-router.post('/subscribe', authenticateToken, async (req, res) => {
+router.post('/subscribe', authenticate, async (req, res) => {
   try {
     const { subscription } = req.body;
     const userId = req.user.id;
@@ -93,7 +93,7 @@ router.post('/subscribe', authenticateToken, async (req, res) => {
  * DELETE /api/push/unsubscribe
  * Remove a push subscription
  */
-router.delete('/unsubscribe', authenticateToken, async (req, res) => {
+router.delete('/unsubscribe', authenticate, async (req, res) => {
   try {
     const { endpoint } = req.body;
     const userId = req.user.id;
@@ -121,7 +121,7 @@ router.delete('/unsubscribe', authenticateToken, async (req, res) => {
  * GET /api/push/preferences
  * Get notification preferences for the authenticated user
  */
-router.get('/preferences', authenticateToken, async (req, res) => {
+router.get('/preferences', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -160,7 +160,7 @@ router.get('/preferences', authenticateToken, async (req, res) => {
  * PUT /api/push/preferences
  * Update notification preferences
  */
-router.put('/preferences', authenticateToken, async (req, res) => {
+router.put('/preferences', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     const {
@@ -206,7 +206,7 @@ router.put('/preferences', authenticateToken, async (req, res) => {
  * POST /api/push/test
  * Send a test notification to the authenticated user
  */
-router.post('/test', authenticateToken, async (req, res) => {
+router.post('/test', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
 

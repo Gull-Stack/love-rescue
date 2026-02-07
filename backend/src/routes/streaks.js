@@ -5,7 +5,7 @@
 
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -14,7 +14,7 @@ const prisma = new PrismaClient();
  * GET /api/streaks
  * Get user's current streak info
  */
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     
@@ -149,7 +149,7 @@ router.get('/', authenticateToken, async (req, res) => {
  * GET /api/streaks/badges
  * Get user's earned badges
  */
-router.get('/badges', authenticateToken, async (req, res) => {
+router.get('/badges', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
 

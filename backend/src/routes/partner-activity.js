@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 
 const prisma = new PrismaClient();
 
 // Check if partner completed today's log
-router.get('/partner-status', authenticateToken, async (req, res) => {
+router.get('/partner-status', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     
@@ -71,7 +71,7 @@ router.get('/partner-status', authenticateToken, async (req, res) => {
 });
 
 // Get couple's matchup score for today
-router.get('/matchup-score', authenticateToken, async (req, res) => {
+router.get('/matchup-score', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     
@@ -150,7 +150,7 @@ router.get('/matchup-score', authenticateToken, async (req, res) => {
 });
 
 // Record that user viewed partner's activity (for engagement tracking)
-router.post('/viewed-partner', authenticateToken, async (req, res) => {
+router.post('/viewed-partner', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     
@@ -170,7 +170,7 @@ router.post('/viewed-partner', authenticateToken, async (req, res) => {
 });
 
 // Send nudge to partner (limited to once per day)
-router.post('/nudge-partner', authenticateToken, async (req, res) => {
+router.post('/nudge-partner', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     
