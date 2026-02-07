@@ -173,6 +173,31 @@ const gracefulShutdown = async () => {
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
+// Database schema health check - verify critical tables exist
+async function verifyDatabaseSchema() {
+  logger.info('[HealthCheck] Verifying database schema...');
+  const criticalTables = ['users', 'couples', 'assessments', 'daily_logs'];
+  
+  for (const table of criticalTables) {
+    try {
+      const result = await prisma.$queryRaw`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = ${table}
+        ) as exists
+      `;
+      if (!result[0]?.exists) {
+        logger.error(`[HealthCheck] CRITICAL: Missing table '${table}' - run migrations!`);
+        throw new Error(`Missing critical table: ${table}`);
+      }
+    } catch (error) {
+      if (error.message?.includes('Missing critical table')) throw error;
+      logger.error(`[HealthCheck] Error checking table ${table}:`, { error: error.message });
+    }
+  }
+  logger.info('[HealthCheck] All critical tables verified ✅');
+}
+
 // Platform admin emails that should always have access
 const PLATFORM_ADMIN_EMAILS = [
   'josh@gullstack.com',
@@ -231,6 +256,9 @@ async function startServer() {
     // Test database connection
     await prisma.$connect();
     logger.info('Connected to database');
+
+    // Verify critical tables exist (fail fast if schema is broken)
+    await verifyDatabaseSchema();
 
     // Self-healing: ensure platform admins always exist
     await bootstrapPlatformAdmins();
