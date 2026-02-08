@@ -14,7 +14,7 @@ root.render(
   <React.StrictMode>
     {/* LOW-03: Error boundary catches React rendering errors */}
     <ErrorBoundary>
-      <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || ''}>
+      <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || '665328889617-mg6vqui0a5bgkjpj7p85o35lc0f7rnft.apps.googleusercontent.com'}>
         <BrowserRouter>
           <ThemeProvider theme={theme}>
             <CssBaseline />

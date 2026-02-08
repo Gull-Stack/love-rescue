@@ -14,11 +14,9 @@ const { authenticate } = require('../middleware/auth');
 const logger = require('../utils/logger');
 const { sendPasswordResetEmail, sendPartnerInviteEmail } = require('../utils/email');
 
-// LOW-04: Only initialize Google OAuth2Client if GOOGLE_CLIENT_ID is configured
-// This prevents errors when Google OAuth is not set up
-const googleClient = process.env.GOOGLE_CLIENT_ID 
-  ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
-  : null;
+// Google OAuth Client ID - hardcoded fallback to prevent env var issues breaking login
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '665328889617-mg6vqui0a5bgkjpj7p85o35lc0f7rnft.apps.googleusercontent.com';
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 const router = express.Router();
 
@@ -326,17 +324,12 @@ router.post('/google', async (req, res, next) => {
       return res.status(400).json({ error: 'Google credential is required' });
     }
 
-    // LOW-04: Check if Google OAuth is configured
-    if (!googleClient) {
-      return res.status(503).json({ error: 'Google authentication is not configured' });
-    }
-
     // Verify the Google ID token
     let ticket;
     try {
       ticket = await googleClient.verifyIdToken({
         idToken: credential,
-        audience: process.env.GOOGLE_CLIENT_ID,
+        audience: GOOGLE_CLIENT_ID,
       });
     } catch (err) {
       return res.status(401).json({ error: 'Invalid Google token' });
