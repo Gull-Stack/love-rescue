@@ -115,6 +115,7 @@ model User {
   assignedTasks           TherapistTask[]   @relation("TaskAssignee")
   pushSubscriptions       PushSubscription[]
   notificationPreferences NotificationPreferences?
+  courseProgress          CourseProgress?
 
   @@map("users")
   @@index([email])
@@ -559,4 +560,62 @@ model NotificationPreferences {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notification_preferences")
+}
+
+// 16-Week Course Progress - tracks user's journey
+model CourseProgress {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @unique @map("user_id") @db.Uuid
+  currentWeek     Int       @default(1) @map("current_week") @db.SmallInt
+  startedAt       DateTime  @default(now()) @map("started_at")
+  weekStartedAt   DateTime  @default(now()) @map("week_started_at")
+  completedWeeks  Int[]     @default([]) @map("completed_weeks")
+  isActive        Boolean   @default(true) @map("is_active")
+  pausedAt        DateTime? @map("paused_at")
+  completedAt     DateTime? @map("completed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weeklyStrategies WeeklyStrategy[]
+
+  @@map("course_progress")
+  @@index([userId])
+  @@index([currentWeek])
+  @@index([isActive])
+}
+
+// Weekly Strategy - personalized focus based on assessments
+model WeeklyStrategy {
+  id              String   @id @default(uuid()) @db.Uuid
+  courseProgressId String  @map("course_progress_id") @db.Uuid
+  weekNumber      Int      @map("week_number") @db.SmallInt
+  expertName      String   @map("expert_name") @db.VarChar(100)
+  theme           String   @db.VarChar(255)
+  
+  // Personalized content based on assessments
+  focusAreas      String[] @default([]) @map("focus_areas")       // e.g., ["self-soothing", "anxiety management"]
+  customInsights  String[] @default([]) @map("custom_insights")   // e.g., ["Your anxious attachment means..."]
+  dailyPractice   String   @map("daily_practice") @db.Text        // Today's skill to practice
+  skillsToLearn   String[] @default([]) @map("skills_to_learn")
+  
+  // Progress tracking
+  completedDays   Int      @default(0) @map("completed_days") @db.SmallInt
+  practiceLog     Json?    @map("practice_log") @db.JsonB         // { "day1": true, "day2": false, ... }
+  reflection      String?  @db.Text                                // End of week reflection
+  
+  // Timestamps
+  startedAt       DateTime @default(now()) @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  courseProgress  CourseProgress @relation(fields: [courseProgressId], references: [id], onDelete: Cascade)
+
+  @@unique([courseProgressId, weekNumber])
+  @@map("weekly_strategies")
+  @@index([courseProgressId])
+  @@index([weekNumber])
 }
