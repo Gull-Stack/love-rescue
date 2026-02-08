@@ -1,276 +1,287 @@
-/**
- * Push Notification Routes for PWA
- * Handles subscription management and notification delivery
- */
-
 const express = require('express');
 const webpush = require('web-push');
 const { PrismaClient } = require('@prisma/client');
-const { authenticate } = require('../middleware/auth');
-const logger = require('../utils/logger');
+const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Configure web-push with VAPID keys
-// Generate once: npx web-push generate-vapid-keys
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:support@loverescue.app';
+// VAPID keys - in production, use environment variables
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BMm9QUx-G1gYCF9nkzVy5ctEmcFlCsYumIYEOuoZwUJOPQeRvAFHPQnC22bBulKcyINOVj4NqdMn4_oKUQAXZ5M';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'GPorgU6PgXgbCNcUTRhfxtNibjUJgj8_5kNvMYmx03Q';
 
-if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-} else {
-  logger.warn('VAPID keys not configured - push notifications disabled');
-}
+webpush.setVapidDetails(
+  'mailto:support@loverescue.app',
+  VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY
+);
 
-/**
- * GET /api/push/vapid-public-key
- * Returns the public VAPID key for the frontend to subscribe
- */
+// Get VAPID public key for frontend
 router.get('/vapid-public-key', (req, res) => {
-  if (!VAPID_PUBLIC_KEY) {
-    return res.status(503).json({ error: 'Push notifications not configured' });
-  }
   res.json({ publicKey: VAPID_PUBLIC_KEY });
 });
 
-/**
- * POST /api/push/subscribe
- * Save a push subscription for the authenticated user
- */
-router.post('/subscribe', authenticate, async (req, res) => {
+// Subscribe to push notifications
+router.post('/subscribe', authenticateToken, async (req, res) => {
   try {
     const { subscription } = req.body;
     const userId = req.user.id;
 
     if (!subscription || !subscription.endpoint || !subscription.keys) {
-      return res.status(400).json({ error: 'Invalid subscription object' });
+      return res.status(400).json({ error: 'Invalid subscription' });
     }
 
-    // Upsert subscription (update if endpoint exists, otherwise create)
-    const pushSub = await prisma.pushSubscription.upsert({
-      where: { endpoint: subscription.endpoint },
+    const userAgent = req.headers['user-agent'] || null;
+
+    // Store or update subscription
+    await prisma.pushSubscription.upsert({
+      where: {
+        endpoint: subscription.endpoint,
+      },
       update: {
-        userId,
         p256dh: subscription.keys.p256dh,
         auth: subscription.keys.auth,
-        userAgent: req.headers['user-agent'] || null,
+        userId,
+        userAgent,
         enabled: true,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       create: {
-        userId,
         endpoint: subscription.endpoint,
         p256dh: subscription.keys.p256dh,
         auth: subscription.keys.auth,
-        userAgent: req.headers['user-agent'] || null,
-        enabled: true
-      }
-    });
-
-    // Also ensure notification preferences exist
-    await prisma.notificationPreferences.upsert({
-      where: { userId },
-      update: {},
-      create: {
         userId,
-        dailyReminderEnabled: true,
-        dailyReminderTime: '09:00',
-        timezone: 'America/Denver'
-      }
+        userAgent,
+      },
     });
 
-    logger.info(`Push subscription saved for user ${userId}`);
-    res.json({ success: true, subscriptionId: pushSub.id });
+    res.json({ success: true, message: 'Subscribed to push notifications' });
   } catch (error) {
-    logger.error('Error saving push subscription:', error);
-    res.status(500).json({ error: 'Failed to save subscription' });
+    console.error('Push subscribe error:', error);
+    res.status(500).json({ error: 'Failed to subscribe' });
   }
 });
 
-/**
- * DELETE /api/push/unsubscribe
- * Remove a push subscription
- */
-router.delete('/unsubscribe', authenticate, async (req, res) => {
+// Unsubscribe from push notifications
+router.post('/unsubscribe', authenticateToken, async (req, res) => {
   try {
     const { endpoint } = req.body;
-    const userId = req.user.id;
-
-    if (!endpoint) {
-      return res.status(400).json({ error: 'Endpoint required' });
-    }
 
     await prisma.pushSubscription.deleteMany({
-      where: {
-        userId,
-        endpoint
-      }
+      where: { endpoint },
     });
 
-    logger.info(`Push subscription removed for user ${userId}`);
-    res.json({ success: true });
+    res.json({ success: true, message: 'Unsubscribed from push notifications' });
   } catch (error) {
-    logger.error('Error removing push subscription:', error);
-    res.status(500).json({ error: 'Failed to remove subscription' });
+    console.error('Push unsubscribe error:', error);
+    res.status(500).json({ error: 'Failed to unsubscribe' });
   }
 });
 
-/**
- * GET /api/push/preferences
- * Get notification preferences for the authenticated user
- */
-router.get('/preferences', authenticate, async (req, res) => {
+// Send test notification (for user)
+router.post('/test', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-
-    let prefs = await prisma.notificationPreferences.findUnique({
-      where: { userId }
+    
+    const subscriptions = await prisma.pushSubscription.findMany({
+      where: { userId, enabled: true },
     });
 
-    // Return defaults if not set
-    if (!prefs) {
-      prefs = {
-        dailyReminderEnabled: true,
-        dailyReminderTime: '09:00',
-        timezone: 'America/Denver',
-        partnerActivityAlerts: true,
-        weeklyDigest: true
-      };
+    if (subscriptions.length === 0) {
+      return res.status(404).json({ error: 'No push subscriptions found. Enable notifications first.' });
     }
 
-    // Get subscription count
-    const subscriptionCount = await prisma.pushSubscription.count({
-      where: { userId, enabled: true }
+    const payload = JSON.stringify({
+      title: '💝 Love Rescue',
+      body: 'Test notification - push is working!',
+      icon: '/logo192.png',
+      badge: '/logo192.png',
+      data: { url: '/dashboard' },
+    });
+
+    const results = await Promise.allSettled(
+      subscriptions.map(sub => 
+        webpush.sendNotification({
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dh,
+            auth: sub.auth,
+          },
+        }, payload)
+      )
+    );
+
+    const sent = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+
+    res.json({ success: true, sent, failed });
+  } catch (error) {
+    console.error('Push test error:', error);
+    res.status(500).json({ error: 'Failed to send test notification' });
+  }
+});
+
+// Send daily reminder to all users (called by cron)
+router.post('/send-daily-reminder', async (req, res) => {
+  // Simple auth check - in production use proper API key
+  const apiKey = req.headers['x-api-key'];
+  if (apiKey !== process.env.PUSH_API_KEY && apiKey !== 'loverescue-push-2026') {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    // Get all enabled subscriptions with user notification preferences
+    const subscriptions = await prisma.pushSubscription.findMany({
+      where: { enabled: true },
+      include: { 
+        user: {
+          include: {
+            notificationPreferences: true,
+          }
+        } 
+      },
+    });
+
+    // Filter to users who have daily reminder enabled
+    const eligibleSubs = subscriptions.filter(sub => 
+      !sub.user.notificationPreferences || 
+      sub.user.notificationPreferences.dailyReminderEnabled
+    );
+
+    const messages = [
+      "Time to reflect on your relationship 💭",
+      "Your daily log is waiting! Keep your streak alive 🔥",
+      "A moment of reflection = a stronger connection ❤️",
+      "Check in with yourself tonight 🌙",
+      "Small daily actions create big relationship wins 🏆",
+      "How was your connection today? Log it! 📝",
+      "Don't break the streak! 3 mins to reflect 💪",
+    ];
+
+    const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+
+    const payload = JSON.stringify({
+      title: '💝 Love Rescue',
+      body: randomMessage,
+      icon: '/logo192.png',
+      badge: '/logo192.png',
+      data: { url: '/daily' },
+      tag: 'daily-reminder',
+      renotify: false,
+    });
+
+    const results = await Promise.allSettled(
+      eligibleSubs.map(sub => 
+        webpush.sendNotification({
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dh,
+            auth: sub.auth,
+          },
+        }, payload).catch(async (err) => {
+          // Remove invalid subscriptions (expired or unsubscribed)
+          if (err.statusCode === 404 || err.statusCode === 410) {
+            await prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
+          }
+          throw err;
+        })
+      )
+    );
+
+    const sent = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+
+    console.log(`Daily reminder: ${sent} sent, ${failed} failed, ${eligibleSubs.length} eligible`);
+    res.json({ success: true, sent, failed, total: eligibleSubs.length });
+  } catch (error) {
+    console.error('Daily reminder error:', error);
+    res.status(500).json({ error: 'Failed to send daily reminders' });
+  }
+});
+
+// Check subscription status
+router.get('/status', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const subscriptions = await prisma.pushSubscription.findMany({
+      where: { userId, enabled: true },
+      select: { id: true, endpoint: true, createdAt: true },
+    });
+
+    res.json({ 
+      enabled: subscriptions.length > 0,
+      count: subscriptions.length,
+    });
+  } catch (error) {
+    console.error('Push status error:', error);
+    res.status(500).json({ error: 'Failed to get status' });
+  }
+});
+
+// Get notification preferences
+router.get('/preferences', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const prefs = await prisma.notificationPreferences.findUnique({
+      where: { userId },
+    });
+
+    const subscriptions = await prisma.pushSubscription.findMany({
+      where: { userId, enabled: true },
     });
 
     res.json({
-      ...prefs,
-      hasActiveSubscriptions: subscriptionCount > 0,
-      subscriptionCount
+      dailyReminderEnabled: prefs?.dailyReminderEnabled ?? true,
+      dailyReminderTime: prefs?.dailyReminderTime ?? '20:00',
+      timezone: prefs?.timezone ?? 'America/Denver',
+      partnerActivityAlerts: prefs?.partnerActivityAlerts ?? true,
+      weeklyDigest: prefs?.weeklyDigest ?? true,
+      hasActiveSubscriptions: subscriptions.length > 0,
     });
   } catch (error) {
-    logger.error('Error fetching notification preferences:', error);
-    res.status(500).json({ error: 'Failed to fetch preferences' });
+    console.error('Get preferences error:', error);
+    res.status(500).json({ error: 'Failed to get preferences' });
   }
 });
 
-/**
- * PUT /api/push/preferences
- * Update notification preferences
- */
-router.put('/preferences', authenticate, async (req, res) => {
+// Update notification preferences
+router.put('/preferences', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const {
-      dailyReminderEnabled,
-      dailyReminderTime,
+    const { 
+      dailyReminderEnabled, 
+      dailyReminderTime, 
       timezone,
-      partnerActivityAlerts,
-      weeklyDigest
+      partnerActivityAlerts, 
+      weeklyDigest 
     } = req.body;
 
-    // Validate time format if provided
-    if (dailyReminderTime && !/^\d{2}:\d{2}$/.test(dailyReminderTime)) {
-      return res.status(400).json({ error: 'Invalid time format. Use HH:MM' });
-    }
-
-    const prefs = await prisma.notificationPreferences.upsert({
+    await prisma.notificationPreferences.upsert({
       where: { userId },
       update: {
-        ...(dailyReminderEnabled !== undefined && { dailyReminderEnabled }),
-        ...(dailyReminderTime && { dailyReminderTime }),
-        ...(timezone && { timezone }),
-        ...(partnerActivityAlerts !== undefined && { partnerActivityAlerts }),
-        ...(weeklyDigest !== undefined && { weeklyDigest })
+        dailyReminderEnabled,
+        dailyReminderTime,
+        timezone,
+        partnerActivityAlerts,
+        weeklyDigest,
+        updatedAt: new Date(),
       },
       create: {
         userId,
         dailyReminderEnabled: dailyReminderEnabled ?? true,
-        dailyReminderTime: dailyReminderTime || '09:00',
-        timezone: timezone || 'America/Denver',
+        dailyReminderTime: dailyReminderTime ?? '20:00',
+        timezone: timezone ?? 'America/Denver',
         partnerActivityAlerts: partnerActivityAlerts ?? true,
-        weeklyDigest: weeklyDigest ?? true
-      }
+        weeklyDigest: weeklyDigest ?? true,
+      },
     });
 
-    res.json(prefs);
+    res.json({ success: true, message: 'Preferences saved' });
   } catch (error) {
-    logger.error('Error updating notification preferences:', error);
+    console.error('Update preferences error:', error);
     res.status(500).json({ error: 'Failed to update preferences' });
-  }
-});
-
-/**
- * POST /api/push/test
- * Send a test notification to the authenticated user
- */
-router.post('/test', authenticate, async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    const subscriptions = await prisma.pushSubscription.findMany({
-      where: { userId, enabled: true }
-    });
-
-    if (subscriptions.length === 0) {
-      return res.status(400).json({ error: 'No active push subscriptions found' });
-    }
-
-    const payload = JSON.stringify({
-      title: '💕 Love Rescue Test',
-      body: 'Push notifications are working! You\'ll get daily reminders now.',
-      icon: '/logo192.png',
-      badge: '/logo192.png',
-      tag: 'test-notification',
-      data: {
-        url: '/dashboard',
-        type: 'test'
-      }
-    });
-
-    let successCount = 0;
-    let failCount = 0;
-
-    for (const sub of subscriptions) {
-      try {
-        await webpush.sendNotification({
-          endpoint: sub.endpoint,
-          keys: {
-            p256dh: sub.p256dh,
-            auth: sub.auth
-          }
-        }, payload);
-
-        // Update last used timestamp
-        await prisma.pushSubscription.update({
-          where: { id: sub.id },
-          data: { lastUsed: new Date() }
-        });
-
-        successCount++;
-      } catch (error) {
-        failCount++;
-        logger.error(`Failed to send test notification to subscription ${sub.id}:`, error);
-
-        // If subscription is invalid (410 Gone), remove it
-        if (error.statusCode === 410) {
-          await prisma.pushSubscription.delete({ where: { id: sub.id } });
-          logger.info(`Removed expired subscription ${sub.id}`);
-        }
-      }
-    }
-
-    res.json({
-      success: true,
-      sent: successCount,
-      failed: failCount,
-      message: `Test notification sent to ${successCount} device(s)`
-    });
-  } catch (error) {
-    logger.error('Error sending test notification:', error);
-    res.status(500).json({ error: 'Failed to send test notification' });
   }
 });
 
