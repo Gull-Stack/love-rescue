@@ -272,3 +272,23 @@ export const biometricApi = {
   getLoginOptions: (email) => api.post('/auth/webauthn/login/options', { email }),
   verifyLogin: (email, credential) => api.post('/auth/webauthn/login/verify', { email, credential }),
 };
+
+// 16-Week Course API
+export const courseApi = {
+  // Get full curriculum overview
+  getCurriculum: () => api.get('/course/curriculum'),
+  // Get specific week details
+  getWeek: (weekNumber) => api.get(`/course/week/${weekNumber}`),
+  // Get user's progress
+  getProgress: () => api.get('/course/progress'),
+  // Start the course
+  startCourse: () => api.post('/course/start'),
+  // Advance to next week
+  advanceWeek: () => api.post('/course/advance'),
+  // Get current week's strategy
+  getStrategy: () => api.get('/course/strategy'),
+  // Log daily practice
+  logPractice: (completed, notes) => api.post('/course/practice', { completed, notes }),
+  // Save weekly reflection
+  saveReflection: (reflection) => api.post('/course/reflection', { reflection }),
+};

@@ -27,6 +27,10 @@ const Settings = React.lazy(() => import('./pages/Settings/Settings'));
 const ScheduleMeeting = React.lazy(() => import('./pages/Meetings/ScheduleMeeting'));
 const Gratitude = React.lazy(() => import('./pages/Gratitude/Gratitude'));
 
+// Course pages (lazy loaded)
+const CourseJourney = React.lazy(() => import('./pages/Course/Journey'));
+const CourseWeekDetail = React.lazy(() => import('./pages/Course/WeekDetail'));
+
 // Admin pages (lazy loaded)
 const AdminDashboard = React.lazy(() => import('./pages/Admin'));
 const AdminUsers = React.lazy(() => import('./pages/Admin/Users'));
@@ -137,6 +141,10 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="meetings" element={<ScheduleMeeting />} />
           <Route path="gratitude" element={<Gratitude />} />
+          {/* Course routes */}
+          <Route path="course" element={<CourseJourney />} />
+          <Route path="course/week" element={<CourseWeekDetail />} />
+          <Route path="course/week/:weekNumber" element={<CourseWeekDetail />} />
           {/* Admin routes - protected by backend + frontend checks */}
           <Route path="admin" element={<AdminDashboard />} />
           <Route path="admin/users" element={<AdminUsers />} />

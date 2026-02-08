@@ -36,6 +36,7 @@ import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import SchoolIcon from '@mui/icons-material/School';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Platform admin emails (sync with backend)
@@ -47,6 +48,7 @@ const PLATFORM_ADMIN_EMAILS = [
 const getNavItems = (isPlatformAdmin) => {
   const items = [
     { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
+    { label: '16-Week Course', path: '/course', icon: <SchoolIcon /> },
     { label: 'Strategies', path: '/strategies', icon: <TipsAndUpdatesIcon /> },
     { label: 'Daily Log', path: '/daily', icon: <EditNoteIcon /> },
     { label: 'Gratitude', path: '/gratitude', icon: <VolunteerActivismIcon /> },
