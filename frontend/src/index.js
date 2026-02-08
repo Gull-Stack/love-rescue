@@ -31,13 +31,6 @@ root.render(
 // Temporarily unregister main service worker to fix COOP/Google Sign-In issues
 serviceWorkerRegistration.unregister();
 
-// Register push notification service worker separately (doesn't interfere with COOP)
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js')
-    .then((registration) => {
-      console.log('Push SW registered:', registration.scope);
-    })
-    .catch((error) => {
-      console.log('Push SW registration failed:', error);
-    });
-}
+// Register push notification service worker ONLY after user is authenticated
+// This prevents COOP interference with Google OAuth
+// The SW will be registered when user enables notifications in Settings
