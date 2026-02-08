@@ -27,7 +27,9 @@
     { "source": "/goals", "destination": "/app.html" },
     { "source": "/videos", "destination": "/app.html" },
     { "source": "/reports/:path*", "destination": "/app.html" },
-    { "source": "/partner/:path*", "destination": "/app.html" }
+    { "source": "/partner/:path*", "destination": "/app.html" },
+    { "source": "/course", "destination": "/app.html" },
+    { "source": "/course/:path*", "destination": "/app.html" }
   ],
   "headers": [
     {
