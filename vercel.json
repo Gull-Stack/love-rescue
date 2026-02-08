@@ -6,39 +6,124 @@
   "cleanUrls": false,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://backend-production-76f0e.up.railway.app/api/:path*" },
-    { "source": "/services/:path*", "destination": "/services/:path*.html" },
-    { "source": "/blog/:path*", "destination": "/blog/:path*.html" },
-    { "source": "/guides/:path*", "destination": "/guides/:path*.html" },
-    { "source": "/experts/:path*", "destination": "/experts/:path*.html" },
-    { "source": "/problems/:path*", "destination": "/problems/:path*.html" },
-    { "source": "/privacy", "destination": "/privacy.html" },
-    { "source": "/terms", "destination": "/terms.html" },
-    { "source": "/login", "destination": "/app.html" },
-    { "source": "/signup", "destination": "/app.html" },
-    { "source": "/dashboard/:path*", "destination": "/app.html" },
-    { "source": "/settings/:path*", "destination": "/app.html" },
-    { "source": "/assessments/:path*", "destination": "/app.html" },
-    { "source": "/join/:path*", "destination": "/app.html" },
-    { "source": "/admin/:path*", "destination": "/app.html" },
-    { "source": "/reset-password/:path*", "destination": "/app.html" },
-    { "source": "/daily-log", "destination": "/app.html" },
-    { "source": "/gratitude", "destination": "/app.html" },
-    { "source": "/goals", "destination": "/app.html" },
-    { "source": "/videos", "destination": "/app.html" },
-    { "source": "/reports/:path*", "destination": "/app.html" },
-    { "source": "/partner/:path*", "destination": "/app.html" },
-    { "source": "/course", "destination": "/app.html" },
-    { "source": "/course/:path*", "destination": "/app.html" }
+    {
+      "source": "/api/:path*",
+      "destination": "https://backend-production-76f0e.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/services/:path*",
+      "destination": "/services/:path*.html"
+    },
+    {
+      "source": "/blog/:path*",
+      "destination": "/blog/:path*.html"
+    },
+    {
+      "source": "/guides/:path*",
+      "destination": "/guides/:path*.html"
+    },
+    {
+      "source": "/experts/:path*",
+      "destination": "/experts/:path*.html"
+    },
+    {
+      "source": "/problems/:path*",
+      "destination": "/problems/:path*.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/signup",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/dashboard/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/settings/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/assessments/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/join/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/reset-password/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/daily-log",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/gratitude",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/goals",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/videos",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/reports/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/partner/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/course",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/course/:path*",
+      "destination": "/app.html"
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin-allow-popups"
+        }
       ]
     }
-  ]
+  ],
+  "github": {
+    "enabled": true,
+    "autoAlias": false
+  }
 }
