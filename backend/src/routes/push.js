@@ -1,7 +1,7 @@
 const express = require('express');
 const webpush = require('web-push');
 const { PrismaClient } = require('@prisma/client');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -22,7 +22,7 @@ router.get('/vapid-public-key', (req, res) => {
 });
 
 // Subscribe to push notifications
-router.post('/subscribe', authenticateToken, async (req, res) => {
+router.post('/subscribe', authenticate, async (req, res) => {
   try {
     const { subscription } = req.body;
     const userId = req.user.id;
@@ -63,7 +63,7 @@ router.post('/subscribe', authenticateToken, async (req, res) => {
 });
 
 // Unsubscribe from push notifications
-router.post('/unsubscribe', authenticateToken, async (req, res) => {
+router.post('/unsubscribe', authenticate, async (req, res) => {
   try {
     const { endpoint } = req.body;
 
@@ -79,7 +79,7 @@ router.post('/unsubscribe', authenticateToken, async (req, res) => {
 });
 
 // Send test notification (for user)
-router.post('/test', authenticateToken, async (req, res) => {
+router.post('/test', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     
@@ -200,7 +200,7 @@ router.post('/send-daily-reminder', async (req, res) => {
 });
 
 // Check subscription status
-router.get('/status', authenticateToken, async (req, res) => {
+router.get('/status', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     
@@ -220,7 +220,7 @@ router.get('/status', authenticateToken, async (req, res) => {
 });
 
 // Get notification preferences
-router.get('/preferences', authenticateToken, async (req, res) => {
+router.get('/preferences', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     
@@ -247,7 +247,7 @@ router.get('/preferences', authenticateToken, async (req, res) => {
 });
 
 // Update notification preferences
-router.put('/preferences', authenticateToken, async (req, res) => {
+router.put('/preferences', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     const { 
