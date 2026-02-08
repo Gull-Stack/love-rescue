@@ -126,9 +126,11 @@ async function clearFailedAttempts(email) {
 }
 
 // WebAuthn configuration
-const rpName = process.env.WEBAUTHN_RP_NAME || 'Marriage Rescue App';
-const rpID = process.env.WEBAUTHN_RP_ID || 'localhost';
-const origin = process.env.WEBAUTHN_ORIGIN || 'http://localhost:3000';
+// WebAuthn configuration - production defaults for loverescue.app
+const isProduction = process.env.NODE_ENV === 'production';
+const rpName = process.env.WEBAUTHN_RP_NAME || 'Love Rescue';
+const rpID = process.env.WEBAUTHN_RP_ID || (isProduction ? 'loverescue.app' : 'localhost');
+const origin = process.env.WEBAUTHN_ORIGIN || (isProduction ? 'https://loverescue.app' : 'http://localhost:3000');
 
 /**
  * Generate access and refresh tokens for a user
