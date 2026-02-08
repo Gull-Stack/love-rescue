@@ -585,14 +585,86 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
         <Card sx={{ mb: 3, borderRadius: 3 }}>
           <CardContent sx={{ p: 4 }}>
             <Box display="flex" alignItems="center" gap={1} mb={2}>
+              {typeof interpretation === 'object' && interpretation.emoji && (
+                <Typography variant="h5" component="span">{interpretation.emoji}</Typography>
+              )}
               <LightbulbIcon sx={{ color: '#ff9800' }} />
               <Typography variant="h6" fontWeight="bold">
-                What This Means
+                {typeof interpretation === 'object' && interpretation.title 
+                  ? interpretation.title 
+                  : 'What This Means'}
               </Typography>
             </Box>
-            <Typography variant="body1" sx={{ lineHeight: 1.8, color: 'text.secondary' }}>
-              {interpretation}
-            </Typography>
+            
+            {/* Handle both string and object interpretations */}
+            {typeof interpretation === 'string' ? (
+              <Typography variant="body1" sx={{ lineHeight: 1.8, color: 'text.secondary' }}>
+                {interpretation}
+              </Typography>
+            ) : (
+              <Box>
+                {interpretation.description && (
+                  <Typography variant="body1" sx={{ lineHeight: 1.8, color: 'text.secondary', mb: 2 }}>
+                    {interpretation.description}
+                  </Typography>
+                )}
+                {interpretation.deeperMeaning && (
+                  <Paper 
+                    elevation={0} 
+                    sx={{ 
+                      p: 2, 
+                      mt: 2, 
+                      borderRadius: 2, 
+                      bgcolor: alpha(meta.color, 0.04),
+                      borderLeft: `3px solid ${meta.color}`
+                    }}
+                  >
+                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                      💡 Deeper Insight
+                    </Typography>
+                    <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
+                      {interpretation.deeperMeaning}
+                    </Typography>
+                  </Paper>
+                )}
+                {interpretation.dailyPractice && (
+                  <Paper 
+                    elevation={0} 
+                    sx={{ 
+                      p: 2, 
+                      mt: 2, 
+                      borderRadius: 2, 
+                      bgcolor: alpha('#4caf50', 0.04),
+                      borderLeft: '3px solid #4caf50'
+                    }}
+                  >
+                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                      🌱 Daily Practice
+                    </Typography>
+                    <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
+                      {interpretation.dailyPractice}
+                    </Typography>
+                  </Paper>
+                )}
+                {interpretation.connectedFrameworks && interpretation.connectedFrameworks.length > 0 && (
+                  <Box mt={2}>
+                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                      🔗 Related Frameworks
+                    </Typography>
+                    <Box display="flex" flexWrap="wrap" gap={1}>
+                      {interpretation.connectedFrameworks.map((framework, i) => (
+                        <Chip 
+                          key={i} 
+                          label={framework} 
+                          size="small" 
+                          sx={{ bgcolor: alpha(meta.color, 0.1), color: meta.color }}
+                        />
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+              </Box>
+            )}
           </CardContent>
         </Card>
       )}
@@ -621,7 +693,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                       ✓
                     </Typography>
                     <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
-                      {s}
+                      {typeof s === 'string' ? s : (s?.text || s?.description || JSON.stringify(s))}
                     </Typography>
                   </Box>
                 ))}
@@ -647,7 +719,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                   >
                     <Typography sx={{ color: '#ff9800', mt: 0.2 }}>🌱</Typography>
                     <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
-                      {g}
+                      {typeof g === 'string' ? g : (g?.text || g?.description || JSON.stringify(g))}
                     </Typography>
                   </Box>
                 ))}
@@ -703,7 +775,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                   {i + 1}
                 </Box>
                 <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
-                  {step}
+                  {typeof step === 'string' ? step : (step?.text || step?.description || JSON.stringify(step))}
                 </Typography>
               </Box>
             ))}
@@ -733,7 +805,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
             variant="body2"
             sx={{ lineHeight: 1.8, color: 'text.secondary', fontStyle: 'italic' }}
           >
-            "{creatorReframe}"
+            "{typeof creatorReframe === 'string' ? creatorReframe : (creatorReframe?.text || creatorReframe?.description || JSON.stringify(creatorReframe))}"
           </Typography>
         </Paper>
       )}
