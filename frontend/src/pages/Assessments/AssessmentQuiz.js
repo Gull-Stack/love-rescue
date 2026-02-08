@@ -222,63 +222,78 @@ const LikertScale = ({ value, onChange, labels, color }) => {
   }));
 
   if (isMobile) {
-    // Vertical list on mobile
+    // MOBILE: Compact horizontal buttons in thumb zone
     return (
-      <RadioGroup value={value || ''} onChange={(e) => onChange(parseInt(e.target.value))}>
-        {options.map((option) => (
-          <FormControlLabel
-            key={option.value}
-            value={option.value}
-            control={
-              <Radio
+      <Box>
+        {/* Scale endpoints */}
+        <Box display="flex" justifyContent="space-between" mb={1} px={0.5}>
+          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', maxWidth: '40%' }}>
+            {options[0]?.label}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', maxWidth: '40%', textAlign: 'right' }}>
+            {options[options.length - 1]?.label}
+          </Typography>
+        </Box>
+
+        {/* Compact horizontal button row */}
+        <Box display="flex" justifyContent="space-between" gap={0.5} px={0.5}>
+          {options.map((option) => {
+            const isSelected = value === option.value;
+            return (
+              <Button
+                key={option.value}
+                variant={isSelected ? 'contained' : 'outlined'}
+                onClick={() => onChange(option.value)}
                 sx={{
-                  color: alpha(color, 0.5),
-                  '&.Mui-checked': { color },
+                  minWidth: 40,
+                  width: 40,
+                  height: 48,
+                  borderRadius: 2,
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  p: 0,
+                  transition: 'all 0.15s ease',
+                  ...(isSelected
+                    ? {
+                        bgcolor: color,
+                        color: 'white',
+                        boxShadow: `0 4px 12px ${alpha(color, 0.4)}`,
+                        transform: 'scale(1.1)',
+                        '&:hover': { bgcolor: color },
+                      }
+                    : {
+                        borderColor: alpha(color, 0.3),
+                        color: 'text.secondary',
+                        bgcolor: 'background.paper',
+                        '&:hover': {
+                          borderColor: color,
+                          bgcolor: alpha(color, 0.06),
+                        },
+                      }),
                 }}
-              />
-            }
-            label={
-              <Box display="flex" alignItems="center" gap={1}>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: value === option.value ? color : alpha(color, 0.1),
-                    color: value === option.value ? 'white' : 'text.secondary',
-                    fontWeight: 'bold',
-                    fontSize: '0.7rem',
-                  }}
-                >
-                  {option.value}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  fontWeight={value === option.value ? 'bold' : 'normal'}
-                >
-                  {option.label}
-                </Typography>
-              </Box>
-            }
-            sx={{
-              py: 1,
-              px: 2,
-              my: 0.5,
-              borderRadius: 2,
-              border: `2px solid ${value === option.value ? color : 'transparent'}`,
-              bgcolor: value === option.value ? alpha(color, 0.06) : 'transparent',
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                bgcolor: alpha(color, 0.04),
-              },
-            }}
-          />
-        ))}
-      </RadioGroup>
+              >
+                {option.value}
+              </Button>
+            );
+          })}
+        </Box>
+
+        {/* Selected label feedback */}
+        {value && (
+          <Fade in>
+            <Typography
+              variant="body2"
+              textAlign="center"
+              mt={1.5}
+              fontWeight="bold"
+              color={color}
+              sx={{ fontSize: '0.85rem' }}
+            >
+              {labels[value]}
+            </Typography>
+          </Fade>
+        )}
+      </Box>
     );
   }
 
@@ -845,6 +860,7 @@ const AssessmentQuiz = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [questions, setQuestions] = useState([]);
@@ -991,107 +1007,108 @@ const AssessmentQuiz = () => {
     return <ResultDisplay type={type} result={result} meta={meta} navigate={navigate} />;
   }
 
+  // Mobile-first layout with thumb zone optimization
   return (
-    <Box maxWidth="md" mx="auto">
-      {/* Back Button */}
-      <Button
-        startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/assessments')}
-        sx={{ mb: 2, color: 'text.secondary' }}
-      >
-        Back to Assessments
-      </Button>
-
-      {/* Title */}
-      <Box display="flex" alignItems="center" gap={1.5} mb={1}>
-        <Typography variant="h3" component="span">
-          {meta.icon}
-        </Typography>
-        <Typography variant="h5" fontWeight="bold">
-          {meta.title}
-        </Typography>
-      </Box>
-
-      {/* Encouragement */}
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontStyle: 'italic' }}>
-        {meta.encouragement}
-      </Typography>
-
-      {/* Progress Bar */}
-      <Paper
-        elevation={0}
+    <Box 
+      maxWidth="md" 
+      mx="auto"
+      sx={{
+        // On mobile, use full viewport height layout
+        ...(isSmallMobile && {
+          minHeight: 'calc(100vh - 120px)',
+          display: 'flex',
+          flexDirection: 'column',
+        }),
+      }}
+    >
+      {/* STICKY PROGRESS BAR - Always visible at top on mobile */}
+      <Box
         sx={{
-          p: 2.5,
-          mb: 3,
-          borderRadius: 3,
-          bgcolor: alpha(meta.color, 0.04),
-          border: `1px solid ${alpha(meta.color, 0.1)}`,
+          ...(isSmallMobile && {
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+            bgcolor: 'background.paper',
+            pt: 1,
+            pb: 1.5,
+            mx: -2,
+            px: 2,
+            borderBottom: `1px solid ${alpha(meta.color, 0.1)}`,
+          }),
         }}
       >
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-          <Typography variant="body2" fontWeight="bold">
-            Question {currentIndex + 1} of {questions.length}
+        {/* Compact progress on mobile */}
+        <Box display="flex" alignItems="center" gap={1.5} mb={0.5}>
+          <Typography 
+            variant={isSmallMobile ? "body2" : "h3"} 
+            component="span"
+            sx={{ fontSize: isSmallMobile ? '1.2rem' : undefined }}
+          >
+            {meta.icon}
           </Typography>
-          <Box display="flex" alignItems="center" gap={1}>
-            <Chip
-              label={`${answeredCount} answered`}
-              size="small"
+          <Box flex={1}>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Typography variant="body2" fontWeight="bold" color={meta.color}>
+                {currentIndex + 1} / {questions.length}
+              </Typography>
+              <Typography variant="body2" fontWeight="bold" color={meta.color}>
+                {Math.round(progress)}%
+              </Typography>
+            </Box>
+            <LinearProgress
+              variant="determinate"
+              value={progress}
               sx={{
+                height: 6,
+                borderRadius: 3,
+                mt: 0.5,
                 bgcolor: alpha(meta.color, 0.1),
-                color: meta.color,
-                fontWeight: 'bold',
+                '& .MuiLinearProgress-bar': {
+                  borderRadius: 3,
+                  bgcolor: meta.color,
+                  transition: 'transform 0.3s ease',
+                },
               }}
             />
-            <Typography variant="body2" fontWeight="bold" color={meta.color}>
-              {Math.round(progress)}%
-            </Typography>
           </Box>
         </Box>
-        <LinearProgress
-          variant="determinate"
-          value={progress}
-          sx={{
-            height: 10,
-            borderRadius: 5,
-            bgcolor: alpha(meta.color, 0.1),
-            '& .MuiLinearProgress-bar': {
-              borderRadius: 5,
-              bgcolor: meta.color,
-              transition: 'transform 0.4s ease',
-            },
-          }}
-        />
-        {/* Mini encouragement */}
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ mt: 1, display: 'block', textAlign: 'center' }}
-        >
-          {encouragement}
-        </Typography>
-      </Paper>
+
+        {/* Back button - compact on mobile */}
+        {!isSmallMobile && (
+          <Button
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate('/assessments')}
+            size="small"
+            sx={{ mt: 1, color: 'text.secondary' }}
+          >
+            Back
+          </Button>
+        )}
+      </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+        <Alert severity="error" sx={{ my: 2, borderRadius: 2 }}>
           {error}
         </Alert>
       )}
 
-      {/* Question Card */}
-      <Fade in key={currentIndex}>
-        <Card
-          sx={{
-            borderRadius: 3,
-            border: `1px solid ${alpha(meta.color, 0.1)}`,
-            overflow: 'visible',
-          }}
-        >
-          <CardContent sx={{ p: { xs: 3, md: 4 } }}>
+      {/* QUESTION SECTION - Takes available space, question centered */}
+      <Box
+        sx={{
+          flex: isSmallMobile ? 1 : 'none',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: isSmallMobile ? 'center' : 'flex-start',
+          py: isSmallMobile ? 2 : 3,
+        }}
+      >
+        <Fade in key={currentIndex}>
+          <Box>
             {/* Question Number Badge */}
             <Box
               sx={{
-                width: 36,
-                height: 36,
+                width: isSmallMobile ? 32 : 36,
+                height: isSmallMobile ? 32 : 36,
                 borderRadius: '50%',
                 bgcolor: meta.color,
                 color: 'white',
@@ -1099,122 +1116,147 @@ const AssessmentQuiz = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: 'bold',
-                fontSize: '0.9rem',
-                mb: 2,
+                fontSize: isSmallMobile ? '0.8rem' : '0.9rem',
+                mb: 1.5,
               }}
             >
               {currentIndex + 1}
             </Box>
 
-            {/* Question Text */}
+            {/* Question Text - LARGER on mobile */}
             <Typography
-              variant="h6"
-              sx={{ mb: 3, lineHeight: 1.5, fontWeight: 500 }}
+              sx={{ 
+                mb: isSmallMobile ? 2 : 3, 
+                lineHeight: 1.5, 
+                fontWeight: 500,
+                fontSize: isSmallMobile ? '1.15rem' : '1.25rem',
+              }}
             >
               {currentQuestion?.text}
             </Typography>
+          </Box>
+        </Fade>
+      </Box>
 
-            {/* Answer Input */}
-            {isForcedChoice ? (
-              <ForcedChoice
-                question={currentQuestion}
-                value={currentResponse}
-                onChange={handleResponse}
-                color={meta.color}
-              />
-            ) : (
-              <LikertScale
-                value={currentResponse}
-                onChange={handleResponse}
-                labels={meta.scaleLabels}
-                color={meta.color}
-              />
-            )}
-
-            {/* Keyboard hint (desktop only) */}
-            {!isMobile && !isForcedChoice && (
-              <Typography
-                variant="caption"
-                color="text.disabled"
-                sx={{ mt: 2, display: 'block', textAlign: 'center' }}
-              >
-                💡 Press 1-7 to answer, → to advance
-              </Typography>
-            )}
-          </CardContent>
-        </Card>
-      </Fade>
-
-      {/* Navigation */}
+      {/* ANSWER SECTION - Pinned to bottom thumb zone on mobile */}
       <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mt={3}
-        mb={4}
+        sx={{
+          ...(isSmallMobile && {
+            position: 'sticky',
+            bottom: 0,
+            bgcolor: 'background.paper',
+            pt: 2,
+            pb: 2,
+            mx: -2,
+            px: 2,
+            borderTop: `1px solid ${alpha(meta.color, 0.1)}`,
+            boxShadow: '0 -4px 12px rgba(0,0,0,0.05)',
+          }),
+        }}
       >
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          onClick={handleBack}
-          disabled={currentIndex === 0}
-          sx={{
-            borderRadius: 2,
-            borderColor: alpha(meta.color, 0.3),
-            color: meta.color,
-            minHeight: { xs: 48, md: 'auto' },
-            '&:hover': {
-              borderColor: meta.color,
-              bgcolor: alpha(meta.color, 0.04),
-            },
-          }}
-        >
-          Back
-        </Button>
+        {/* Answer Input */}
+        {isForcedChoice ? (
+          <ForcedChoice
+            question={currentQuestion}
+            value={currentResponse}
+            onChange={handleResponse}
+            color={meta.color}
+          />
+        ) : (
+          <LikertScale
+            value={currentResponse}
+            onChange={handleResponse}
+            labels={meta.scaleLabels}
+            color={meta.color}
+          />
+        )}
 
-        {currentIndex < questions.length - 1 ? (
+        {/* Keyboard hint (desktop only) */}
+        {!isMobile && !isForcedChoice && (
+          <Typography
+            variant="caption"
+            color="text.disabled"
+            sx={{ mt: 2, display: 'block', textAlign: 'center' }}
+          >
+            💡 Press 1-7 to answer, → to advance
+          </Typography>
+        )}
+
+        {/* Navigation Buttons - Inline with answers on mobile */}
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          mt={2}
+          gap={2}
+        >
           <Button
-            variant="contained"
-            endIcon={<ArrowForwardIcon />}
-            onClick={handleNext}
-            disabled={currentResponse === undefined}
+            variant="outlined"
+            onClick={handleBack}
+            disabled={currentIndex === 0}
             sx={{
               borderRadius: 2,
-              minHeight: { xs: 48, md: 'auto' },
-              background: meta.gradient,
-              fontWeight: 'bold',
-              px: 4,
-              '&:hover': { opacity: 0.9 },
-              '&.Mui-disabled': {
-                background: 'none',
+              borderColor: alpha(meta.color, 0.3),
+              color: meta.color,
+              minWidth: isSmallMobile ? 60 : 100,
+              minHeight: 44,
+              fontSize: isSmallMobile ? '0.85rem' : '0.875rem',
+              '&:hover': {
+                borderColor: meta.color,
+                bgcolor: alpha(meta.color, 0.04),
               },
             }}
           >
-            Next
+            {isSmallMobile ? '←' : '← Back'}
           </Button>
-        ) : (
-          <Button
-            variant="contained"
-            color="success"
-            onClick={handleSubmit}
-            disabled={!allAnswered || submitting}
-            sx={{
-              borderRadius: 2,
-              minHeight: { xs: 48, md: 'auto' },
-              fontWeight: 'bold',
-              px: 4,
-            }}
-          >
-            {submitting ? (
-              <Box display="flex" alignItems="center" gap={1}>
-                <CircularProgress size={20} color="inherit" />
-                <span>Analyzing...</span>
-              </Box>
-            ) : (
-              'Complete Assessment ✨'
-            )}
-          </Button>
-        )}
+
+          {currentIndex < questions.length - 1 ? (
+            <Button
+              variant="contained"
+              onClick={handleNext}
+              disabled={currentResponse === undefined}
+              sx={{
+                borderRadius: 2,
+                minHeight: 44,
+                flex: 1,
+                maxWidth: 200,
+                background: currentResponse !== undefined ? meta.gradient : undefined,
+                fontWeight: 'bold',
+                fontSize: isSmallMobile ? '0.9rem' : '0.875rem',
+                '&:hover': { opacity: 0.9 },
+                '&.Mui-disabled': {
+                  background: 'none',
+                },
+              }}
+            >
+              {isSmallMobile ? 'Next →' : 'Next →'}
+            </Button>
+          ) : (
+            <Button
+              variant="contained"
+              color="success"
+              onClick={handleSubmit}
+              disabled={!allAnswered || submitting}
+              sx={{
+                borderRadius: 2,
+                minHeight: 44,
+                flex: 1,
+                maxWidth: 200,
+                fontWeight: 'bold',
+                fontSize: isSmallMobile ? '0.85rem' : '0.875rem',
+              }}
+            >
+              {submitting ? (
+                <Box display="flex" alignItems="center" gap={1}>
+                  <CircularProgress size={18} color="inherit" />
+                  <span>{isSmallMobile ? '...' : 'Analyzing...'}</span>
+                </Box>
+              ) : (
+                isSmallMobile ? 'Done ✨' : 'Complete ✨'
+              )}
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {/* Question dots / mini-map (desktop only, for assessments ≤ 40 questions) */}
