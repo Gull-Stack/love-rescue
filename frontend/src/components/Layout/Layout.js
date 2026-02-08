@@ -164,6 +164,10 @@ const Layout = () => {
         variant={isMobile ? 'temporary' : 'permanent'}
         open={isMobile ? drawerOpen : true}
         onClose={() => setDrawerOpen(false)}
+        ModalProps={{
+          keepMounted: true, // Better mobile performance
+          onBackdropClick: () => setDrawerOpen(false), // Explicit backdrop click handler
+        }}
         sx={{
           display: isMobile ? 'block' : { xs: 'none', md: 'block' },
           '& .MuiDrawer-paper': {
@@ -173,6 +177,9 @@ const Layout = () => {
             height: { xs: 'calc(100% - 48px)', md: 'calc(100% - 64px)' },
             borderRight: '1px solid',
             borderColor: 'divider',
+          },
+          '& .MuiBackdrop-root': {
+            mt: { xs: '48px', md: '64px' }, // Position backdrop below AppBar
           },
         }}
       >
