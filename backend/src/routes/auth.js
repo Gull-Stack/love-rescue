@@ -1049,6 +1049,43 @@ router.post('/revoke-partner', authenticate, async (req, res, next) => {
 });
 
 /**
+ * GET /api/auth/export-data
+ * HIPAA right-of-access: export all user data as JSON
+ */
+router.get('/export-data', authenticate, async (req, res, next) => {
+  try {
+    const user = await req.prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: {
+        assessments: true,
+        dailyLogs: true,
+        gratitudeEntries: true,
+        goals: true,
+        strategies: true,
+        pushSubscriptions: { select: { id: true, createdAt: true } },
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Strip sensitive fields
+    const { passwordHash, stripeCustomerId, ...safeUser } = user;
+
+    logger.info('Data export requested', { userId: req.user.id });
+
+    res.setHeader('Content-Disposition', `attachment; filename="loverescue-data-export-${new Date().toISOString().slice(0, 10)}.json"`);
+    res.json({
+      exportedAt: new Date().toISOString(),
+      user: safeUser
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * DELETE /api/auth/delete-account
  * Delete user account with cascade handling
  */

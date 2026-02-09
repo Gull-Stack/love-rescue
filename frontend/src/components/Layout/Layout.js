@@ -231,6 +231,7 @@ const Layout = () => {
           ml: isMobile ? 0 : '240px',
           bgcolor: 'background.default',
           minHeight: { xs: 'calc(100vh - 48px)', md: 'calc(100vh - 64px)' },
+          overflowX: 'hidden', // Prevent horizontal scroll on mobile
         }}
       >
         <Outlet />
