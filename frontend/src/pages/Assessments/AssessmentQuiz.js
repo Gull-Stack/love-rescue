@@ -559,7 +559,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                       <Box key={i} mb={1.5}>
                         <Box display="flex" justifyContent="space-between" mb={0.5}>
                           <Typography variant="body2" fontWeight="bold" sx={{ textTransform: 'capitalize' }}>
-                            {String(label).replace(/_/g, ' ')}
+                            {String(label || '').replace(/_/g, ' ')}
                           </Typography>
                           <Typography variant="body2" color={meta.color} fontWeight="bold">
                             {typeof val === 'number' ? `${Math.round(val)}%` : (val != null ? String(val) : '—')}

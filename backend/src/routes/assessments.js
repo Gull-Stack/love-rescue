@@ -1,4 +1,5 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const { authenticate, requireSubscription } = require('../middleware/auth');
 const logger = require('../utils/logger');
 const { scoreAssessment, calculateMatchupScore, calculateRatio } = require('../utils/scoring');
@@ -6,6 +7,16 @@ const { getQuestions, getAvailableAssessments, validateResponses } = require('..
 const { getInterpretation } = require('../utils/interpretations');
 
 const router = express.Router();
+
+// Rate limit assessment submissions: max 10 per 15 minutes per user
+const submitLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => req.user?.id || req.ip,
+  message: { error: 'Too many assessment submissions. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Helper: ensure Prisma JSON fields are objects (guards against double-serialization)
 const ensureObject = (val) => {
@@ -95,7 +106,7 @@ router.get('/questions/:type', authenticate, async (req, res, next) => {
  * POST /api/assessments/submit
  * Submit assessment responses and calculate scores
  */
-router.post('/submit', authenticate, requireSubscription, async (req, res, next) => {
+router.post('/submit', authenticate, requireSubscription, submitLimiter, async (req, res, next) => {
   try {
     const { type, responses } = req.body;
 

@@ -14,8 +14,11 @@ const { authenticate } = require('../middleware/auth');
 const logger = require('../utils/logger');
 const { sendPasswordResetEmail, sendPartnerInviteEmail } = require('../utils/email');
 
-// Google OAuth Client ID - hardcoded fallback to prevent env var issues breaking login
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '665328889617-mg6vqui0a5bgkjpj7p85o35lc0f7rnft.apps.googleusercontent.com';
+// Google OAuth Client ID - required from environment
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+if (!GOOGLE_CLIENT_ID) {
+  console.warn('WARNING: GOOGLE_CLIENT_ID not set. Google OAuth login will be unavailable.');
+}
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 const router = express.Router();
@@ -139,7 +142,7 @@ async function generateTokenPair(userId, prisma) {
   const accessToken = jwt.sign(
     { userId },
     process.env.JWT_SECRET,
-    { expiresIn: ACCESS_TOKEN_EXPIRY }
+    { expiresIn: ACCESS_TOKEN_EXPIRY, algorithm: 'HS256' }
   );
 
   // Generate a secure refresh token

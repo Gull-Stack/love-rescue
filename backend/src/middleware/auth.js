@@ -2,6 +2,11 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const logger = require('../utils/logger');
 
+// Validate JWT_SECRET is configured
+if (!process.env.JWT_SECRET) {
+  throw new Error('FATAL: JWT_SECRET environment variable is not set. Server cannot start securely.');
+}
+
 /**
  * JWT authentication middleware
  */
@@ -15,7 +20,7 @@ const authenticate = async (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
 
     // Fetch user from database
     const user = await req.prisma.user.findUnique({
@@ -78,7 +83,7 @@ const optionalAuth = async (req, res, next) => {
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
 
       const user = await req.prisma.user.findUnique({
         where: { id: decoded.userId },
@@ -146,7 +151,7 @@ const requireRole = (...roles) => {
  * Platform admin middleware
  * Checks if user is a platform admin by isPlatformAdmin flag or email allowlist
  */
-const PLATFORM_ADMIN_EMAILS = [
+const PLATFORM_ADMIN_EMAILS = (process.env.PLATFORM_ADMIN_EMAILS || '').split(',').filter(Boolean).length > 0 ? (process.env.PLATFORM_ADMIN_EMAILS || '').split(',').filter(Boolean) : [
   'josh@gullstack.com',
   'bryce@gullstack.com'
 ];
@@ -196,11 +201,7 @@ const authenticateTherapist = async (req, res, next) => {
     }
 
     if (!matchedTherapist) {
-      // Fallback: check legacy env-var key for backward compatibility
-      if (apiKey === process.env.THERAPIST_API_KEY) {
-        req.therapist = { id: 'legacy', email: 'legacy@therapist', firstName: 'Legacy', lastName: 'Therapist' };
-        return next();
-      }
+      // Legacy plain-text API key fallback removed for security (was THERAPIST_API_KEY env var)
       return res.status(403).json({ error: 'Invalid API key' });
     }
 

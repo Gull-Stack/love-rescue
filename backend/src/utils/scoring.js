@@ -33,6 +33,7 @@ function normalize(raw, min, max) {
  * Get percentage (0-100) from a score on a given scale
  */
 function toPercent(score, scaleMax) {
+  if (!scaleMax) return 0;
   return Math.round((score / scaleMax) * 100);
 }
 
@@ -61,12 +62,12 @@ function groupScores(responses, questions, groupKey, scaleMax, handleReverse = f
 
   const result = {};
   for (const [group, total] of Object.entries(groups)) {
-    const count = counts[group];
+    const count = counts[group] || 0;
     result[group] = {
       rawTotal: total,
       count,
-      average: Math.round((total / count) * 100) / 100,
-      percentage: toPercent(total, count * scaleMax),
+      average: count > 0 ? Math.round((total / count) * 100) / 100 : 0,
+      percentage: count > 0 ? toPercent(total, count * scaleMax) : 0,
     };
   }
 
@@ -193,8 +194,8 @@ function scorePersonality(responses) {
   function dimensionScore(a, b) {
     const totalA = directionTotals[a] || 0;
     const totalB = directionTotals[b] || 0;
-    const maxA = (directionCounts[a] || 1) * scaleMax;
-    const maxB = (directionCounts[b] || 1) * scaleMax;
+    const maxA = Math.max((directionCounts[a] || 0) * scaleMax, 1);
+    const maxB = Math.max((directionCounts[b] || 0) * scaleMax, 1);
     const pctA = (totalA / maxA) * 100;
     const pctB = (totalB / maxB) * 100;
     const total = pctA + pctB;
@@ -1225,6 +1226,10 @@ function calculateRatio(positives, negatives) {
  * @returns {Object} Scored result
  */
 function scoreAssessment(type, responses) {
+  if (!responses || typeof responses !== 'object' || Object.keys(responses).length === 0) {
+    throw new Error(`Invalid responses for assessment type "${type}": responses must be a non-empty object`);
+  }
+
   const scorers = {
     attachment: scoreAttachment,
     personality: scorePersonality,
