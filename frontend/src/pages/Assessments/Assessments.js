@@ -231,15 +231,18 @@ const renderScoreSummary = (type, score) => {
         )}
         {score.dimensions && (
           <Box mt={1} display="flex" gap={0.5} flexWrap="wrap">
-            {Object.entries(score.dimensions).map(([dim, val]) => (
-              <Chip
-                key={dim}
-                label={`${dim}: ${typeof val === 'number' ? Math.round(val) + '%' : val}`}
-                size="small"
-                variant="outlined"
-                sx={{ fontSize: '0.7rem' }}
-              />
-            ))}
+            {Object.entries(score.dimensions).map(([dim, val]) => {
+              let label;
+              if (val && typeof val === 'object' && val.preference) {
+                const dominant = val[val.preference] || val[Object.keys(val)[0]];
+                label = `${dim}: ${val.preference} (${typeof dominant === 'number' ? Math.round(dominant) + '%' : ''})`;
+              } else {
+                label = `${dim}: ${typeof val === 'number' ? Math.round(val) + '%' : String(val)}`;
+              }
+              return (
+                <Chip key={dim} label={label} size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />
+              );
+            })}
           </Box>
         )}
       </Box>
@@ -383,25 +386,30 @@ const renderScoreSummary = (type, score) => {
         </Typography>
         {score.dimensions && (
           <Box mt={1}>
-            {Object.entries(score.dimensions).slice(0, 3).map(([dim, val]) => (
+            {Object.entries(score.dimensions).slice(0, 3).map(([dim, val]) => {
+              const isObj = val && typeof val === 'object' && val.preference;
+              const displayVal = isObj ? `${val.preference} (${Math.round(Math.max(val[Object.keys(val)[0]] || 0, val[Object.keys(val)[1]] || 0))}%)` : (typeof val === 'number' ? `${Math.round(val)}%` : String(val));
+              const numVal = isObj ? Math.max(val[Object.keys(val)[0]] || 0, val[Object.keys(val)[1]] || 0) : (typeof val === 'number' ? val : null);
+              return (
               <Box key={dim} mb={0.5}>
                 <Box display="flex" justifyContent="space-between" mb={0.25}>
                   <Typography variant="caption" sx={{ textTransform: 'capitalize' }}>
                     {dim.replace(/_/g, ' ')}
                   </Typography>
                   <Typography variant="caption" fontWeight="bold">
-                    {typeof val === 'number' ? `${Math.round(val)}%` : val}
+                    {displayVal}
                   </Typography>
                 </Box>
-                {typeof val === 'number' && (
+                {numVal !== null && (
                   <LinearProgress
                     variant="determinate"
-                    value={Math.min(val, 100)}
+                    value={Math.min(numVal, 100)}
                     sx={{ height: 4, borderRadius: 2 }}
                   />
                 )}
               </Box>
-            ))}
+              );
+            })}
           </Box>
         )}
       </Box>
