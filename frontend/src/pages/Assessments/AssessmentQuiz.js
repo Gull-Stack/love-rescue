@@ -515,7 +515,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
             }}
           >
             <Typography variant="h4" fontWeight="bold" color={meta.color} gutterBottom>
-              {score.style || score.type || score.primaryLabel || score.primary || score.level || score.healthLevel || (score.topTwoLabels && score.topTwoLabels[0]) || `${score.score ?? score.overall ?? score.overallHealth ?? score.overallScore ?? '—'}/100`}
+              {score.style || score.type || score.primaryLabel || score.primary || score.level || score.healthLevel || (Array.isArray(score.topTwoLabels) && score.topTwoLabels[0] ? String(score.topTwoLabels[0]) : null) || ((score.score ?? score.overall ?? score.overallHealth ?? score.overallScore) != null ? `${score.score ?? score.overall ?? score.overallHealth ?? score.overallScore}/100` : '—')}
             </Typography>
             {score.description && (
               <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
@@ -532,9 +532,9 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                 Secondary: {score.secondaryLabel || score.secondary}
               </Typography>
             )}
-            {score.topTwoLabels && score.topTwoLabels.length > 1 && (
+            {Array.isArray(score.topTwoLabels) && score.topTwoLabels.length > 1 && (
               <Typography variant="body2" color="text.secondary">
-                Secondary need: {score.topTwoLabels[1]}
+                Secondary need: {String(score.topTwoLabels[1] || '')}
               </Typography>
             )}
           </Box>
@@ -551,8 +551,8 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                 const rankingArray = score.ranking;
                 if (rankingArray && Array.isArray(rankingArray)) {
                   return rankingArray.map((item, i) => {
-                    const label = item.label || item.language || item.need || item.style || item.category || 'Item';
-                    const val = item.percentage ?? item.count ?? item.score ?? null;
+                    const label = item?.label || item?.language || item?.need || item?.style || item?.category || 'Unknown';
+                    const val = item?.percentage ?? item?.count ?? item?.score ?? null;
                     return (
                       <Box key={i} mb={1.5}>
                         <Box display="flex" justifyContent="space-between" mb={0.5}>
@@ -560,7 +560,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                             {String(label).replace(/_/g, ' ')}
                           </Typography>
                           <Typography variant="body2" color={meta.color} fontWeight="bold">
-                            {typeof val === 'number' ? `${Math.round(val)}%` : val}
+                            {typeof val === 'number' ? `${Math.round(val)}%` : (val != null ? String(val) : '—')}
                           </Typography>
                         </Box>
                         {typeof val === 'number' && (
@@ -635,6 +635,8 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                   score.allNeeds ||
                   score.allScores;
 
+                if (!data) return null;
+
                 // Handle both object and array formats
                 const entries = Array.isArray(data)
                   ? data.map((item) => typeof item === 'string' ? [item.replace(/_/g, ' '), null] : [item.name || item.label, item.score || item.percentage || item.value])
@@ -642,7 +644,8 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                   ? Object.entries(data).map(([k, v]) => {
                       // Handle MBTI dimensions: {E: 60, I: 40, preference: 'E', clarity: 20, ...}
                       if (v && typeof v === 'object' && v.preference !== undefined) {
-                        return [k + ' (' + v.preference + ')', Math.max(v[Object.keys(v)[0]] || 0, v[Object.keys(v)[1]] || 0)];
+                        const vKeys = Object.keys(v);
+                        return [k + ' (' + v.preference + ')', vKeys.length >= 2 ? Math.max(v[vKeys[0]] || 0, v[vKeys[1]] || 0) : (v[vKeys[0]] || 0)];
                       }
                       // Handle objects with percentage (subscores, allNeeds, allStyles, etc.)
                       if (v && typeof v === 'object' && v.percentage !== undefined) {
@@ -669,7 +672,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                         {String(key).replace(/_/g, ' ')}
                       </Typography>
                       <Typography variant="body2" color={meta.color} fontWeight="bold">
-                        {typeof val === 'number' ? `${Math.round(val)}%` : val}
+                        {typeof val === 'number' ? `${Math.round(val)}%` : (val != null ? String(val) : '—')}
                       </Typography>
                     </Box>
                     {typeof val === 'number' && (

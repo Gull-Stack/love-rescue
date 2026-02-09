@@ -192,7 +192,7 @@ const renderScoreSummary = (type, score) => {
     attachment: () => (
       <Box>
         <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-          {score.style?.replace(/_/g, ' ')} Attachment
+          {String(score.style || '').replace(/_/g, ' ')} Attachment
           {score.confidence && <Typography variant="caption" color="text.secondary"> ({score.confidence} confidence)</Typography>}
         </Typography>
         {(score.scores || score.subscores) && (
@@ -260,7 +260,7 @@ const renderScoreSummary = (type, score) => {
         )}
         {(score.ranking || score.rankings) && (
           <Box mt={1}>
-            {(score.ranking || score.rankings).slice(0, 3).map((lang, i) => (
+            {(score.ranking || score.rankings || []).slice(0, 3).map((lang, i) => (
               <Box key={i} display="flex" justifyContent="space-between" mb={0.25}>
                 <Typography variant="caption">{lang.label || lang.name || lang.language?.replace(/_/g, ' ')}</Typography>
                 <Typography variant="caption" fontWeight="bold">
@@ -275,11 +275,11 @@ const renderScoreSummary = (type, score) => {
     human_needs: () => (
       <Box>
         <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-          Top Needs: {(score.topTwoLabels || score.topTwo || [score.primary || score.topNeed]).join(', ')}
+          Top Needs: {(score.topTwoLabels || score.topTwo || [score.primary || score.topNeed]).filter(Boolean).map(String).join(', ')}
         </Typography>
         {score.profile && (
           <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-            Profile: {score.profile?.replace(/-/g, ' ')}
+            Profile: {String(score.profile || '').replace(/-/g, ' ')}
           </Typography>
         )}
         {(score.ranking || score.allNeeds || score.needs) && (
@@ -322,8 +322,8 @@ const renderScoreSummary = (type, score) => {
         {score.horsemen && (
           <Box mt={0.5}>
             <Typography variant="caption" color="text.secondary">
-              Horsemen severity: {score.horsemen.severity ?? '—'}%
-              {score.horsemen.mostConcerning && ` (worst: ${score.horsemen.mostConcerning.replace(/_/g, ' ')})`}
+              Horsemen severity: {score.horsemen?.severity ?? '—'}%
+              {score.horsemen?.mostConcerning && ` (worst: ${String(score.horsemen.mostConcerning).replace(/_/g, ' ')})`}
             </Typography>
           </Box>
         )}
@@ -397,7 +397,7 @@ const renderScoreSummary = (type, score) => {
         )}
         {(score.allStyles || score.styles) && (
           <Box mt={1} display="flex" gap={0.5} flexWrap="wrap">
-            {Object.entries(score.allStyles || score.styles).map(([style, val]) => {
+            {Object.entries(score.allStyles || score.styles || {}).map(([style, val]) => {
               const pct = typeof val === 'object' && val.percentage !== undefined ? Math.round(val.percentage) + '%' : (typeof val === 'number' ? Math.round(val) + '%' : String(val));
               return (
               <Chip
@@ -752,7 +752,7 @@ const CategorySection = ({
                           {/* Always show the primary result line */}
                           {!isExpanded && (
                             <Typography variant="body2" fontWeight="bold" sx={{ textTransform: 'capitalize' }}>
-                              {score.style?.replace(/_/g, ' ') || score.type || score.primaryLabel || score.primary?.replace(/_/g, ' ') || score.level?.replace(/[-_]/g, ' ') || score.healthLevel?.replace(/[-_]/g, ' ') || (score.topTwoLabels && score.topTwoLabels[0]) || `Score: ${score.score ?? score.overall ?? score.overallHealth ?? score.overallScore ?? '—'}`}
+                              {score.style?.replace(/_/g, ' ') || score.type || score.primaryLabel || score.primary?.replace(/_/g, ' ') || score.level?.replace(/[-_]/g, ' ') || score.healthLevel?.replace(/[-_]/g, ' ') || (Array.isArray(score.topTwoLabels) && score.topTwoLabels[0] ? String(score.topTwoLabels[0]) : null) || `Score: ${score.score ?? score.overall ?? score.overallHealth ?? score.overallScore ?? '—'}`}
                             </Typography>
                           )}
 
