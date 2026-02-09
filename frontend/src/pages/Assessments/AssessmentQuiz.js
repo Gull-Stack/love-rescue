@@ -515,8 +515,13 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
             }}
           >
             <Typography variant="h4" fontWeight="bold" color={meta.color} gutterBottom>
-              {score.style || score.type || score.primary || score.level || score.healthLevel || `${score.score || score.overall || score.overallHealth || '—'}/100`}
+              {score.style || score.type || score.primaryLabel || score.primary || score.level || score.healthLevel || (score.topTwoLabels && score.topTwoLabels[0]) || `${score.score ?? score.overall ?? score.overallHealth ?? score.overallScore ?? '—'}/100`}
             </Typography>
+            {score.description && (
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
+                {score.description}
+              </Typography>
+            )}
             {score.name && (
               <Typography variant="h6" color="text.secondary">
                 {score.name}
@@ -524,51 +529,134 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
             )}
             {score.secondary && (
               <Typography variant="body2" color="text.secondary">
-                Secondary: {score.secondary}
+                Secondary: {score.secondaryLabel || score.secondary}
+              </Typography>
+            )}
+            {score.topTwoLabels && score.topTwoLabels.length > 1 && (
+              <Typography variant="body2" color="text.secondary">
+                Secondary need: {score.topTwoLabels[1]}
               </Typography>
             )}
           </Box>
 
           {/* Subscores */}
-          {(score.subscores || score.domains || score.dimensions || score.areas || score.needs || score.styles || score.rankings) && (
+          {(score.subscores || score.scores || score.domains || score.dimensions || score.areas || score.allNeeds || score.allStyles || score.allScores || score.ranking || score.horsemen) && (
             <Box mt={3}>
               <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
                 Detailed Breakdown
               </Typography>
               <Divider sx={{ mb: 2 }} />
               {(() => {
-                // For Gottman, prefer horsemen + strengths breakdown
-                const gottmanData = score.horsemen?.byType || score.strengths?.byType;
+                // Use ranking array if available (love_language, human_needs, conflict_style, etc.)
+                const rankingArray = score.ranking;
+                if (rankingArray && Array.isArray(rankingArray)) {
+                  return rankingArray.map((item, i) => {
+                    const label = item.label || item.language || item.need || item.style || item.category || 'Item';
+                    const val = item.percentage ?? item.count ?? item.score ?? null;
+                    return (
+                      <Box key={i} mb={1.5}>
+                        <Box display="flex" justifyContent="space-between" mb={0.5}>
+                          <Typography variant="body2" fontWeight="bold" sx={{ textTransform: 'capitalize' }}>
+                            {String(label).replace(/_/g, ' ')}
+                          </Typography>
+                          <Typography variant="body2" color={meta.color} fontWeight="bold">
+                            {typeof val === 'number' ? `${Math.round(val)}%` : val}
+                          </Typography>
+                        </Box>
+                        {typeof val === 'number' && (
+                          <LinearProgress
+                            variant="determinate"
+                            value={Math.min(val, 100)}
+                            sx={{
+                              height: 8,
+                              borderRadius: 4,
+                              bgcolor: alpha(meta.color, 0.1),
+                              '& .MuiLinearProgress-bar': {
+                                borderRadius: 4,
+                                bgcolor: meta.color,
+                              },
+                            }}
+                          />
+                        )}
+                      </Box>
+                    );
+                  });
+                }
+
+                // For Gottman, show horsemen + strengths
+                if (score.horsemen?.byType || score.strengths?.byType) {
+                  const sections = [];
+                  if (score.horsemen?.byType) {
+                    sections.push({ title: '⚠️ Four Horsemen (lower is better)', data: score.horsemen.byType });
+                  }
+                  if (score.strengths?.byType) {
+                    sections.push({ title: '💚 Relationship Strengths', data: score.strengths.byType });
+                  }
+                  return sections.map((section, si) => (
+                    <Box key={si} mb={2}>
+                      <Typography variant="caption" fontWeight="bold" gutterBottom display="block" sx={{ mb: 1 }}>
+                        {section.title}
+                      </Typography>
+                      {Object.entries(section.data).map(([k, v]) => (
+                        <Box key={k} mb={1.5}>
+                          <Box display="flex" justifyContent="space-between" mb={0.5}>
+                            <Typography variant="body2" fontWeight="bold" sx={{ textTransform: 'capitalize' }}>
+                              {k.replace(/_/g, ' ')}
+                            </Typography>
+                            <Typography variant="body2" color={meta.color} fontWeight="bold">
+                              {typeof v === 'object' && v.percentage !== undefined ? `${Math.round(v.percentage)}%` : typeof v === 'number' ? `${Math.round(v)}%` : String(v)}
+                            </Typography>
+                          </Box>
+                          {(typeof v === 'number' || (typeof v === 'object' && v.percentage !== undefined)) && (
+                            <LinearProgress
+                              variant="determinate"
+                              value={Math.min(typeof v === 'object' ? v.percentage : v, 100)}
+                              sx={{
+                                height: 8,
+                                borderRadius: 4,
+                                bgcolor: alpha(meta.color, 0.1),
+                                '& .MuiLinearProgress-bar': { borderRadius: 4, bgcolor: meta.color },
+                              }}
+                            />
+                          )}
+                        </Box>
+                      ))}
+                    </Box>
+                  ));
+                }
+
+                // Generic: subscores/scores/dimensions/allStyles/allNeeds/allScores
                 const data =
                   score.subscores ||
+                  score.scores ||
                   score.domains ||
                   score.dimensions ||
-                  gottmanData ||
-                  score.styles ||
-                  score.needs;
+                  score.allStyles ||
+                  score.allNeeds ||
+                  score.allScores;
 
                 // Handle both object and array formats
                 const entries = Array.isArray(data)
-                  ? data.map((item) => typeof item === 'string' ? [item.replace(/_/g, ' '), null] : [item.name || item.label, item.score || item.value])
+                  ? data.map((item) => typeof item === 'string' ? [item.replace(/_/g, ' '), null] : [item.name || item.label, item.score || item.percentage || item.value])
                   : data && typeof data === 'object'
                   ? Object.entries(data).map(([k, v]) => {
                       // Handle MBTI dimensions: {E: 60, I: 40, preference: 'E', clarity: 20, ...}
                       if (v && typeof v === 'object' && v.preference !== undefined) {
                         return [k + ' (' + v.preference + ')', Math.max(v[Object.keys(v)[0]] || 0, v[Object.keys(v)[1]] || 0)];
                       }
-                      // Handle Gottman byType: {percentage, total, count}
+                      // Handle objects with percentage (subscores, allNeeds, allStyles, etc.)
                       if (v && typeof v === 'object' && v.percentage !== undefined) {
-                        return [k.replace(/_/g, ' '), v.percentage];
+                        return [v.label || k.replace(/_/g, ' '), v.percentage];
+                      }
+                      // Handle objects with count (love language allScores)
+                      if (v && typeof v === 'object' && v.count !== undefined) {
+                        return [v.label || k.replace(/_/g, ' '), v.percentage ?? v.count];
                       }
                       return [k, typeof v === 'object' ? JSON.stringify(v) : v];
                     })
                   : [];
 
-                // Handle rankings (love language)
-                const rankings = score.rankings;
-                const allEntries = rankings
-                  ? rankings.map((r) => [r.name, r.score])
-                  : entries;
+                const allEntries = entries;
 
                 return allEntries.map(([key, val], i) => (
                   <Box key={i} mb={1.5}>

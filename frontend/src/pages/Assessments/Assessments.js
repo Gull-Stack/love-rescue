@@ -192,11 +192,12 @@ const renderScoreSummary = (type, score) => {
     attachment: () => (
       <Box>
         <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-          {score.style} Attachment
+          {score.style?.replace(/_/g, ' ')} Attachment
+          {score.confidence && <Typography variant="caption" color="text.secondary"> ({score.confidence} confidence)</Typography>}
         </Typography>
-        {score.subscores && (
+        {(score.scores || score.subscores) && (
           <Box mt={1}>
-            {Object.entries(score.subscores).map(([key, val]) => (
+            {Object.entries(score.scores || score.subscores).map(([key, val]) => (
               <Box key={key} mb={0.5}>
                 <Box display="flex" justifyContent="space-between" mb={0.25}>
                   <Typography variant="caption" sx={{ textTransform: 'capitalize' }}>
@@ -250,20 +251,20 @@ const renderScoreSummary = (type, score) => {
     love_language: () => (
       <Box>
         <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-          Primary: {score.primary || score.style}
+          Primary: {score.primaryLabel || score.primary?.replace(/_/g, ' ') || score.style}
         </Typography>
-        {score.secondary && (
+        {(score.secondaryLabel || score.secondary) && (
           <Typography variant="caption" color="text.secondary" display="block">
-            Secondary: {score.secondary}
+            Secondary: {score.secondaryLabel || score.secondary?.replace(/_/g, ' ')}
           </Typography>
         )}
-        {score.rankings && (
+        {(score.ranking || score.rankings) && (
           <Box mt={1}>
-            {score.rankings.slice(0, 3).map((lang, i) => (
+            {(score.ranking || score.rankings).slice(0, 3).map((lang, i) => (
               <Box key={i} display="flex" justifyContent="space-between" mb={0.25}>
-                <Typography variant="caption">{lang.name}</Typography>
+                <Typography variant="caption">{lang.label || lang.name || lang.language?.replace(/_/g, ' ')}</Typography>
                 <Typography variant="caption" fontWeight="bold">
-                  {lang.score}
+                  {lang.percentage != null ? `${Math.round(lang.percentage)}%` : lang.score ?? lang.count}
                 </Typography>
               </Box>
             ))}
@@ -274,15 +275,26 @@ const renderScoreSummary = (type, score) => {
     human_needs: () => (
       <Box>
         <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-          Top Need: {score.primary || score.topNeed}
+          Top Needs: {(score.topTwoLabels || score.topTwo || [score.primary || score.topNeed]).join(', ')}
         </Typography>
-        {score.needs && (
+        {score.profile && (
+          <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+            Profile: {score.profile?.replace(/-/g, ' ')}
+          </Typography>
+        )}
+        {(score.ranking || score.allNeeds || score.needs) && (
           <Box mt={1}>
-            {(Array.isArray(score.needs) ? score.needs : Object.entries(score.needs).map(([k, v]) => ({ name: k, score: v }))).slice(0, 4).map((need, i) => (
+            {(score.ranking
+              ? score.ranking.slice(0, 4).map(r => ({ name: r.label || r.need, score: r.percentage }))
+              : Object.entries(score.allNeeds || score.needs || {}).map(([k, v]) => ({
+                  name: (v && v.label) || k,
+                  score: (v && typeof v === 'object') ? v.percentage : v,
+                }))
+            ).slice(0, 4).map((need, i) => (
               <Box key={i} mb={0.5}>
                 <Box display="flex" justifyContent="space-between" mb={0.25}>
                   <Typography variant="caption" sx={{ textTransform: 'capitalize' }}>
-                    {need.name?.replace(/_/g, ' ')}
+                    {String(need.name || '').replace(/_/g, ' ')}
                   </Typography>
                   <Typography variant="caption" fontWeight="bold">
                     {typeof need.score === 'number' ? `${Math.round(need.score)}%` : need.score}
@@ -304,21 +316,36 @@ const renderScoreSummary = (type, score) => {
     gottman_checkup: () => (
       <Box>
         <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-          Health Score: {score.overallScore || score.score}
-          {score.level && ` — ${score.level}`}
+          Health: {score.overallHealth ?? score.overallScore ?? score.score ?? '—'}/100
+          {(score.healthLevel || score.level) && ` — ${(score.healthLevel || score.level).replace(/_/g, ' ')}`}
         </Typography>
-        {score.areas && (
+        {score.horsemen && (
+          <Box mt={0.5}>
+            <Typography variant="caption" color="text.secondary">
+              Horsemen severity: {score.horsemen.severity ?? '—'}%
+              {score.horsemen.mostConcerning && ` (worst: ${score.horsemen.mostConcerning.replace(/_/g, ' ')})`}
+            </Typography>
+          </Box>
+        )}
+        {score.strengths?.byType && (
           <Box mt={1} display="flex" gap={0.5} flexWrap="wrap">
-            {Object.entries(score.areas).slice(0, 4).map(([area, val]) => (
+            {Object.entries(score.strengths.byType).slice(0, 4).map(([area, val]) => (
               <Chip
                 key={area}
-                label={`${area.replace(/_/g, ' ')}: ${typeof val === 'number' ? Math.round(val) : val}`}
+                label={`${area.replace(/_/g, ' ')}: ${typeof val === 'object' ? Math.round(val.percentage) : typeof val === 'number' ? Math.round(val) : val}%`}
                 size="small"
                 variant="outlined"
-                color={typeof val === 'number' && val >= 70 ? 'success' : typeof val === 'number' && val < 40 ? 'warning' : 'default'}
+                color={typeof val === 'object' ? (val.percentage >= 70 ? 'success' : val.percentage < 40 ? 'warning' : 'default') : 'default'}
                 sx={{ fontSize: '0.7rem', textTransform: 'capitalize' }}
               />
             ))}
+          </Box>
+        )}
+        {score.areas && Array.isArray(score.areas) && score.areas.length > 0 && (
+          <Box mt={1}>
+            <Typography variant="caption" color="warning.main">
+              Growth areas: {score.areas.map(a => a.replace(/_/g, ' ')).join(', ')}
+            </Typography>
           </Box>
         )}
       </Box>
@@ -326,29 +353,34 @@ const renderScoreSummary = (type, score) => {
     emotional_intelligence: () => (
       <Box>
         <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-          EQ Score: {score.overall || score.score}/100
+          EQ Score: {score.overall ?? score.score ?? '—'}/100
+          {score.level && ` — ${score.level}`}
         </Typography>
-        {score.domains && (
+        {(score.subscores || score.domains) && (
           <Box mt={1}>
-            {Object.entries(score.domains).slice(0, 4).map(([domain, val]) => (
+            {Object.entries(score.subscores || score.domains).slice(0, 5).map(([domain, val]) => {
+              const pct = typeof val === 'object' && val.percentage !== undefined ? val.percentage : (typeof val === 'number' ? val : null);
+              const label = (typeof val === 'object' && val.label) || domain;
+              return (
               <Box key={domain} mb={0.5}>
                 <Box display="flex" justifyContent="space-between" mb={0.25}>
                   <Typography variant="caption" sx={{ textTransform: 'capitalize' }}>
-                    {domain.replace(/_/g, ' ')}
+                    {String(label).replace(/_/g, ' ')}
                   </Typography>
                   <Typography variant="caption" fontWeight="bold">
-                    {typeof val === 'number' ? `${Math.round(val)}%` : val}
+                    {pct !== null ? `${Math.round(pct)}%` : String(val)}
                   </Typography>
                 </Box>
-                {typeof val === 'number' && (
+                {pct !== null && (
                   <LinearProgress
                     variant="determinate"
-                    value={Math.min(val, 100)}
+                    value={Math.min(pct, 100)}
                     sx={{ height: 4, borderRadius: 2 }}
                   />
                 )}
               </Box>
-            ))}
+              );
+            })}
           </Box>
         )}
       </Box>
@@ -363,17 +395,20 @@ const renderScoreSummary = (type, score) => {
             Secondary: {score.secondary}
           </Typography>
         )}
-        {score.styles && (
+        {(score.allStyles || score.styles) && (
           <Box mt={1} display="flex" gap={0.5} flexWrap="wrap">
-            {Object.entries(score.styles).map(([style, val]) => (
+            {Object.entries(score.allStyles || score.styles).map(([style, val]) => {
+              const pct = typeof val === 'object' && val.percentage !== undefined ? Math.round(val.percentage) + '%' : (typeof val === 'number' ? Math.round(val) + '%' : String(val));
+              return (
               <Chip
                 key={style}
-                label={`${style}: ${typeof val === 'number' ? Math.round(val) + '%' : val}`}
+                label={`${style}: ${pct}`}
                 size="small"
                 variant="outlined"
                 sx={{ fontSize: '0.7rem', textTransform: 'capitalize' }}
               />
-            ))}
+              );
+            })}
           </Box>
         )}
       </Box>
@@ -381,32 +416,82 @@ const renderScoreSummary = (type, score) => {
     differentiation: () => (
       <Box>
         <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-          Differentiation: {score.level || score.score}
-          {score.percentage && ` (${Math.round(score.percentage)}%)`}
+          {score.level?.replace(/-/g, ' ') || score.score || '—'}
+          {score.overallScore != null && ` (${Math.round(score.overallScore)}%)`}
+          {score.percentage != null && ` (${Math.round(score.percentage)}%)`}
         </Typography>
-        {score.dimensions && (
+        {(score.subscores || score.dimensions) && (
           <Box mt={1}>
-            {Object.entries(score.dimensions).slice(0, 3).map(([dim, val]) => {
-              const isObj = val && typeof val === 'object' && val.preference;
-              const displayVal = isObj ? `${val.preference} (${Math.round(Math.max(val[Object.keys(val)[0]] || 0, val[Object.keys(val)[1]] || 0))}%)` : (typeof val === 'number' ? `${Math.round(val)}%` : String(val));
-              const numVal = isObj ? Math.max(val[Object.keys(val)[0]] || 0, val[Object.keys(val)[1]] || 0) : (typeof val === 'number' ? val : null);
+            {Object.entries(score.subscores || score.dimensions).slice(0, 4).map(([dim, val]) => {
+              const pct = typeof val === 'object' && val.percentage !== undefined ? val.percentage : (typeof val === 'number' ? val : null);
+              const label = (typeof val === 'object' && val.label) || dim;
               return (
               <Box key={dim} mb={0.5}>
                 <Box display="flex" justifyContent="space-between" mb={0.25}>
                   <Typography variant="caption" sx={{ textTransform: 'capitalize' }}>
-                    {dim.replace(/_/g, ' ')}
+                    {String(label).replace(/_/g, ' ')}
                   </Typography>
                   <Typography variant="caption" fontWeight="bold">
-                    {displayVal}
+                    {pct !== null ? `${Math.round(pct)}%` : String(val)}
                   </Typography>
                 </Box>
-                {numVal !== null && (
+                {pct !== null && (
                   <LinearProgress
                     variant="determinate"
-                    value={Math.min(numVal, 100)}
+                    value={Math.min(pct, 100)}
                     sx={{ height: 4, borderRadius: 2 }}
                   />
                 )}
+              </Box>
+              );
+            })}
+          </Box>
+        )}
+      </Box>
+    ),
+    hormonal_health: () => (
+      <Box>
+        <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+          Symptom Load: {score.overallSymptomLoad ?? score.overall ?? '—'}%
+          {score.level && ` — ${score.level.replace(/_/g, ' ')}`}
+        </Typography>
+        {(score.subscores || score.ranking) && (
+          <Box mt={1}>
+            {(score.ranking || Object.entries(score.subscores || {}).map(([k, v]) => ({ label: v.label || k, percentage: v.percentage }))).slice(0, 4).map((item, i) => {
+              const label = item.label || item.category || '';
+              const pct = item.percentage;
+              return (
+              <Box key={i} mb={0.5}>
+                <Box display="flex" justifyContent="space-between" mb={0.25}>
+                  <Typography variant="caption" sx={{ textTransform: 'capitalize' }}>{String(label).replace(/_/g, ' ')}</Typography>
+                  <Typography variant="caption" fontWeight="bold">{pct != null ? `${Math.round(pct)}%` : '—'}</Typography>
+                </Box>
+                {pct != null && <LinearProgress variant="determinate" value={Math.min(pct, 100)} sx={{ height: 4, borderRadius: 2 }} />}
+              </Box>
+              );
+            })}
+          </Box>
+        )}
+      </Box>
+    ),
+    physical_vitality: () => (
+      <Box>
+        <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+          Vitality: {score.overall ?? '—'}/100
+          {score.level && ` — ${score.level}`}
+        </Typography>
+        {(score.subscores || score.ranking) && (
+          <Box mt={1}>
+            {(score.ranking || Object.entries(score.subscores || {}).map(([k, v]) => ({ label: v.label || k, percentage: v.percentage }))).slice(0, 4).map((item, i) => {
+              const label = item.label || item.category || '';
+              const pct = item.percentage;
+              return (
+              <Box key={i} mb={0.5}>
+                <Box display="flex" justifyContent="space-between" mb={0.25}>
+                  <Typography variant="caption" sx={{ textTransform: 'capitalize' }}>{String(label).replace(/_/g, ' ')}</Typography>
+                  <Typography variant="caption" fontWeight="bold">{pct != null ? `${Math.round(pct)}%` : '—'}</Typography>
+                </Box>
+                {pct != null && <LinearProgress variant="determinate" value={Math.min(pct, 100)} sx={{ height: 4, borderRadius: 2 }} />}
               </Box>
               );
             })}
@@ -666,8 +751,8 @@ const CategorySection = ({
 
                           {/* Always show the primary result line */}
                           {!isExpanded && (
-                            <Typography variant="body2" fontWeight="bold">
-                              {score.style || score.type || score.primary || score.level || `Score: ${score.score || score.overall || '—'}`}
+                            <Typography variant="body2" fontWeight="bold" sx={{ textTransform: 'capitalize' }}>
+                              {score.style?.replace(/_/g, ' ') || score.type || score.primaryLabel || score.primary?.replace(/_/g, ' ') || score.level?.replace(/[-_]/g, ' ') || score.healthLevel?.replace(/[-_]/g, ' ') || (score.topTwoLabels && score.topTwoLabels[0]) || `Score: ${score.score ?? score.overall ?? score.overallHealth ?? score.overallScore ?? '—'}`}
                             </Typography>
                           )}
 
