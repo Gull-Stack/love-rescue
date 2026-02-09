@@ -549,7 +549,13 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                 const entries = Array.isArray(data)
                   ? data.map((item) => [item.name || item.label, item.score || item.value])
                   : data && typeof data === 'object'
-                  ? Object.entries(data)
+                  ? Object.entries(data).map(([k, v]) => {
+                      // Handle MBTI dimensions: {E: 60, I: 40, preference: 'E', clarity: 20, ...}
+                      if (v && typeof v === 'object' && v.preference !== undefined) {
+                        return [k + ' (' + v.preference + ')', Math.max(v[Object.keys(v)[0]] || 0, v[Object.keys(v)[1]] || 0)];
+                      }
+                      return [k, typeof v === 'object' ? JSON.stringify(v) : v];
+                    })
                   : [];
 
                 // Handle rankings (love language)
