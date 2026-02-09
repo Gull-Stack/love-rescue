@@ -7,6 +7,12 @@ const { getInterpretation } = require('../utils/interpretations');
 
 const router = express.Router();
 
+// Helper: ensure Prisma JSON fields are objects (guards against double-serialization)
+const ensureObject = (val) => {
+  if (typeof val === 'string') { try { return JSON.parse(val); } catch { return val; } }
+  return val;
+};
+
 // All supported assessment types
 const VALID_TYPES = [
   'attachment', 'personality', 'love_language', 'human_needs',
@@ -145,7 +151,7 @@ router.post('/submit', authenticate, requireSubscription, async (req, res, next)
       assessment: {
         id: assessment.id,
         type: assessment.type,
-        score: assessment.score,
+        score: ensureObject(assessment.score),
         completedAt: assessment.completedAt
       },
       interpretation

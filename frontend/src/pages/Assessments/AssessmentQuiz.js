@@ -446,7 +446,9 @@ const ForcedChoice = ({ question, value, onChange, color }) => {
 // ─── Rich Result Display ──────────────────────────────────────────────────────
 const ResultDisplay = ({ type, result, meta, navigate }) => {
   const theme = useTheme();
-  const score = result?.assessment?.score || result?.score || {};
+  const rawScore = result?.assessment?.score || result?.score || {};
+  // Defensive: Prisma JSON fields may arrive as stringified JSON
+  const score = typeof rawScore === 'string' ? (() => { try { return JSON.parse(rawScore); } catch { return {}; } })() : (rawScore || {});
   const interpretation = result?.assessment?.interpretation || result?.interpretation;
   const actionSteps = result?.assessment?.actionSteps || result?.actionSteps || [];
   const strengths = result?.assessment?.strengths || result?.strengths || [];
