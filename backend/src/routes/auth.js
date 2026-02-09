@@ -14,8 +14,11 @@ const { authenticate } = require('../middleware/auth');
 const logger = require('../utils/logger');
 const { sendPasswordResetEmail, sendPartnerInviteEmail } = require('../utils/email');
 
-// Google OAuth Client ID - hardcoded fallback to prevent env var issues breaking login
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '665328889617-mg6vqui0a5bgkjpj7p85o35lc0f7rnft.apps.googleusercontent.com';
+// Google OAuth Client ID - required from environment
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+if (!GOOGLE_CLIENT_ID) {
+  console.warn('WARNING: GOOGLE_CLIENT_ID not set. Google OAuth login will be unavailable.');
+}
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 const router = express.Router();
@@ -139,7 +142,7 @@ async function generateTokenPair(userId, prisma) {
   const accessToken = jwt.sign(
     { userId },
     process.env.JWT_SECRET,
-    { expiresIn: ACCESS_TOKEN_EXPIRY }
+    { expiresIn: ACCESS_TOKEN_EXPIRY, algorithm: 'HS256' }
   );
 
   // Generate a secure refresh token
@@ -1043,6 +1046,43 @@ router.post('/revoke-partner', authenticate, async (req, res, next) => {
     });
 
     res.json({ message: 'Relationship ended. Shared data is now archived.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/auth/export-data
+ * HIPAA right-of-access: export all user data as JSON
+ */
+router.get('/export-data', authenticate, async (req, res, next) => {
+  try {
+    const user = await req.prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: {
+        assessments: true,
+        dailyLogs: true,
+        gratitudeEntries: true,
+        goals: true,
+        strategies: true,
+        pushSubscriptions: { select: { id: true, createdAt: true } },
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Strip sensitive fields
+    const { passwordHash, stripeCustomerId, ...safeUser } = user;
+
+    logger.info('Data export requested', { userId: req.user.id });
+
+    res.setHeader('Content-Disposition', `attachment; filename="loverescue-data-export-${new Date().toISOString().slice(0, 10)}.json"`);
+    res.json({
+      exportedAt: new Date().toISOString(),
+      user: safeUser
+    });
   } catch (error) {
     next(error);
   }

@@ -7,7 +7,7 @@ const logger = winston.createLogger({
     winston.format.errors({ stack: true }),
     winston.format.json()
   ),
-  defaultMeta: { service: 'marriage-rescue-api' },
+  defaultMeta: { service: 'love-rescue-api' },
   transports: [
     // Write all logs with level 'error' and below to error.log
     new winston.transports.File({

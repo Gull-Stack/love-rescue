@@ -190,7 +190,7 @@ router.post('/sync', authenticate, requireSubscription, async (req, res, next) =
 
     const weeklyEvent = {
       summary: `💑 Relationship Check-in - Week ${strategy.week}`,
-      description: `Weekly Goals:\n${strategy.weeklyGoals.map(g => `• ${g}`).join('\n')}\n\nFrom Marriage Rescue App`,
+      description: `Weekly Goals:\n${strategy.weeklyGoals.map(g => `• ${g}`).join('\n')}\n\nFrom Love Rescue App`,
       start: {
         dateTime: weeklyReviewDate.toISOString(),
         timeZone: 'America/Los_Angeles'
@@ -230,7 +230,7 @@ router.post('/sync', authenticate, requireSubscription, async (req, res, next) =
       if (activities.length > 0) {
         const dailyEvent = {
           summary: '💕 Daily Relationship Prompt',
-          description: activities.map(a => `• ${a}`).join('\n') + '\n\nOpen Marriage Rescue App to log your progress.',
+          description: activities.map(a => `• ${a}`).join('\n') + '\n\nOpen Love Rescue App to log your progress.',
           start: {
             dateTime: eventDate.toISOString(),
             timeZone: 'America/Los_Angeles'

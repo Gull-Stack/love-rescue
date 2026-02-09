@@ -446,7 +446,9 @@ const ForcedChoice = ({ question, value, onChange, color }) => {
 // ─── Rich Result Display ──────────────────────────────────────────────────────
 const ResultDisplay = ({ type, result, meta, navigate }) => {
   const theme = useTheme();
-  const score = result?.assessment?.score || result?.score || {};
+  const rawScore = result?.assessment?.score || result?.score || {};
+  // Defensive: Prisma JSON fields may arrive as stringified JSON
+  const score = typeof rawScore === 'string' ? (() => { try { return JSON.parse(rawScore); } catch { return {}; } })() : (rawScore || {});
   const interpretation = result?.assessment?.interpretation || result?.interpretation;
   const actionSteps = result?.assessment?.actionSteps || result?.actionSteps || [];
   const strengths = result?.assessment?.strengths || result?.strengths || [];
@@ -557,7 +559,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                       <Box key={i} mb={1.5}>
                         <Box display="flex" justifyContent="space-between" mb={0.5}>
                           <Typography variant="body2" fontWeight="bold" sx={{ textTransform: 'capitalize' }}>
-                            {String(label).replace(/_/g, ' ')}
+                            {String(label || '').replace(/_/g, ' ')}
                           </Typography>
                           <Typography variant="body2" color={meta.color} fontWeight="bold">
                             {typeof val === 'number' ? `${Math.round(val)}%` : (val != null ? String(val) : '—')}

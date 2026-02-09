@@ -611,8 +611,10 @@ function getInterpretation(type, score, options = {}) {
 
     case 'gottman_checkup': {
       const horsemenResults = {};
+      const horsemenByType = score.horsemen?.byType || score.horsemen || {};
       for (const [horseman, levels] of Object.entries(gottmanInterpretations.horsemen)) {
-        const horsemanScore = score.horsemen ? score.horsemen[horseman] : 0;
+        const horsemanData = horsemenByType[horseman];
+        const horsemanScore = typeof horsemanData === 'object' ? (horsemanData.percentage ?? 0) : (typeof horsemanData === 'number' ? horsemanData : 0);
         let level;
         if (horsemanScore < 30) level = 'low';
         else if (horsemanScore < 60) level = 'moderate';
@@ -627,8 +629,10 @@ function getInterpretation(type, score, options = {}) {
       }
 
       const strengthResults = {};
+      const strengthsByType = score.strengths?.byType || score.strengths || {};
       for (const [strength, levels] of Object.entries(gottmanInterpretations.strengths)) {
-        const strengthScore = score.strengths ? score.strengths[strength] : 50;
+        const strengthData = strengthsByType[strength];
+        const strengthScore = typeof strengthData === 'object' ? (strengthData.percentage ?? 50) : (typeof strengthData === 'number' ? strengthData : 50);
         strengthResults[strength] = {
           ...levels,
           score: strengthScore,
@@ -647,7 +651,8 @@ function getInterpretation(type, score, options = {}) {
     case 'emotional_intelligence': {
       const results = {};
       for (const [domain, info] of Object.entries(eqInterpretations)) {
-        const domainScore = score.subscores ? score.subscores[domain] : 50;
+        const domainData = score.subscores ? score.subscores[domain] : null;
+        const domainScore = typeof domainData === 'object' ? (domainData?.percentage ?? 50) : (typeof domainData === 'number' ? domainData : 50);
         let level;
         if (domainScore >= 70) level = 'high';
         else if (domainScore >= 40) level = 'moderate';
@@ -681,7 +686,7 @@ function getInterpretation(type, score, options = {}) {
 
     case 'differentiation': {
       let level;
-      const diffScore = score.level || score.overall || 50;
+      const diffScore = score.overallScore ?? score.overall ?? 50;
       if (diffScore >= 70) level = 'high';
       else if (diffScore >= 40) level = 'moderate';
       else level = 'low';
@@ -700,11 +705,12 @@ function getInterpretation(type, score, options = {}) {
       return {
         type: typeStr,
         description: score.description,
-        dimensions: Object.entries(score.dimensions || {}).map(([dim, scores]) => {
-          const dominant = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
-          const dimKey = dominant[0];
-          const dimInfo = personalityInterpretations.dimensions[dim];
-          return dimInfo ? { dimension: dim, dominant: dimKey, ...dimInfo[dimKey] } : null;
+        dimensions: Object.entries(score.dimensions || {}).map(([dim, dimData]) => {
+          // dimData has keys like E, I, preference, clarity, clarityLabel
+          const preference = dimData?.preference;
+          if (!preference) return null;
+          const dimInfo = personalityInterpretations.dimensions?.[dim];
+          return dimInfo ? { dimension: dim, dominant: preference, ...dimInfo[preference] } : { dimension: dim, dominant: preference };
         }).filter(Boolean),
         creatorReframe: 'Your personality type is not destiny — it\'s a tendency. Understanding YOUR type helps you see your blind spots and play to your strengths. Don\'t use it to label or limit yourself or your partner.'
       };

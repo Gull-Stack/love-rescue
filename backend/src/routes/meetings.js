@@ -159,7 +159,7 @@ router.post('/schedule', authenticate, requirePremium, async (req, res, next) =>
 
       const calendarResult = await createCalendarEventWithMeet({
         calendarId: mediator.googleCalendarId,
-        summary: 'Marriage Rescue — Mediated Meeting',
+        summary: 'Love Rescue — Mediated Meeting',
         description: `Facilitated discussion with ${mediator.name}. This is not therapy — it is a guided conversation with a neutral facilitator.`,
         startTime: start.toISOString(),
         endTime: end.toISOString(),
