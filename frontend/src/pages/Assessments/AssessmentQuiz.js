@@ -515,7 +515,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
             }}
           >
             <Typography variant="h4" fontWeight="bold" color={meta.color} gutterBottom>
-              {score.style || score.type || score.primary || score.level || `${score.score || score.overall || '—'}/100`}
+              {score.style || score.type || score.primary || score.level || score.healthLevel || `${score.score || score.overall || score.overallHealth || '—'}/100`}
             </Typography>
             {score.name && (
               <Typography variant="h6" color="text.secondary">
@@ -537,22 +537,28 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
               </Typography>
               <Divider sx={{ mb: 2 }} />
               {(() => {
+                // For Gottman, prefer horsemen + strengths breakdown
+                const gottmanData = score.horsemen?.byType || score.strengths?.byType;
                 const data =
                   score.subscores ||
                   score.domains ||
                   score.dimensions ||
-                  score.areas ||
+                  gottmanData ||
                   score.styles ||
                   score.needs;
 
                 // Handle both object and array formats
                 const entries = Array.isArray(data)
-                  ? data.map((item) => [item.name || item.label, item.score || item.value])
+                  ? data.map((item) => typeof item === 'string' ? [item.replace(/_/g, ' '), null] : [item.name || item.label, item.score || item.value])
                   : data && typeof data === 'object'
                   ? Object.entries(data).map(([k, v]) => {
                       // Handle MBTI dimensions: {E: 60, I: 40, preference: 'E', clarity: 20, ...}
                       if (v && typeof v === 'object' && v.preference !== undefined) {
                         return [k + ' (' + v.preference + ')', Math.max(v[Object.keys(v)[0]] || 0, v[Object.keys(v)[1]] || 0)];
+                      }
+                      // Handle Gottman byType: {percentage, total, count}
+                      if (v && typeof v === 'object' && v.percentage !== undefined) {
+                        return [k.replace(/_/g, ' '), v.percentage];
                       }
                       return [k, typeof v === 'object' ? JSON.stringify(v) : v];
                     })
