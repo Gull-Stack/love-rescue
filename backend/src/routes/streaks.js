@@ -21,8 +21,8 @@ router.get('/', authenticate, async (req, res) => {
     // Get all daily logs for this user, ordered by date
     const logs = await prisma.dailyLog.findMany({
       where: { userId },
-      orderBy: { logDate: 'desc' },
-      select: { logDate: true },
+      orderBy: { date: 'desc' },
+      select: { date: true },
     });
 
     if (logs.length === 0) {
@@ -48,14 +48,14 @@ router.get('/', authenticate, async (req, res) => {
     let checkDate = new Date(today);
     
     // Check if logged today or yesterday to maintain streak
-    const logDates = logs.map(l => {
-      const d = new Date(l.logDate);
+    const dates = logs.map(l => {
+      const d = new Date(l.date);
       d.setHours(0, 0, 0, 0);
       return d.getTime();
     });
 
-    const loggedToday = logDates.includes(today.getTime());
-    const loggedYesterday = logDates.includes(yesterday.getTime());
+    const loggedToday = dates.includes(today.getTime());
+    const loggedYesterday = dates.includes(yesterday.getTime());
     
     const streakAlive = loggedToday || loggedYesterday;
 
@@ -68,7 +68,7 @@ router.get('/', authenticate, async (req, res) => {
         checkDate = new Date(yesterday);
       }
 
-      while (logDates.includes(checkDate.getTime())) {
+      while (dates.includes(checkDate.getTime())) {
         currentStreak++;
         checkDate.setDate(checkDate.getDate() - 1);
       }
@@ -77,7 +77,7 @@ router.get('/', authenticate, async (req, res) => {
     // Calculate longest streak ever
     let longestStreak = 0;
     let tempStreak = 1;
-    const sortedDates = [...logDates].sort((a, b) => a - b);
+    const sortedDates = [...dates].sort((a, b) => a - b);
     
     for (let i = 1; i < sortedDates.length; i++) {
       const dayDiff = (sortedDates[i] - sortedDates[i - 1]) / (1000 * 60 * 60 * 24);
@@ -130,7 +130,7 @@ router.get('/', authenticate, async (req, res) => {
       currentStreak,
       longestStreak,
       totalLogs: logs.length,
-      lastLogDate: logs[0]?.logDate,
+      lastLogDate: logs[0]?.date,
       streakAlive,
       loggedToday,
       xp: totalXP,
@@ -163,21 +163,21 @@ router.get('/badges', authenticate, async (req, res) => {
     // Get current streak
     const logs = await prisma.dailyLog.findMany({
       where: { userId },
-      orderBy: { logDate: 'desc' },
-      select: { logDate: true },
+      orderBy: { date: 'desc' },
+      select: { date: true },
     });
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const logDates = logs.map(l => {
-      const d = new Date(l.logDate);
+    const dates = logs.map(l => {
+      const d = new Date(l.date);
       d.setHours(0, 0, 0, 0);
       return d.getTime();
     });
 
     let currentStreak = 0;
     let checkDate = new Date(today);
-    while (logDates.includes(checkDate.getTime())) {
+    while (dates.includes(checkDate.getTime())) {
       currentStreak++;
       checkDate.setDate(checkDate.getDate() - 1);
     }
