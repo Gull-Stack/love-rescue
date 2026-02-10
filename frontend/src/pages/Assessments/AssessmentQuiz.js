@@ -568,7 +568,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                             {String(label || '').replace(/_/g, ' ')}
                           </Typography>
                           <Typography variant="body2" color={meta.color} fontWeight="bold">
-                            {typeof val === 'number' ? `${Math.round(val)}%` : (val != null ? String(val) : '—')}
+                            {typeof val === 'number' ? `${Math.round(val)}%` : (val != null && typeof val !== 'object' ? String(val) : '—')}
                           </Typography>
                         </Box>
                         {typeof val === 'number' && (
@@ -652,8 +652,11 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                   ? Object.entries(data).map(([k, v]) => {
                       // Handle MBTI dimensions: {E: 60, I: 40, preference: 'E', clarity: 20, ...}
                       if (v && typeof v === 'object' && v.preference !== undefined) {
-                        const vKeys = Object.keys(v);
-                        return [k + ' (' + v.preference + ')', vKeys.length >= 2 ? Math.max(v[vKeys[0]] || 0, v[vKeys[1]] || 0) : (v[vKeys[0]] || 0)];
+                        // Extract the two letter scores (e.g., E:60, I:40)
+                        const letterKeys = Object.keys(v).filter(lk => lk.length === 1 && typeof v[lk] === 'number');
+                        const dominant = v.preference || letterKeys[0] || '?';
+                        const pct = letterKeys.length > 0 ? Math.max(...letterKeys.map(lk => v[lk] || 0)) : 0;
+                        return [k + ' (' + String(dominant) + ')', pct];
                       }
                       // Handle objects with percentage (subscores, allNeeds, allStyles, etc.)
                       if (v && typeof v === 'object' && v.percentage !== undefined) {
@@ -663,7 +666,9 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                       if (v && typeof v === 'object' && v.count !== undefined) {
                         return [v.label || k.replace(/_/g, ' '), v.percentage ?? v.count];
                       }
-                      return [k, typeof v === 'object' ? JSON.stringify(v) : v];
+                      // Safety: never pass raw objects to React
+                      if (v && typeof v === 'object') return [k.replace(/_/g, ' '), typeof v.percentage === 'number' ? v.percentage : typeof v.score === 'number' ? v.score : null];
+                      return [k, v];
                     })
                   : [];
 
@@ -680,7 +685,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                         {String(key).replace(/_/g, ' ')}
                       </Typography>
                       <Typography variant="body2" color={meta.color} fontWeight="bold">
-                        {typeof val === 'number' ? `${Math.round(val)}%` : (val != null ? String(val) : '—')}
+                        {typeof val === 'number' ? `${Math.round(val)}%` : (val != null && typeof val !== 'object' ? String(val) : '—')}
                       </Typography>
                     </Box>
                     {typeof val === 'number' && (
