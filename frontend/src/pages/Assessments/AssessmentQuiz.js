@@ -1211,19 +1211,22 @@ const AssessmentQuiz = () => {
         }),
       }}
     >
-      {/* STICKY PROGRESS BAR - Always visible at top on mobile */}
+      {/* FIXED PROGRESS BAR - Always visible at top on mobile */}
+      {isSmallMobile && <Box sx={{ height: 56 }} />}
       <Box
         sx={{
           ...(isSmallMobile && {
-            position: 'sticky',
+            position: 'fixed',
             top: 0,
-            zIndex: 10,
+            left: 0,
+            right: 0,
+            zIndex: 1100,
             bgcolor: 'background.paper',
             pt: 1,
             pb: 1.5,
-            mx: -2,
             px: 2,
             borderBottom: `1px solid ${alpha(meta.color, 0.1)}`,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           }),
         }}
       >
