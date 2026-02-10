@@ -226,21 +226,37 @@ const renderScoreSummary = (type, score) => {
     ),
     personality: () => (
       <Box>
-        <Typography variant="subtitle2" fontWeight="bold">
+        <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
           Type: {score.type}
         </Typography>
-        {score.name && (
-          <Typography variant="caption" color="text.secondary">
-            {score.name}
+        {score.description && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1, lineHeight: 1.6 }}>
+            {score.description}
           </Typography>
+        )}
+        {score.relationshipStyle && (
+          <Box sx={{ mb: 1, p: 1.5, bgcolor: 'grey.50', borderRadius: 2, borderLeft: '3px solid #f5576c' }}>
+            <Typography variant="caption" fontWeight="bold" display="block" gutterBottom>
+              💡 What this means for your relationships:
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+              You communicate {score.relationshipStyle.communication === 'emotion-first' ? 'with emotions first — you lead with how things feel' : 'with logic first — you lead with facts and reasoning'}.
+              You prefer {score.relationshipStyle.planning === 'structured' ? 'structure and planning — spontaneity can stress you out' : 'flexibility and spontaneity — too much planning feels suffocating'}.
+              You recharge by {score.relationshipStyle.energy === 'externally-energized' ? 'being around people — alone time can drain you' : 'being alone — too much socializing drains your battery'}.
+              You tend to be {score.relationshipStyle.perception === 'detail-oriented' ? 'detail-oriented — you notice the small things' : 'big-picture focused — you see patterns others miss'}.
+            </Typography>
+          </Box>
         )}
         {score.dimensions && (
           <Box mt={1} display="flex" gap={0.5} flexWrap="wrap">
             {Object.entries(score.dimensions).map(([dim, val]) => {
               let label;
               if (val && typeof val === 'object' && val.preference) {
-                const dominant = val[val.preference] || val[Object.keys(val)[0]];
-                label = `${dim}: ${val.preference} (${typeof dominant === 'number' ? Math.round(dominant) + '%' : ''})`;
+                const letterKeys = Object.keys(val).filter(k => k.length === 1 && typeof val[k] === 'number');
+                const pct = letterKeys.length > 0 ? Math.round(val[val.preference] || Math.max(...letterKeys.map(k => val[k]))) : '';
+                label = `${dim}: ${val.preference}${pct ? ' (' + pct + '%)' : ''}`;
+              } else if (val && typeof val === 'object') {
+                label = `${dim}`;
               } else {
                 label = `${dim}: ${typeof val === 'number' ? Math.round(val) + '%' : String(val)}`;
               }
