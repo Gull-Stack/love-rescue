@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -15,6 +15,8 @@ import {
   Chip,
   Paper,
   Fade,
+  Slide,
+  Snackbar,
   Divider,
   useMediaQuery,
   useTheme,
@@ -22,6 +24,8 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
+import confetti from 'canvas-confetti';
+import { hapticLight, hapticMedium, hapticSuccess } from '../../utils/haptics';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import CheckIcon from '@mui/icons-material/Check';
@@ -32,6 +36,8 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
 import StarIcon from '@mui/icons-material/Star';
 import { assessmentsApi } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
+import { canAccessAssessment } from '../../utils/featureGating';
 
 // ─── Assessment Metadata ──────────────────────────────────────────────────────
 const assessmentMeta = {
@@ -562,7 +568,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                             {String(label || '').replace(/_/g, ' ')}
                           </Typography>
                           <Typography variant="body2" color={meta.color} fontWeight="bold">
-                            {typeof val === 'number' ? `${Math.round(val)}%` : (val != null ? String(val) : '—')}
+                            {typeof val === 'number' ? `${Math.round(val)}%` : (val != null && typeof val !== 'object' ? String(val) : '—')}
                           </Typography>
                         </Box>
                         {typeof val === 'number' && (
@@ -646,8 +652,11 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                   ? Object.entries(data).map(([k, v]) => {
                       // Handle MBTI dimensions: {E: 60, I: 40, preference: 'E', clarity: 20, ...}
                       if (v && typeof v === 'object' && v.preference !== undefined) {
-                        const vKeys = Object.keys(v);
-                        return [k + ' (' + v.preference + ')', vKeys.length >= 2 ? Math.max(v[vKeys[0]] || 0, v[vKeys[1]] || 0) : (v[vKeys[0]] || 0)];
+                        // Extract the two letter scores (e.g., E:60, I:40)
+                        const letterKeys = Object.keys(v).filter(lk => lk.length === 1 && typeof v[lk] === 'number');
+                        const dominant = v.preference || letterKeys[0] || '?';
+                        const pct = letterKeys.length > 0 ? Math.max(...letterKeys.map(lk => v[lk] || 0)) : 0;
+                        return [k + ' (' + String(dominant) + ')', pct];
                       }
                       // Handle objects with percentage (subscores, allNeeds, allStyles, etc.)
                       if (v && typeof v === 'object' && v.percentage !== undefined) {
@@ -657,7 +666,9 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                       if (v && typeof v === 'object' && v.count !== undefined) {
                         return [v.label || k.replace(/_/g, ' '), v.percentage ?? v.count];
                       }
-                      return [k, typeof v === 'object' ? JSON.stringify(v) : v];
+                      // Safety: never pass raw objects to React
+                      if (v && typeof v === 'object') return [k.replace(/_/g, ' '), typeof v.percentage === 'number' ? v.percentage : typeof v.score === 'number' ? v.score : null];
+                      return [k, v];
                     })
                   : [];
 
@@ -674,7 +685,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                         {String(key).replace(/_/g, ' ')}
                       </Typography>
                       <Typography variant="body2" color={meta.color} fontWeight="bold">
-                        {typeof val === 'number' ? `${Math.round(val)}%` : (val != null ? String(val) : '—')}
+                        {typeof val === 'number' ? `${Math.round(val)}%` : (val != null && typeof val !== 'object' ? String(val) : '—')}
                       </Typography>
                     </Box>
                     {typeof val === 'number' && (
@@ -964,6 +975,14 @@ const AssessmentQuiz = () => {
   const { type } = useParams();
   const navigate = useNavigate();
   const theme = useTheme();
+  const { user } = useAuth();
+
+  // Redirect if user can't access this assessment
+  useEffect(() => {
+    if (user && !canAccessAssessment(type, user)) {
+      navigate('/assessments', { replace: true });
+    }
+  }, [type, user, navigate]);
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [loading, setLoading] = useState(true);
@@ -973,6 +992,12 @@ const AssessmentQuiz = () => {
   const [responses, setResponses] = useState({});
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+
+  // Gamification state
+  const [milestoneMsg, setMilestoneMsg] = useState(null);
+  const [speedToast, setSpeedToast] = useState('');
+  const [showXpAnimation, setShowXpAnimation] = useState(false);
+  const answerTimerRef = useRef(Date.now());
 
   const meta = assessmentMeta[type] || {
     title: 'Assessment',
@@ -1016,17 +1041,61 @@ const AssessmentQuiz = () => {
   const handleResponse = useCallback(
     (value) => {
       const questionId = questions[currentIndex]?.id;
+      hapticLight();
+      
+      // Speed bonus check
+      const elapsed = Date.now() - answerTimerRef.current;
+      if (elapsed < 3000) {
+        setSpeedToast('Answering with conviction! ⚡');
+      }
+      
       setResponses((prev) => ({
         ...prev,
         [questionId]: value,
       }));
+
+      // Auto-advance after short delay (not on last question)
+      if (currentIndex < questions.length - 1) {
+        setTimeout(() => {
+          setCurrentIndex((prev) => {
+            if (prev < questions.length - 1) {
+              const nextIdx = prev + 1;
+              answerTimerRef.current = Date.now();
+              const pct = Math.round((nextIdx / questions.length) * 100);
+              if (pct === 25) setMilestoneMsg({ text: 'Great start! Keep going! 💪' });
+              else if (pct === 50) setMilestoneMsg({ text: 'Halfway there! 🔥' });
+              else if (pct === 75) setMilestoneMsg({ text: 'Almost done! You got this! 🚀' });
+              if ([25, 50, 75].includes(pct)) {
+                hapticMedium();
+                setTimeout(() => setMilestoneMsg(null), 3000);
+              }
+              return nextIdx;
+            }
+            return prev;
+          });
+        }, 400);
+      }
     },
     [questions, currentIndex]
   );
 
   const handleNext = useCallback(() => {
     if (currentIndex < questions.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
+      const nextIdx = currentIndex + 1;
+      setCurrentIndex(nextIdx);
+      answerTimerRef.current = Date.now();
+      
+      // Milestone messages
+      const pct = Math.round((nextIdx / questions.length) * 100);
+      if (pct === 25) setMilestoneMsg({ text: 'Great start! Keep going! 💪' });
+      else if (pct === 50) setMilestoneMsg({ text: 'Halfway there! 🔥' });
+      else if (pct === 75) setMilestoneMsg({ text: 'Almost done! You got this! 🚀' });
+      else setMilestoneMsg(null);
+      
+      if ([25, 50, 75].includes(pct)) {
+        hapticMedium();
+        setTimeout(() => setMilestoneMsg(null), 3000);
+      }
     }
   }, [currentIndex, questions.length]);
 
@@ -1073,6 +1142,15 @@ const AssessmentQuiz = () => {
     try {
       const response = await assessmentsApi.submit(type, responses);
       setResult(response.data);
+      
+      // 🎉 Confetti explosion + haptic on completion
+      hapticSuccess();
+      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+      setTimeout(() => confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 } }), 300);
+      
+      // +50 XP floating animation
+      setShowXpAnimation(true);
+      setTimeout(() => setShowXpAnimation(false), 2500);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to submit assessment. Please try again.');
     } finally {
@@ -1109,7 +1187,41 @@ const AssessmentQuiz = () => {
 
   // ─── Result View ────────────────────────────────────────────────────────────
   if (result) {
-    return <ResultDisplay type={type} result={result} meta={meta} navigate={navigate} />;
+    return (
+      <Box position="relative">
+        {/* +50 XP floating animation */}
+        {showXpAnimation && (
+          <Box
+            sx={{
+              position: 'fixed',
+              top: '40%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 9999,
+              animation: 'xpFloat 2.5s ease-out forwards',
+              '@keyframes xpFloat': {
+                '0%': { opacity: 1, transform: 'translateX(-50%) translateY(0) scale(1)' },
+                '50%': { opacity: 1, transform: 'translateX(-50%) translateY(-60px) scale(1.2)' },
+                '100%': { opacity: 0, transform: 'translateX(-50%) translateY(-120px) scale(0.8)' },
+              },
+            }}
+          >
+            <Typography
+              variant="h3"
+              fontWeight="bold"
+              sx={{
+                color: '#FFD700',
+                textShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                fontSize: '2.5rem',
+              }}
+            >
+              +50 XP ⭐
+            </Typography>
+          </Box>
+        )}
+        <ResultDisplay type={type} result={result} meta={meta} navigate={navigate} />
+      </Box>
+    );
   }
 
   // Mobile-first layout with thumb zone optimization
@@ -1126,19 +1238,22 @@ const AssessmentQuiz = () => {
         }),
       }}
     >
-      {/* STICKY PROGRESS BAR - Always visible at top on mobile */}
+      {/* FIXED PROGRESS BAR - Always visible at top on mobile */}
+      {isSmallMobile && <Box sx={{ height: 56 }} />}
       <Box
         sx={{
           ...(isSmallMobile && {
-            position: 'sticky',
+            position: 'fixed',
             top: 0,
-            zIndex: 10,
+            left: 0,
+            right: 0,
+            zIndex: 1100,
             bgcolor: 'background.paper',
             pt: 1,
             pb: 1.5,
-            mx: -2,
             px: 2,
             borderBottom: `1px solid ${alpha(meta.color, 0.1)}`,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           }),
         }}
       >
@@ -1196,6 +1311,28 @@ const AssessmentQuiz = () => {
           {error}
         </Alert>
       )}
+
+      {/* MILESTONE MESSAGE */}
+      <Slide direction="down" in={!!milestoneMsg} mountOnEnter unmountOnExit>
+        <Box sx={{
+          textAlign: 'center', py: 1.5, px: 2, mb: 1,
+          borderRadius: 2, bgcolor: alpha(meta.color, 0.1),
+          border: `1px solid ${alpha(meta.color, 0.3)}`,
+        }}>
+          <Typography variant="h6" fontWeight="bold" color={meta.color}>
+            {milestoneMsg?.text}
+          </Typography>
+        </Box>
+      </Slide>
+
+      {/* SPEED TOAST */}
+      <Snackbar
+        open={!!speedToast}
+        autoHideDuration={2000}
+        onClose={() => setSpeedToast('')}
+        message={speedToast}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      />
 
       {/* QUESTION SECTION - Takes available space, question centered */}
       <Box
@@ -1315,28 +1452,7 @@ const AssessmentQuiz = () => {
             {isSmallMobile ? '←' : '← Back'}
           </Button>
 
-          {currentIndex < questions.length - 1 ? (
-            <Button
-              variant="contained"
-              onClick={handleNext}
-              disabled={currentResponse === undefined}
-              sx={{
-                borderRadius: 2,
-                minHeight: 44,
-                flex: 1,
-                maxWidth: 200,
-                background: currentResponse !== undefined ? meta.gradient : undefined,
-                fontWeight: 'bold',
-                fontSize: isSmallMobile ? '0.9rem' : '0.875rem',
-                '&:hover': { opacity: 0.9 },
-                '&.Mui-disabled': {
-                  background: 'none',
-                },
-              }}
-            >
-              {isSmallMobile ? 'Next →' : 'Next →'}
-            </Button>
-          ) : (
+          {currentIndex >= questions.length - 1 && (
             <Button
               variant="contained"
               color="success"

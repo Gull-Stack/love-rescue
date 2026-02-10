@@ -43,6 +43,9 @@ coverage/
 prisma/*.db
 prisma/*.db-journal
 
+# Capacitor iOS native project
+frontend/ios/
+
 # Misc
 *.pem
 .cache/

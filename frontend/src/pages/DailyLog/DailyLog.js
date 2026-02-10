@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Card,
@@ -17,6 +17,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import SaveIcon from '@mui/icons-material/Save';
+import { hapticSuccess } from '../../utils/haptics';
 import { logsApi, streaksApi } from '../../services/api';
 import DailyInsight from '../../components/common/DailyInsight';
 import DailyVideo from '../../components/common/DailyVideo';
@@ -24,10 +25,20 @@ import StreakCounter from '../../components/gamification/StreakCounter';
 import CelebrationToast from '../../components/gamification/CelebrationToast';
 import { celebration } from '../../components/gamification/Confetti';
 import { PartnerStatusCard, MatchupScoreCard } from '../../components/gamification/PartnerActivity';
+import MoodEmojiSlider from '../../components/gamification/MoodEmojiSlider';
+import EmotionChips from '../../components/gamification/EmotionChips';
+import PromptCards from '../../components/gamification/PromptCards';
+import StreakFlames from '../../components/gamification/StreakFlames';
+import SaveCheckmark from '../../components/gamification/SaveCheckmark';
+import { useAuth } from '../../contexts/AuthContext';
+import { isPremiumUser } from '../../utils/featureGating';
+import PremiumGate from '../../components/common/PremiumGate';
 
 const DailyLog = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { user } = useAuth();
+  const premium = isPremiumUser(user);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [prompt, setPrompt] = useState(null);
@@ -41,6 +52,8 @@ const DailyLog = () => {
     closenessScore: 5,
     mood: 5,
   });
+  const [selectedEmotions, setSelectedEmotions] = useState([]);
+  const [showSaveCheck, setShowSaveCheck] = useState(false);
 
   // Gamification state
   const [streakData, setStreakData] = useState({
@@ -140,8 +153,9 @@ const DailyLog = () => {
     const wasFirstLogToday = !hasLoggedToday;
 
     try {
-      await logsApi.submitDaily(formData);
-      setSuccess('Daily log saved successfully!');
+      await logsApi.submitDaily({ ...formData, emotions: selectedEmotions });
+      hapticSuccess();
+      setShowSaveCheck(true);
       setHasLoggedToday(true);
 
       // 🎉 GAMIFICATION: Fire confetti and celebration!
@@ -203,6 +217,14 @@ const DailyLog = () => {
         Track your daily interactions and reflect on your relationship.
       </Typography>
 
+      {/* 🔥 STREAK FLAMES */}
+      <Box sx={{ mb: 2 }}>
+        <StreakFlames streak={streakData.currentStreak} />
+      </Box>
+
+      {/* Save Checkmark Animation */}
+      <SaveCheckmark show={showSaveCheck} onDone={() => { setShowSaveCheck(false); setSuccess('Daily log saved successfully!'); }} />
+
       {/* 🔥 STREAK COUNTER - Gamification */}
       <Box sx={{ mb: 3 }}>
         <StreakCounter
@@ -260,6 +282,11 @@ const DailyLog = () => {
       <Grid container spacing={{ xs: 2, md: 3 }}>
         {/* Interaction Counter */}
         <Grid item xs={12} md={6}>
+          <PremiumGate
+            feature="daily_log_interactions"
+            title="Interaction Tracking — Premium"
+            subtitle="Track positive & negative interactions and see your Gottman ratio. Upgrade to unlock."
+          >
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -344,6 +371,7 @@ const DailyLog = () => {
               </Box>
             </CardContent>
           </Card>
+          </PremiumGate>
         </Grid>
 
         {/* Mood & Closeness */}
@@ -356,18 +384,25 @@ const DailyLog = () => {
 
               <Box sx={{ mb: 4 }}>
                 <Typography variant="subtitle2" gutterBottom>
-                  Mood (1-10)
+                  Mood
                 </Typography>
-                <Slider
+                <MoodEmojiSlider
                   value={formData.mood}
-                  onChange={(_, value) => setFormData({ ...formData, mood: value })}
-                  min={1}
-                  max={10}
-                  marks
-                  valueLabelDisplay="on"
+                  onChange={(value) => setFormData({ ...formData, mood: value })}
                 />
               </Box>
 
+              {/* Emotion Chips */}
+              <Box sx={{ mb: 3 }}>
+                <EmotionChips selected={selectedEmotions} onChange={setSelectedEmotions} />
+              </Box>
+
+              <PremiumGate
+                feature="daily_log_closeness"
+                title="Closeness Tracking"
+                subtitle="Track emotional closeness over time with Premium."
+                compact
+              >
               <Box>
                 <Typography variant="subtitle2" gutterBottom>
                   Emotional Closeness (1-10)
@@ -382,15 +417,30 @@ const DailyLog = () => {
                   color="secondary"
                 />
               </Box>
+              </PremiumGate>
             </CardContent>
           </Card>
 
           {/* Journal Entry with Prompt */}
+          <PremiumGate
+            feature="daily_log_journal"
+            title="Daily Journal — Premium"
+            subtitle="Reflect on your relationship with guided journal prompts. Upgrade to unlock."
+          >
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Journal Entry
               </Typography>
+
+              {/* Swipeable Prompt Cards */}
+              <Box sx={{ mb: 2 }}>
+                <PromptCards onSelect={(text) => setFormData(prev => ({
+                  ...prev,
+                  journalEntry: prev.journalEntry ? prev.journalEntry + '\n\n' + text + '\n' : text + '\n',
+                }))} />
+              </Box>
+
               {prompt && (
                 <Box sx={{ mb: 2, p: 2, bgcolor: 'primary.light', borderRadius: 2 }}>
                   <Typography variant="overline" sx={{ color: 'primary.contrastText' }}>
@@ -412,6 +462,7 @@ const DailyLog = () => {
               />
             </CardContent>
           </Card>
+          </PremiumGate>
         </Grid>
       </Grid>
 

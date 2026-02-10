@@ -24,12 +24,14 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAuth } from '../../contexts/AuthContext';
 import { strategiesApi, calendarApi } from '../../services/api';
+import { isPremiumUser } from '../../utils/featureGating';
+import PremiumGate from '../../components/common/PremiumGate';
 
 const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const Strategies = () => {
   const navigate = useNavigate();
-  const { relationship } = useAuth();
+  const { relationship, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -138,6 +140,22 @@ const Strategies = () => {
       }
     }
   };
+
+  if (!isPremiumUser(user)) {
+    return (
+      <Box>
+        <Typography variant="h4" fontWeight="bold" gutterBottom>
+          Personalized Strategies
+        </Typography>
+        <PremiumGate
+          feature="strategies"
+          title="Personalized Strategies — Premium Feature"
+          subtitle="Get AI-powered relationship strategies tailored to your unique assessment results. Weekly action plans, not generic advice."
+          fullBlock
+        />
+      </Box>
+    );
+  }
 
   if (loading) {
     return (
