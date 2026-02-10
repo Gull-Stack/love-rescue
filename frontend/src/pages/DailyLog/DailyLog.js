@@ -13,13 +13,11 @@ import {
   Chip,
   useMediaQuery,
   useTheme,
-  alpha,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import SaveIcon from '@mui/icons-material/Save';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { hapticLight, hapticSuccess } from '../../utils/haptics';
+import { hapticSuccess } from '../../utils/haptics';
 import { logsApi, streaksApi } from '../../services/api';
 import DailyInsight from '../../components/common/DailyInsight';
 import DailyVideo from '../../components/common/DailyVideo';
@@ -32,7 +30,6 @@ import EmotionChips from '../../components/gamification/EmotionChips';
 import PromptCards from '../../components/gamification/PromptCards';
 import StreakFlames from '../../components/gamification/StreakFlames';
 import SaveCheckmark from '../../components/gamification/SaveCheckmark';
-import { hapticSuccess } from '../../utils/haptics';
 import { useAuth } from '../../contexts/AuthContext';
 import { isPremiumUser } from '../../utils/featureGating';
 import PremiumGate from '../../components/common/PremiumGate';
@@ -57,33 +54,6 @@ const DailyLog = () => {
   });
   const [selectedEmotions, setSelectedEmotions] = useState([]);
   const [showSaveCheck, setShowSaveCheck] = useState(false);
-
-  // Engagement state
-  const [selectedEmotions, setSelectedEmotions] = useState([]);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-
-  const MOOD_EMOJIS = ['😢', '😟', '😐', '😊', '🥰'];
-  const moodEmojiIndex = Math.min(Math.floor((formData.mood - 1) / 2), 4);
-
-  const EMOTION_CHIPS = [
-    { label: 'Happy', emoji: '😊' },
-    { label: 'Grateful', emoji: '🙏' },
-    { label: 'Loved', emoji: '❤️' },
-    { label: 'Hopeful', emoji: '🌟' },
-    { label: 'Calm', emoji: '😌' },
-    { label: 'Anxious', emoji: '😰' },
-    { label: 'Frustrated', emoji: '😤' },
-    { label: 'Sad', emoji: '😢' },
-    { label: 'Lonely', emoji: '🥺' },
-    { label: 'Angry', emoji: '😡' },
-  ];
-
-  const toggleEmotion = (label) => {
-    hapticLight();
-    setSelectedEmotions(prev =>
-      prev.includes(label) ? prev.filter(e => e !== label) : [...prev, label]
-    );
-  };
 
   // Gamification state
   const [streakData, setStreakData] = useState({
@@ -185,13 +155,8 @@ const DailyLog = () => {
     try {
       await logsApi.submitDaily({ ...formData, emotions: selectedEmotions });
       hapticSuccess();
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2000);
-      setHasLoggedToday(true);
-
-      // 🎉 Save animation + haptic
-      hapticSuccess();
       setShowSaveCheck(true);
+      setHasLoggedToday(true);
 
       // 🎉 GAMIFICATION: Fire confetti and celebration!
       if (wasFirstLogToday) {
