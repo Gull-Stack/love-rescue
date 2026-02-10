@@ -18,6 +18,13 @@ enum SubscriptionStatus {
   expired
 }
 
+// Subscription source (how user pays)
+enum SubscriptionSource {
+  STRIPE
+  APPLE
+  NONE
+}
+
 // User roles for RBAC
 enum UserRole {
   user
@@ -99,6 +106,10 @@ model User {
   trialEndsAt        DateTime?          @map("trial_ends_at")
   stripeCustomerId   String?            @map("stripe_customer_id") @db.VarChar(255)
   isPlatformAdmin    Boolean            @default(false) @map("is_platform_admin")
+  pushToken          String?            @map("push_token") @db.VarChar(500)
+  pushPlatform       String?            @map("push_platform") @db.VarChar(10) // ios, android, web
+  subscriptionSource SubscriptionSource @default(NONE) @map("subscription_source")
+  appleReceiptData   String?            @map("apple_receipt_data") @db.Text
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
