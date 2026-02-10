@@ -29,6 +29,10 @@ import StarIcon from '@mui/icons-material/Star';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SchoolIcon from '@mui/icons-material/School';
 import { assessmentsApi } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
+import { isAssessmentFree, canAccessAssessment } from '../../utils/featureGating';
+import PremiumGate from '../../components/common/PremiumGate';
+import { getUpgradeCopy, UPGRADE_TRIGGERS } from '../../utils/upgradePrompts';
 
 // ─── Assessment Type Definitions ──────────────────────────────────────────────
 const assessmentTypes = [
@@ -523,6 +527,7 @@ const CategorySection = ({
   navigate,
   expandedResults,
   toggleExpanded,
+  user,
 }) => {
   const theme = useTheme();
   const completedCount = assessments.filter((a) => completedTypes.has(a.type)).length;
@@ -634,6 +639,7 @@ const CategorySection = ({
           const score = getScore(assessment.type);
           const isExpanded = expandedResults[assessment.type];
 
+          const isLocked = !canAccessAssessment(assessment.type, user);
           return (
             <Grid item xs={12} sm={6} key={assessment.type}>
               <Fade in timeout={600}>
@@ -677,6 +683,17 @@ const CategorySection = ({
                           color="success"
                           size="small"
                           sx={{ fontWeight: 'bold' }}
+                        />
+                      )}
+                      {isLocked && !completed && (
+                        <Chip
+                          label="Premium"
+                          size="small"
+                          sx={{
+                            fontWeight: 'bold',
+                            background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                            color: 'white',
+                          }}
                         />
                       )}
                     </Box>
@@ -766,25 +783,43 @@ const CategorySection = ({
                   </CardContent>
 
                   <CardActions sx={{ p: 3, pt: 0 }}>
-                    <Button
-                      variant={completed ? 'outlined' : 'contained'}
-                      startIcon={completed ? <ReplayIcon /> : <PlayArrowIcon />}
-                      onClick={() => navigate(`/assessments/${assessment.type}`)}
-                      fullWidth
-                      sx={{
-                        borderRadius: 2,
-                        py: 1.2,
-                        fontWeight: 'bold',
-                        ...(completed
-                          ? {}
-                          : {
-                              background: category.gradient,
-                              '&:hover': { opacity: 0.9 },
-                            }),
-                      }}
-                    >
-                      {completed ? 'Retake Assessment' : 'Begin Assessment'}
-                    </Button>
+                    {isLocked ? (
+                      <Button
+                        variant="contained"
+                        startIcon={<AutoAwesomeIcon />}
+                        onClick={() => navigate('/subscribe')}
+                        fullWidth
+                        sx={{
+                          borderRadius: 2,
+                          py: 1.2,
+                          fontWeight: 'bold',
+                          background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
+                          '&:hover': { opacity: 0.9 },
+                        }}
+                      >
+                        Unlock Premium
+                      </Button>
+                    ) : (
+                      <Button
+                        variant={completed ? 'outlined' : 'contained'}
+                        startIcon={completed ? <ReplayIcon /> : <PlayArrowIcon />}
+                        onClick={() => navigate(`/assessments/${assessment.type}`)}
+                        fullWidth
+                        sx={{
+                          borderRadius: 2,
+                          py: 1.2,
+                          fontWeight: 'bold',
+                          ...(completed
+                            ? {}
+                            : {
+                                background: category.gradient,
+                                '&:hover': { opacity: 0.9 },
+                              }),
+                        }}
+                      >
+                        {completed ? 'Retake Assessment' : 'Begin Assessment'}
+                      </Button>
+                    )}
                   </CardActions>
                 </Card>
               </Fade>
@@ -800,6 +835,7 @@ const CategorySection = ({
 const Assessments = () => {
   const navigate = useNavigate();
   const theme = useTheme();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState({ completed: [], pending: [] });
   const [expandedResults, setExpandedResults] = useState({});
@@ -972,6 +1008,7 @@ const Assessments = () => {
           navigate={navigate}
           expandedResults={expandedResults}
           toggleExpanded={toggleExpanded}
+          user={user}
         />
       ))}
 

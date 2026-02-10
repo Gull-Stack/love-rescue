@@ -24,10 +24,15 @@ import StreakCounter from '../../components/gamification/StreakCounter';
 import CelebrationToast from '../../components/gamification/CelebrationToast';
 import { celebration } from '../../components/gamification/Confetti';
 import { PartnerStatusCard, MatchupScoreCard } from '../../components/gamification/PartnerActivity';
+import { useAuth } from '../../contexts/AuthContext';
+import { isPremiumUser } from '../../utils/featureGating';
+import PremiumGate from '../../components/common/PremiumGate';
 
 const DailyLog = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { user } = useAuth();
+  const premium = isPremiumUser(user);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [prompt, setPrompt] = useState(null);
@@ -260,6 +265,11 @@ const DailyLog = () => {
       <Grid container spacing={{ xs: 2, md: 3 }}>
         {/* Interaction Counter */}
         <Grid item xs={12} md={6}>
+          <PremiumGate
+            feature="daily_log_interactions"
+            title="Interaction Tracking — Premium"
+            subtitle="Track positive & negative interactions and see your Gottman ratio. Upgrade to unlock."
+          >
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -344,6 +354,7 @@ const DailyLog = () => {
               </Box>
             </CardContent>
           </Card>
+          </PremiumGate>
         </Grid>
 
         {/* Mood & Closeness */}
@@ -368,6 +379,12 @@ const DailyLog = () => {
                 />
               </Box>
 
+              <PremiumGate
+                feature="daily_log_closeness"
+                title="Closeness Tracking"
+                subtitle="Track emotional closeness over time with Premium."
+                compact
+              >
               <Box>
                 <Typography variant="subtitle2" gutterBottom>
                   Emotional Closeness (1-10)
@@ -382,10 +399,16 @@ const DailyLog = () => {
                   color="secondary"
                 />
               </Box>
+              </PremiumGate>
             </CardContent>
           </Card>
 
           {/* Journal Entry with Prompt */}
+          <PremiumGate
+            feature="daily_log_journal"
+            title="Daily Journal — Premium"
+            subtitle="Reflect on your relationship with guided journal prompts. Upgrade to unlock."
+          >
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -412,6 +435,7 @@ const DailyLog = () => {
               />
             </CardContent>
           </Card>
+          </PremiumGate>
         </Grid>
       </Grid>
 

@@ -274,6 +274,11 @@ export const biometricApi = {
 };
 
 // 16-Week Course API
+export const upgradeApi = {
+  sendLink: (email, plan) => api.post('/upgrade/send-link', { email, plan }),
+  checkout: (plan) => api.post('/upgrade/checkout', { plan }),
+};
+
 export const courseApi = {
   // Get full curriculum overview
   getCurriculum: () => api.get('/course/curriculum'),

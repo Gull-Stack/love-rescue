@@ -33,6 +33,8 @@ import {
 } from '../../services/api';
 import DailyInsight from '../../components/common/DailyInsight';
 import DailyVideo from '../../components/common/DailyVideo';
+import { isPremiumUser, isAssessmentFree } from '../../utils/featureGating';
+import PremiumGate from '../../components/common/PremiumGate';
 import {
   StreakHero,
   QuickLogFAB,
@@ -348,6 +350,12 @@ const Dashboard = () => {
             <DailyVideo />
 
             {/* Strategy Card - Simplified */}
+            <PremiumGate
+              feature="strategies"
+              title="Strategy Plan — Premium"
+              subtitle="Get a personalized 6-week roadmap for your relationship."
+              compact
+            >
             {data.strategy ? (
               <Card 
                 onClick={() => navigate('/strategies')}
@@ -415,6 +423,7 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             )}
+            </PremiumGate>
 
             {/* Meetings Card - Simplified */}
             <Card 
@@ -456,6 +465,12 @@ const Dashboard = () => {
             </Card>
 
             {/* Matchup Score - If available */}
+            <PremiumGate
+              feature="matchup"
+              title="Matchup Score — Premium"
+              subtitle="See your compatibility with your partner."
+              compact
+            >
             {data.matchup && (
               <Card 
                 onClick={() => navigate('/matchup')}
@@ -486,6 +501,7 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             )}
+            </PremiumGate>
           </Box>
         </Collapse>
       </Box>

@@ -32,6 +32,8 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
 import StarIcon from '@mui/icons-material/Star';
 import { assessmentsApi } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
+import { canAccessAssessment } from '../../utils/featureGating';
 
 // ─── Assessment Metadata ──────────────────────────────────────────────────────
 const assessmentMeta = {
@@ -964,6 +966,14 @@ const AssessmentQuiz = () => {
   const { type } = useParams();
   const navigate = useNavigate();
   const theme = useTheme();
+  const { user } = useAuth();
+
+  // Redirect if user can't access this assessment
+  useEffect(() => {
+    if (user && !canAccessAssessment(type, user)) {
+      navigate('/assessments', { replace: true });
+    }
+  }, [type, user, navigate]);
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [loading, setLoading] = useState(true);

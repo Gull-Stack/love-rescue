@@ -58,6 +58,7 @@ const partnerActivityRoutes = require('./routes/partner-activity');
 const courseRoutes = require('./routes/course');
 const notificationsRoutes = require('./routes/notifications');
 const subscriptionsRoutes = require('./routes/subscriptions');
+const upgradeRoutes = require('./routes/upgrade');
 
 const { auditLogger } = require('./middleware/auditLogger');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -163,6 +164,7 @@ app.use('/api/partner', partnerActivityRoutes);
 app.use('/api/course', courseRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
+app.use('/api/upgrade', upgradeRoutes);
 
 // Cron endpoint for daily reminders (called by external scheduler)
 app.post('/api/cron/daily-reminders', async (req, res) => {
