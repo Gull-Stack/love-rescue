@@ -85,8 +85,8 @@ const CelebrationToast = ({
         sx={{
           width: '100%',
           fontSize: '1rem',
-          background: 'linear-gradient(135deg, #2D5A27 0%, #4A7A44 100%)',
-          boxShadow: '0 8px 32px rgba(45,90,39,0.3)',
+          background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+          boxShadow: '0 8px 32px rgba(245,87,108,0.3)',
           '& .MuiAlert-icon': {
             fontSize: '2rem',
           },

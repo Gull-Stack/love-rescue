@@ -235,7 +235,7 @@ const DailyLog = () => {
       />
 
       {success && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>
+        <Alert severity="success" sx={{ mb: 2, bgcolor: '#fce4ec', color: '#c62828', '& .MuiAlert-icon': { color: '#f5576c' } }} onClose={() => setSuccess('')}>
           {success}
         </Alert>
       )}
@@ -462,11 +462,11 @@ const DailyLog = () => {
             fontSize: '1.1rem',
             fontWeight: 'bold',
             background: hasLoggedToday 
-              ? 'linear-gradient(135deg, #2D5A27 0%, #4A7A44 100%)'
+              ? 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
               : 'linear-gradient(135deg, #FF6B35 0%, #FF8B5A 100%)',
             '&:hover': {
               background: hasLoggedToday
-                ? 'linear-gradient(135deg, #1E4019 0%, #3A6A34 100%)'
+                ? 'linear-gradient(135deg, #e080e8 0%, #e04460 100%)'
                 : 'linear-gradient(135deg, #E55A25 0%, #FF7B4A 100%)',
             },
           }}
