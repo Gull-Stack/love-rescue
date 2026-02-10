@@ -362,56 +362,72 @@ function generateSoloWeekPlan(week, assessments) {
     focusAreas.push('communication');
   }
 
-  const baseActivities = {
-    monday: ['Journal about 3 things you appreciate in your relationship'],
-    tuesday: ['Practice active listening in one conversation today'],
-    wednesday: ['Write down one thing you are grateful for about yourself'],
-    thursday: ['Reflect on your communication patterns this week'],
-    friday: ['Identify one personal boundary and practice honoring it'],
-    saturday: ['Spend 20 minutes on a self-care activity'],
-    sunday: ['Review your week and set one intention for next week']
+  // ═══ POSITIVE LENS TRAINING (every week, non-negotiable) ═══
+  // Every single day starts with seeing the good. This rewires the brain.
+  const positiveHabits = {
+    monday: { task: 'Write down 3 specific things your partner did right this weekend — be detailed, not generic', why: 'Training your brain to scan for positives instead of negatives. The more you look for good, the more you find.' },
+    tuesday: { task: 'Send your partner a text right now appreciating something specific they did recently', why: 'Gottman research: couples who express 5 positive interactions for every 1 negative have lasting relationships.' },
+    wednesday: { task: 'Catch yourself in one negative thought about your partner today — pause and find what\'s true AND good about them in that moment', why: 'You can\'t control your first thought, but you can control your second. This is the reframe muscle.' },
+    thursday: { task: 'At dinner, share one thing your partner does that makes your life easier — something you usually take for granted', why: 'Gratitude spoken out loud is 10x more powerful than gratitude kept inside. Let them hear it.' },
+    friday: { task: 'Look back at your week and write down your partner\'s best moment — the time they showed up, even in a small way', why: 'Your memory is biased toward negatives. This exercise corrects the record.' },
+    saturday: { task: 'Give one genuine, unexpected compliment before noon — not about appearance, about character', why: 'Character compliments ("I admire how patient you are") build deeper connection than surface ones.' },
+    sunday: { task: 'Write a 3-sentence "gratitude snapshot" of your partner this week and share it with them', why: 'Weekly reflection cements the positive lens habit. Sharing it creates a virtuous cycle.' },
   };
 
-  const weeklyGoals = ['Complete daily reflections', 'Practice mindful communication'];
+  const baseActivities = {};
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  for (const day of days) {
+    baseActivities[day] = [{ text: positiveHabits[day].task, why: positiveHabits[day].why, type: 'positive_lens' }];
+  }
+
+  // ═══ WEEKLY GOALS — specific & measurable ═══
+  const weeklyGoals = [
+    { text: 'Complete your daily log every day this week (7/7)', why: 'Consistency builds self-awareness. You can\'t improve what you don\'t measure.' },
+    { text: 'Hit a 5:1 positive-to-negative interaction ratio by Friday', why: 'Gottman\'s "magic ratio" — couples who maintain 5:1 during conflict stay together 94% of the time.' },
+  ];
 
   switch (week) {
-    case 1: // Focus: Self-Awareness
-      weeklyGoals.push('Identify 3 personal emotional patterns');
-      baseActivities.tuesday.push('Write about a recent emotional reaction and its trigger');
+    case 1: // Focus: Self-Awareness — Know YOUR patterns
+      weeklyGoals.push({ text: 'Write down 3 moments this week where you felt triggered — name the emotion underneath the reaction (anger usually hides hurt or fear)', why: 'Self-awareness is step 1. You can\'t change a pattern you can\'t see.' });
+      baseActivities.tuesday.push({ text: 'After your next emotional reaction, write: "I felt ___ because ___ and what I actually needed was ___"', why: 'Most arguments aren\'t about what they\'re about. This exercise finds the real need underneath.' });
+      baseActivities.thursday.push({ text: 'Ask yourself: "Am I reacting to what\'s happening NOW, or to an old wound?" Write the honest answer.', why: 'We often bring old pain into new moments. Separating past from present is emotional maturity.' });
       break;
-    case 2: // Focus: Communication Skills
-      weeklyGoals.push('Practice "I" statements in 5 conversations');
-      baseActivities.wednesday.push('Reframe one complaint as a request');
+    case 2: // Focus: Communication — Say what you mean without blame
+      weeklyGoals.push({ text: 'Replace 5 "You always/never..." statements with "I feel ___ when ___ because I need ___"', why: '"You" statements trigger defensiveness. "I" statements invite understanding. Same message, completely different reception.' });
+      baseActivities.wednesday.push({ text: 'Take one complaint you have and rewrite it: "Instead of ___ I wish you would ___ because it would make me feel ___"', why: 'Complaints attack character. Requests invite change. People resist demands but respond to vulnerability.' });
+      baseActivities.friday.push({ text: 'In your next disagreement, repeat back what your partner said BEFORE responding. Say "What I hear you saying is..."', why: 'Chris Voss calls this "mirroring" — it makes people feel heard and drops their defenses immediately.' });
       break;
-    case 3: // Focus: Emotional Regulation
-      weeklyGoals.push('Practice a calming technique daily');
-      baseActivities.thursday.push('Try a 5-minute breathing exercise');
+    case 3: // Focus: Emotional Regulation — Control YOUR reaction
+      weeklyGoals.push({ text: 'Use the 6-second pause technique 3 times this week: feel the trigger → breathe for 6 seconds → THEN respond', why: 'It takes 6 seconds for stress hormones to pass through your brain. Those 6 seconds are where you choose who you want to be.' });
+      baseActivities.tuesday.push({ text: 'When you feel flooded (heart racing, wanting to yell or shut down), say "I need 20 minutes" and walk away to self-soothe', why: 'Gottman research: when heart rate exceeds 100 BPM, your IQ drops 30 points. You literally can\'t think straight. Taking a break isn\'t weakness — it\'s wisdom.' });
+      baseActivities.thursday.push({ text: 'Write down your go-to defense mechanism (stonewalling, sarcasm, deflecting, blaming) and one thing to do instead', why: 'Everyone has a default. Naming it takes away its power. The replacement habit is what you\'re actually building.' });
       break;
-    case 4: // Focus: Understanding Patterns
-      weeklyGoals.push('Map out one recurring conflict pattern');
-      if (focusAreas.includes('conflict')) {
-        baseActivities.friday.push('Write about your conflict style and one way to improve it');
-      }
+    case 4: // Focus: Understanding Patterns — See the cycle
+      weeklyGoals.push({ text: 'Map one recurring argument: What triggers it → What you each do → How it ends → What you both actually needed', why: 'Most couples have the same 3-5 fights on repeat. Once you see the cycle, you can interrupt it.' });
+      baseActivities.wednesday.push({ text: 'Write about a fight from your PARTNER\'S perspective. What were THEY feeling? What did THEY need?', why: 'Empathy isn\'t agreeing — it\'s understanding. This exercise builds the muscle of seeing through their eyes.' });
+      baseActivities.friday.push({ text: 'Identify your "pursue-withdraw" dynamic: who chases and who retreats? Write how it feels from YOUR side.', why: 'Sue Johnson (EFT): 80% of couples have this pattern. The pursuer feels abandoned, the withdrawer feels overwhelmed. Neither is wrong.' });
       break;
-    case 5: // Focus: Personal Growth
-      weeklyGoals.push('Define one personal growth goal for your relationship');
-      baseActivities.saturday.push('Reflect on your hopes for the future');
+    case 5: // Focus: Personal Growth — Become the partner you want to be
+      weeklyGoals.push({ text: 'Write a 1-paragraph description of the partner you want to be in 1 year — specific behaviors, not vague aspirations', why: 'Vision precedes change. If you can\'t describe it clearly, you can\'t build toward it.' });
+      baseActivities.saturday.push({ text: 'Ask your partner: "What\'s one thing I could do differently that would mean the world to you?" — listen without defending', why: 'This question takes courage. Receiving the answer without defensiveness takes more. Both are growth.' });
       break;
-    case 6: // Focus: Integration
-      weeklyGoals.push('Create a personal relationship vision statement');
-      baseActivities.sunday.push('Write a letter to yourself about the partner you want to be');
-      weeklyGoals.push('Prepare for reassessment next week');
+    case 6: // Focus: Integration — Lock in the habits
+      weeklyGoals.push({ text: 'Write a "relationship contract with yourself" — 3 commitments YOU will keep regardless of what your partner does', why: 'This is the core: you work on YOU. Not as leverage, not to earn something — because you decided who you want to be.' });
+      baseActivities.sunday.push({ text: 'Write a letter to yourself from 6 weeks ago. What do you know now that you didn\'t then? What habit has stuck?', why: 'Reflection cements growth. Seeing your own progress builds confidence to keep going.' });
+      weeklyGoals.push({ text: 'Retake your initial assessments and compare scores — celebrate progress, identify next focus area', why: 'Data doesn\'t lie. Seeing your growth quantified is deeply motivating.' });
+      break;
+    default:
       break;
   }
 
   if (focusAreas.includes('attachment')) {
-    baseActivities.monday.push('Reflect on your attachment style and how it affects your relationships');
-    weeklyGoals.push('Learn about your attachment patterns');
+    baseActivities.monday.push({ text: 'When you feel anxious about your relationship today, write down: "The story I\'m telling myself is ___ but the evidence says ___"', why: 'Anxious attachment creates catastrophic narratives. Checking them against reality is how you build security from within.' });
+    weeklyGoals.push({ text: 'Identify 3 times your attachment style drove your behavior this week — anxious reaching or avoidant pulling away', why: 'Awareness of your attachment patterns is the first step to earning secure attachment.' });
   }
 
   if (focusAreas.includes('communication')) {
-    baseActivities.thursday.push('Practice reflective listening in one conversation');
-    weeklyGoals.push('Improve active listening skills');
+    baseActivities.thursday.push({ text: 'In one conversation today, only ask questions for 5 minutes straight. No statements, no advice, just curious questions.', why: 'Most people listen to respond, not to understand. Pure curiosity is the most powerful communication tool.' });
+    weeklyGoals.push({ text: 'Go 3 conversations this week without interrupting — let them finish completely before you speak', why: 'Interrupting says "my thoughts matter more." Waiting says "I respect your voice." Small shift, massive impact.' });
   }
 
   return { dailyActivities: baseActivities, weeklyGoals };

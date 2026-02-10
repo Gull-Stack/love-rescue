@@ -244,24 +244,38 @@ const Strategies = () => {
                 Weekly Goals
               </Typography>
               <List>
-                {strategy.weeklyGoals.map((goal, idx) => (
-                  <ListItem key={idx} dense>
-                    <ListItemIcon>
-                      <Checkbox
-                        checked={completedTasks.has(`goal-${idx}`)}
-                        onChange={() => handleTaskToggle(`goal-${idx}`)}
-                      />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={goal}
-                      sx={{
-                        textDecoration: completedTasks.has(`goal-${idx}`)
-                          ? 'line-through'
-                          : 'none',
-                      }}
-                    />
-                  </ListItem>
-                ))}
+                {strategy.weeklyGoals.map((goal, idx) => {
+                  const goalText = typeof goal === 'object' ? goal.text : goal;
+                  const goalWhy = typeof goal === 'object' ? goal.why : null;
+                  return (
+                    <React.Fragment key={idx}>
+                      <ListItem dense>
+                        <ListItemIcon>
+                          <Checkbox
+                            checked={completedTasks.has(`goal-${idx}`)}
+                            onChange={() => handleTaskToggle(`goal-${idx}`)}
+                          />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={goalText}
+                          sx={{
+                            textDecoration: completedTasks.has(`goal-${idx}`)
+                              ? 'line-through'
+                              : 'none',
+                            cursor: goalWhy ? 'pointer' : 'default',
+                          }}
+                        />
+                      </ListItem>
+                      {goalWhy && (
+                        <Box sx={{ ml: 9, mr: 2, mb: 1.5, p: 1.5, bgcolor: 'grey.50', borderRadius: 2, borderLeft: '3px solid #f5576c' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+                            💡 <strong>Why:</strong> {goalWhy}
+                          </Typography>
+                        </Box>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </List>
             </CardContent>
           </Card>
@@ -288,24 +302,43 @@ const Strategies = () => {
                 </AccordionSummary>
                 <AccordionDetails>
                   <List dense>
-                    {activities.map((activity, idx) => (
-                      <ListItem key={idx}>
-                        <ListItemIcon>
-                          <Checkbox
-                            checked={completedTasks.has(`${day}-${idx}`)}
-                            onChange={() => handleTaskToggle(`${day}-${idx}`)}
-                          />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={activity}
-                          sx={{
-                            textDecoration: completedTasks.has(`${day}-${idx}`)
-                              ? 'line-through'
-                              : 'none',
-                          }}
-                        />
-                      </ListItem>
-                    ))}
+                    {activities.map((activity, idx) => {
+                      const actText = typeof activity === 'object' ? activity.text : activity;
+                      const actWhy = typeof activity === 'object' ? activity.why : null;
+                      const actType = typeof activity === 'object' ? activity.type : null;
+                      return (
+                        <React.Fragment key={idx}>
+                          <ListItem>
+                            <ListItemIcon>
+                              <Checkbox
+                                checked={completedTasks.has(`${day}-${idx}`)}
+                                onChange={() => handleTaskToggle(`${day}-${idx}`)}
+                              />
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={
+                                <Box display="flex" alignItems="center" gap={1}>
+                                  {actType === 'positive_lens' && <span>🌟</span>}
+                                  <span>{actText}</span>
+                                </Box>
+                              }
+                              sx={{
+                                textDecoration: completedTasks.has(`${day}-${idx}`)
+                                  ? 'line-through'
+                                  : 'none',
+                              }}
+                            />
+                          </ListItem>
+                          {actWhy && (
+                            <Box sx={{ ml: 9, mr: 2, mb: 1, p: 1.5, bgcolor: 'grey.50', borderRadius: 2, borderLeft: '3px solid #f5576c' }}>
+                              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+                                💡 <strong>Why:</strong> {actWhy}
+                              </Typography>
+                            </Box>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   </List>
                 </AccordionDetails>
               </Accordion>
