@@ -386,12 +386,26 @@ const ForcedChoice = ({ question, value, onChange, color }) => {
     ];
   }
 
+  // Swipe handling for A/B choices
+  const touchStartX = React.useRef(null);
+  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const diff = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(diff) > 60 && options.length === 2) {
+      // Swipe left = A (first option), Swipe right = B (second option)
+      const idx = diff < 0 ? 0 : 1;
+      onChange(options[idx].value ?? options[idx].id ?? idx);
+    }
+    touchStartX.current = null;
+  };
+
   return (
-    <Box>
-      <Typography variant="body2" color="text.secondary" mb={2} textAlign="center">
-        Choose the statement that feels MORE true for you:
+    <Box onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <Typography variant="caption" color="text.secondary" mb={1.5} textAlign="center" display="block">
+        Tap to choose · or swipe ← A | B →
       </Typography>
-      <Box display="flex" flexDirection="column" gap={2}>
+      <Box display="flex" flexDirection="column" gap={1.5}>
         {options.map((option, index) => {
           const optionValue = option.value ?? option.id ?? index;
           const isSelected = value === optionValue;
@@ -402,23 +416,20 @@ const ForcedChoice = ({ question, value, onChange, color }) => {
               elevation={isSelected ? 4 : 0}
               onClick={() => onChange(optionValue)}
               sx={{
-                p: 3,
+                p: 2,
                 borderRadius: 3,
                 cursor: 'pointer',
                 border: `2px solid ${isSelected ? color : 'transparent'}`,
                 bgcolor: isSelected ? alpha(color, 0.06) : 'grey.50',
                 transition: 'all 0.2s ease',
-                '&:hover': {
-                  bgcolor: isSelected ? alpha(color, 0.08) : 'grey.100',
-                  transform: 'translateX(4px)',
-                },
+                '&:active': { transform: 'scale(0.98)' },
               }}
             >
-              <Box display="flex" alignItems="center" gap={2}>
+              <Box display="flex" alignItems="center" gap={1.5}>
                 <Box
                   sx={{
-                    width: 36,
-                    height: 36,
+                    width: 32,
+                    height: 32,
                     borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
@@ -426,7 +437,7 @@ const ForcedChoice = ({ question, value, onChange, color }) => {
                     bgcolor: isSelected ? color : alpha(color, 0.1),
                     color: isSelected ? 'white' : color,
                     fontWeight: 'bold',
-                    fontSize: '0.9rem',
+                    fontSize: '0.85rem',
                     transition: 'all 0.2s ease',
                     flexShrink: 0,
                   }}
@@ -434,7 +445,7 @@ const ForcedChoice = ({ question, value, onChange, color }) => {
                   {String.fromCharCode(65 + index)}
                 </Box>
                 <Typography
-                  variant="body1"
+                  variant="body2"
                   fontWeight={isSelected ? 'bold' : 'normal'}
                   sx={{ lineHeight: 1.5 }}
                 >
