@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Card,
@@ -13,10 +13,13 @@ import {
   Chip,
   useMediaQuery,
   useTheme,
+  alpha,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import SaveIcon from '@mui/icons-material/Save';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { hapticLight, hapticSuccess } from '../../utils/haptics';
 import { logsApi, streaksApi } from '../../services/api';
 import DailyInsight from '../../components/common/DailyInsight';
 import DailyVideo from '../../components/common/DailyVideo';
@@ -24,6 +27,12 @@ import StreakCounter from '../../components/gamification/StreakCounter';
 import CelebrationToast from '../../components/gamification/CelebrationToast';
 import { celebration } from '../../components/gamification/Confetti';
 import { PartnerStatusCard, MatchupScoreCard } from '../../components/gamification/PartnerActivity';
+import MoodEmojiSlider from '../../components/gamification/MoodEmojiSlider';
+import EmotionChips from '../../components/gamification/EmotionChips';
+import PromptCards from '../../components/gamification/PromptCards';
+import StreakFlames from '../../components/gamification/StreakFlames';
+import SaveCheckmark from '../../components/gamification/SaveCheckmark';
+import { hapticSuccess } from '../../utils/haptics';
 import { useAuth } from '../../contexts/AuthContext';
 import { isPremiumUser } from '../../utils/featureGating';
 import PremiumGate from '../../components/common/PremiumGate';
@@ -46,6 +55,35 @@ const DailyLog = () => {
     closenessScore: 5,
     mood: 5,
   });
+  const [selectedEmotions, setSelectedEmotions] = useState([]);
+  const [showSaveCheck, setShowSaveCheck] = useState(false);
+
+  // Engagement state
+  const [selectedEmotions, setSelectedEmotions] = useState([]);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const MOOD_EMOJIS = ['😢', '😟', '😐', '😊', '🥰'];
+  const moodEmojiIndex = Math.min(Math.floor((formData.mood - 1) / 2), 4);
+
+  const EMOTION_CHIPS = [
+    { label: 'Happy', emoji: '😊' },
+    { label: 'Grateful', emoji: '🙏' },
+    { label: 'Loved', emoji: '❤️' },
+    { label: 'Hopeful', emoji: '🌟' },
+    { label: 'Calm', emoji: '😌' },
+    { label: 'Anxious', emoji: '😰' },
+    { label: 'Frustrated', emoji: '😤' },
+    { label: 'Sad', emoji: '😢' },
+    { label: 'Lonely', emoji: '🥺' },
+    { label: 'Angry', emoji: '😡' },
+  ];
+
+  const toggleEmotion = (label) => {
+    hapticLight();
+    setSelectedEmotions(prev =>
+      prev.includes(label) ? prev.filter(e => e !== label) : [...prev, label]
+    );
+  };
 
   // Gamification state
   const [streakData, setStreakData] = useState({
@@ -145,9 +183,15 @@ const DailyLog = () => {
     const wasFirstLogToday = !hasLoggedToday;
 
     try {
-      await logsApi.submitDaily(formData);
-      setSuccess('Daily log saved successfully!');
+      await logsApi.submitDaily({ ...formData, emotions: selectedEmotions });
+      hapticSuccess();
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
       setHasLoggedToday(true);
+
+      // 🎉 Save animation + haptic
+      hapticSuccess();
+      setShowSaveCheck(true);
 
       // 🎉 GAMIFICATION: Fire confetti and celebration!
       if (wasFirstLogToday) {
@@ -207,6 +251,14 @@ const DailyLog = () => {
       <Typography color="text.secondary" paragraph>
         Track your daily interactions and reflect on your relationship.
       </Typography>
+
+      {/* 🔥 STREAK FLAMES */}
+      <Box sx={{ mb: 2 }}>
+        <StreakFlames streak={streakData.currentStreak} />
+      </Box>
+
+      {/* Save Checkmark Animation */}
+      <SaveCheckmark show={showSaveCheck} onDone={() => { setShowSaveCheck(false); setSuccess('Daily log saved successfully!'); }} />
 
       {/* 🔥 STREAK COUNTER - Gamification */}
       <Box sx={{ mb: 3 }}>
@@ -367,16 +419,17 @@ const DailyLog = () => {
 
               <Box sx={{ mb: 4 }}>
                 <Typography variant="subtitle2" gutterBottom>
-                  Mood (1-10)
+                  Mood
                 </Typography>
-                <Slider
+                <MoodEmojiSlider
                   value={formData.mood}
-                  onChange={(_, value) => setFormData({ ...formData, mood: value })}
-                  min={1}
-                  max={10}
-                  marks
-                  valueLabelDisplay="on"
+                  onChange={(value) => setFormData({ ...formData, mood: value })}
                 />
+              </Box>
+
+              {/* Emotion Chips */}
+              <Box sx={{ mb: 3 }}>
+                <EmotionChips selected={selectedEmotions} onChange={setSelectedEmotions} />
               </Box>
 
               <PremiumGate
@@ -414,6 +467,15 @@ const DailyLog = () => {
               <Typography variant="h6" gutterBottom>
                 Journal Entry
               </Typography>
+
+              {/* Swipeable Prompt Cards */}
+              <Box sx={{ mb: 2 }}>
+                <PromptCards onSelect={(text) => setFormData(prev => ({
+                  ...prev,
+                  journalEntry: prev.journalEntry ? prev.journalEntry + '\n\n' + text + '\n' : text + '\n',
+                }))} />
+              </Box>
+
               {prompt && (
                 <Box sx={{ mb: 2, p: 2, bgcolor: 'primary.light', borderRadius: 2 }}>
                   <Typography variant="overline" sx={{ color: 'primary.contrastText' }}>

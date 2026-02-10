@@ -38,6 +38,8 @@ import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import SchoolIcon from '@mui/icons-material/School';
 import { useAuth } from '../../contexts/AuthContext';
+import XPBar from '../gamification/XPBar';
+import useSwipeNavigation from '../../hooks/useSwipeNavigation';
 
 // Platform admin emails (sync with backend)
 const PLATFORM_ADMIN_EMAILS = [
@@ -83,6 +85,9 @@ const Layout = () => {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
+
+  // Swipe navigation for mobile tab switching
+  useSwipeNavigation();
 
   // Check if user is platform admin
   const isPlatformAdmin = user?.isPlatformAdmin || 
@@ -133,6 +138,8 @@ const Layout = () => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
             Love Rescue
           </Typography>
+
+          {user && <XPBar />}
 
           <IconButton aria-label="Account menu" onClick={(e) => setAnchorEl(e.currentTarget)}>
             <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>

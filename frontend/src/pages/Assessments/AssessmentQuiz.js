@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -15,6 +15,8 @@ import {
   Chip,
   Paper,
   Fade,
+  Slide,
+  Snackbar,
   Divider,
   useMediaQuery,
   useTheme,
@@ -22,6 +24,8 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
+import confetti from 'canvas-confetti';
+import { hapticLight, hapticMedium, hapticSuccess } from '../../utils/haptics';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import CheckIcon from '@mui/icons-material/Check';
@@ -984,6 +988,12 @@ const AssessmentQuiz = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
+  // Gamification state
+  const [milestoneMsg, setMilestoneMsg] = useState(null);
+  const [speedToast, setSpeedToast] = useState('');
+  const [showXpAnimation, setShowXpAnimation] = useState(false);
+  const answerTimerRef = useRef(Date.now());
+
   const meta = assessmentMeta[type] || {
     title: 'Assessment',
     icon: '📝',
@@ -1026,6 +1036,14 @@ const AssessmentQuiz = () => {
   const handleResponse = useCallback(
     (value) => {
       const questionId = questions[currentIndex]?.id;
+      hapticLight();
+      
+      // Speed bonus check
+      const elapsed = Date.now() - answerTimerRef.current;
+      if (elapsed < 3000) {
+        setSpeedToast('Answering with conviction! ⚡');
+      }
+      
       setResponses((prev) => ({
         ...prev,
         [questionId]: value,
@@ -1036,7 +1054,21 @@ const AssessmentQuiz = () => {
 
   const handleNext = useCallback(() => {
     if (currentIndex < questions.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
+      const nextIdx = currentIndex + 1;
+      setCurrentIndex(nextIdx);
+      answerTimerRef.current = Date.now();
+      
+      // Milestone messages
+      const pct = Math.round((nextIdx / questions.length) * 100);
+      if (pct === 25) setMilestoneMsg({ text: 'Great start! Keep going! 💪' });
+      else if (pct === 50) setMilestoneMsg({ text: 'Halfway there! 🔥' });
+      else if (pct === 75) setMilestoneMsg({ text: 'Almost done! You got this! 🚀' });
+      else setMilestoneMsg(null);
+      
+      if ([25, 50, 75].includes(pct)) {
+        hapticMedium();
+        setTimeout(() => setMilestoneMsg(null), 3000);
+      }
     }
   }, [currentIndex, questions.length]);
 
@@ -1083,6 +1115,15 @@ const AssessmentQuiz = () => {
     try {
       const response = await assessmentsApi.submit(type, responses);
       setResult(response.data);
+      
+      // 🎉 Confetti explosion + haptic on completion
+      hapticSuccess();
+      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+      setTimeout(() => confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 } }), 300);
+      
+      // +50 XP floating animation
+      setShowXpAnimation(true);
+      setTimeout(() => setShowXpAnimation(false), 2500);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to submit assessment. Please try again.');
     } finally {
@@ -1119,7 +1160,41 @@ const AssessmentQuiz = () => {
 
   // ─── Result View ────────────────────────────────────────────────────────────
   if (result) {
-    return <ResultDisplay type={type} result={result} meta={meta} navigate={navigate} />;
+    return (
+      <Box position="relative">
+        {/* +50 XP floating animation */}
+        {showXpAnimation && (
+          <Box
+            sx={{
+              position: 'fixed',
+              top: '40%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 9999,
+              animation: 'xpFloat 2.5s ease-out forwards',
+              '@keyframes xpFloat': {
+                '0%': { opacity: 1, transform: 'translateX(-50%) translateY(0) scale(1)' },
+                '50%': { opacity: 1, transform: 'translateX(-50%) translateY(-60px) scale(1.2)' },
+                '100%': { opacity: 0, transform: 'translateX(-50%) translateY(-120px) scale(0.8)' },
+              },
+            }}
+          >
+            <Typography
+              variant="h3"
+              fontWeight="bold"
+              sx={{
+                color: '#FFD700',
+                textShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                fontSize: '2.5rem',
+              }}
+            >
+              +50 XP ⭐
+            </Typography>
+          </Box>
+        )}
+        <ResultDisplay type={type} result={result} meta={meta} navigate={navigate} />
+      </Box>
+    );
   }
 
   // Mobile-first layout with thumb zone optimization
@@ -1206,6 +1281,28 @@ const AssessmentQuiz = () => {
           {error}
         </Alert>
       )}
+
+      {/* MILESTONE MESSAGE */}
+      <Slide direction="down" in={!!milestoneMsg} mountOnEnter unmountOnExit>
+        <Box sx={{
+          textAlign: 'center', py: 1.5, px: 2, mb: 1,
+          borderRadius: 2, bgcolor: alpha(meta.color, 0.1),
+          border: `1px solid ${alpha(meta.color, 0.3)}`,
+        }}>
+          <Typography variant="h6" fontWeight="bold" color={meta.color}>
+            {milestoneMsg?.text}
+          </Typography>
+        </Box>
+      </Slide>
+
+      {/* SPEED TOAST */}
+      <Snackbar
+        open={!!speedToast}
+        autoHideDuration={2000}
+        onClose={() => setSpeedToast('')}
+        message={speedToast}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      />
 
       {/* QUESTION SECTION - Takes available space, question centered */}
       <Box
