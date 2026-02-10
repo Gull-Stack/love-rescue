@@ -12,6 +12,30 @@ import {
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import { insightsApi } from '../../services/api';
 
+const InsightText = ({ text }) => {
+  const [expanded, setExpanded] = useState(false);
+  const MAX_CHARS = 120;
+  const isLong = text && text.length > MAX_CHARS;
+  const displayText = isLong && !expanded ? text.slice(0, MAX_CHARS).trim() + '...' : text;
+
+  return (
+    <Box>
+      <Typography variant="body2" sx={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>
+        {displayText}
+      </Typography>
+      {isLong && (
+        <Button
+          size="small"
+          onClick={() => setExpanded(!expanded)}
+          sx={{ mt: 0.5, p: 0, minWidth: 0, textTransform: 'none', fontWeight: 'bold' }}
+        >
+          {expanded ? 'Show less' : 'Read more'}
+        </Button>
+      )}
+    </Box>
+  );
+};
+
 const DailyInsight = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -66,17 +90,7 @@ const DailyInsight = () => {
             <Chip label="Personalized" size="small" color="secondary" />
           )}
         </Box>
-        <Typography variant="body1" sx={{ mb: 2, whiteSpace: 'pre-line' }}>
-          {insight.text}
-        </Typography>
-        <Button
-          variant="contained"
-          color="secondary"
-          size="small"
-          onClick={() => navigate('/daily')}
-        >
-          Reflect on This
-        </Button>
+        <InsightText text={insight.text} />
       </CardContent>
     </Card>
   );
