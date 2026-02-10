@@ -1048,6 +1048,28 @@ const AssessmentQuiz = () => {
         ...prev,
         [questionId]: value,
       }));
+
+      // Auto-advance after short delay (not on last question)
+      if (currentIndex < questions.length - 1) {
+        setTimeout(() => {
+          setCurrentIndex((prev) => {
+            if (prev < questions.length - 1) {
+              const nextIdx = prev + 1;
+              answerTimerRef.current = Date.now();
+              const pct = Math.round((nextIdx / questions.length) * 100);
+              if (pct === 25) setMilestoneMsg({ text: 'Great start! Keep going! 💪' });
+              else if (pct === 50) setMilestoneMsg({ text: 'Halfway there! 🔥' });
+              else if (pct === 75) setMilestoneMsg({ text: 'Almost done! You got this! 🚀' });
+              if ([25, 50, 75].includes(pct)) {
+                hapticMedium();
+                setTimeout(() => setMilestoneMsg(null), 3000);
+              }
+              return nextIdx;
+            }
+            return prev;
+          });
+        }, 400);
+      }
     },
     [questions, currentIndex]
   );
@@ -1425,28 +1447,7 @@ const AssessmentQuiz = () => {
             {isSmallMobile ? '←' : '← Back'}
           </Button>
 
-          {currentIndex < questions.length - 1 ? (
-            <Button
-              variant="contained"
-              onClick={handleNext}
-              disabled={currentResponse === undefined}
-              sx={{
-                borderRadius: 2,
-                minHeight: 44,
-                flex: 1,
-                maxWidth: 200,
-                background: currentResponse !== undefined ? meta.gradient : undefined,
-                fontWeight: 'bold',
-                fontSize: isSmallMobile ? '0.9rem' : '0.875rem',
-                '&:hover': { opacity: 0.9 },
-                '&.Mui-disabled': {
-                  background: 'none',
-                },
-              }}
-            >
-              {isSmallMobile ? 'Next →' : 'Next →'}
-            </Button>
-          ) : (
+          {currentIndex >= questions.length - 1 && (
             <Button
               variant="contained"
               color="success"
