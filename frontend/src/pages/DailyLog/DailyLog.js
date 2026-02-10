@@ -208,8 +208,14 @@ const DailyLog = () => {
     );
   }
 
+  const closenessMarks = [
+    { value: 1, label: '😶' },
+    { value: 5, label: '🤝' },
+    { value: 10, label: '💕' },
+  ];
+
   return (
-    <Box sx={{ pb: isMobile ? '80px' : 0 }}>
+    <Box sx={{ pb: isMobile ? '80px' : 0, maxWidth: 600, mx: 'auto' }}>
       <Typography variant="h4" fontWeight="bold" gutterBottom>
         Daily Log
       </Typography>
@@ -217,16 +223,188 @@ const DailyLog = () => {
         Track your daily interactions and reflect on your relationship.
       </Typography>
 
-      {/* 🔥 STREAK FLAMES */}
+      {/* Save Checkmark Animation */}
+      <SaveCheckmark show={showSaveCheck} onDone={() => { setShowSaveCheck(false); setSuccess('Daily log saved successfully!'); }} />
+
+      {/* 🎉 CELEBRATION TOAST */}
+      <CelebrationToast
+        open={showCelebration}
+        onClose={() => setShowCelebration(false)}
+        type={celebrationType}
+        streakDay={streakMilestone}
+      />
+
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>
+          {success}
+        </Alert>
+      )}
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
+
+      {/* 1. 🔥 STREAK FLAMES */}
       <Box sx={{ mb: 2 }}>
         <StreakFlames streak={streakData.currentStreak} />
       </Box>
 
-      {/* Save Checkmark Animation */}
-      <SaveCheckmark show={showSaveCheck} onDone={() => { setShowSaveCheck(false); setSuccess('Daily log saved successfully!'); }} />
+      {/* 2. QUICK SLIDERS CARD — Mood + Closeness + Interactions */}
+      <Card sx={{ mb: 2 }}>
+        <CardContent>
+          {/* Mood Emoji Slider */}
+          <Typography variant="h6" gutterBottom>
+            How are you feeling?
+          </Typography>
+          <Box sx={{ mb: 3 }}>
+            <MoodEmojiSlider
+              value={formData.mood}
+              onChange={(value) => setFormData({ ...formData, mood: value })}
+            />
+          </Box>
 
-      {/* 🔥 STREAK COUNTER - Gamification */}
-      <Box sx={{ mb: 3 }}>
+          {/* Closeness Slider (FREE — no PremiumGate) */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Emotional Closeness
+            </Typography>
+            <Slider
+              value={formData.closenessScore}
+              onChange={(_, value) => setFormData({ ...formData, closenessScore: value })}
+              min={1}
+              max={10}
+              marks={closenessMarks}
+              valueLabelDisplay="auto"
+              color="secondary"
+              sx={{ '& .MuiSlider-markLabel': { fontSize: '1.2rem' } }}
+            />
+          </Box>
+
+          {/* Compact Interaction Counter */}
+          <Typography variant="subtitle2" gutterBottom>
+            Interactions
+          </Typography>
+          <Box display="flex" alignItems="center" gap={2} sx={{ mb: 1 }}>
+            {/* Positive */}
+            <Box display="flex" alignItems="center" gap={1} sx={{ flex: 1 }}>
+              <Button
+                size="small"
+                variant="outlined"
+                color="success"
+                onClick={() => handleCountChange('positiveCount', -1)}
+                disabled={formData.positiveCount === 0}
+                sx={{ minWidth: 36, minHeight: 36, p: 0 }}
+              >
+                <RemoveIcon fontSize="small" />
+              </Button>
+              <Typography variant="h5" color="success.main" sx={{ minWidth: 32, textAlign: 'center' }}>
+                {formData.positiveCount}
+              </Typography>
+              <Button
+                size="small"
+                variant="contained"
+                color="success"
+                onClick={() => handleCountChange('positiveCount', 1)}
+                sx={{ minWidth: 36, minHeight: 36, p: 0 }}
+              >
+                <AddIcon fontSize="small" />
+              </Button>
+              <Typography variant="caption" color="success.main">+</Typography>
+            </Box>
+
+            {/* Ratio chip inline */}
+            <Chip
+              label={`${ratio}:1`}
+              color={ratioColor}
+              size="small"
+              sx={{ fontWeight: 'bold' }}
+            />
+
+            {/* Negative */}
+            <Box display="flex" alignItems="center" gap={1} sx={{ flex: 1, justifyContent: 'flex-end' }}>
+              <Typography variant="caption" color="error.main">−</Typography>
+              <Button
+                size="small"
+                variant="outlined"
+                color="error"
+                onClick={() => handleCountChange('negativeCount', -1)}
+                disabled={formData.negativeCount === 0}
+                sx={{ minWidth: 36, minHeight: 36, p: 0 }}
+              >
+                <RemoveIcon fontSize="small" />
+              </Button>
+              <Typography variant="h5" color="error.main" sx={{ minWidth: 32, textAlign: 'center' }}>
+                {formData.negativeCount}
+              </Typography>
+              <Button
+                size="small"
+                variant="contained"
+                color="error"
+                onClick={() => handleCountChange('negativeCount', 1)}
+                sx={{ minWidth: 36, minHeight: 36, p: 0 }}
+              >
+                <AddIcon fontSize="small" />
+              </Button>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* 3. EMOTION CHIPS */}
+      <Card sx={{ mb: 2 }}>
+        <CardContent>
+          <EmotionChips selected={selectedEmotions} onChange={setSelectedEmotions} />
+        </CardContent>
+      </Card>
+
+      {/* 4. JOURNAL + PROMPT CARDS (Premium) */}
+      <Box sx={{ mb: 2 }}>
+        <PremiumGate
+          feature="daily_log_journal"
+          title="Daily Journal — Premium"
+          subtitle="Reflect on your relationship with guided journal prompts. Upgrade to unlock."
+        >
+        <Card>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Journal Entry
+            </Typography>
+
+            <Box sx={{ mb: 2 }}>
+              <PromptCards onSelect={(text) => setFormData(prev => ({
+                ...prev,
+                journalEntry: prev.journalEntry ? prev.journalEntry + '\n\n' + text + '\n' : text + '\n',
+              }))} />
+            </Box>
+
+            {prompt && (
+              <Box sx={{ mb: 2, p: 2, bgcolor: 'primary.light', borderRadius: 2 }}>
+                <Typography variant="overline" sx={{ color: 'primary.contrastText' }}>
+                  Today's Prompt
+                </Typography>
+                <Typography variant="body1" sx={{ color: 'primary.contrastText', fontWeight: 500 }}>
+                  {prompt.prompt}
+                </Typography>
+              </Box>
+            )}
+            <TextField
+              multiline
+              minRows={4}
+              maxRows={8}
+              fullWidth
+              placeholder={prompt ? "Respond to today's prompt..." : "Reflect on your day together..."}
+              value={formData.journalEntry}
+              onChange={(e) => setFormData({ ...formData, journalEntry: e.target.value })}
+            />
+          </CardContent>
+        </Card>
+        </PremiumGate>
+      </Box>
+
+      {/* 5. STREAK COUNTER + XP */}
+      <Box sx={{ mb: 2 }}>
         <StreakCounter
           currentStreak={streakData.currentStreak}
           longestStreak={streakData.longestStreak}
@@ -239,233 +417,23 @@ const DailyLog = () => {
         />
       </Box>
 
-      {/* 🎉 CELEBRATION TOAST */}
-      <CelebrationToast
-        open={showCelebration}
-        onClose={() => setShowCelebration(false)}
-        type={celebrationType}
-        streakDay={streakMilestone}
-      />
+      {/* 6. PARTNER ACTIVITY */}
+      <Box sx={{ mb: 2 }}>
+        <PartnerStatusCard />
+      </Box>
+      <Box sx={{ mb: 2 }}>
+        <MatchupScoreCard />
+      </Box>
 
-      {/* 💕 PARTNER ACTIVITY - FOMO System */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={6}>
-          <PartnerStatusCard />
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <MatchupScoreCard />
-        </Grid>
-      </Grid>
-
-      {success && (
-        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>
-          {success}
-        </Alert>
-      )}
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
-          {error}
-        </Alert>
-      )}
-
-      {/* Today's Prompt - displayed above journal entry */}
-
-      {/* Daily Insight & Video */}
-      <Box sx={{ mb: 3 }}>
+      {/* 7. DAILY INSIGHT & VIDEO */}
+      <Box sx={{ mb: 2 }}>
         <DailyInsight />
       </Box>
-      <Box sx={{ mb: 3 }}>
+      <Box sx={{ mb: 2 }}>
         <DailyVideo />
       </Box>
 
-      <Grid container spacing={{ xs: 2, md: 3 }}>
-        {/* Interaction Counter */}
-        <Grid item xs={12} md={6}>
-          <PremiumGate
-            feature="daily_log_interactions"
-            title="Interaction Tracking — Premium"
-            subtitle="Track positive & negative interactions and see your Gottman ratio. Upgrade to unlock."
-          >
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Interaction Counter
-              </Typography>
-
-              {/* Positive Interactions */}
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" color="success.main" gutterBottom>
-                  Positive Interactions
-                </Typography>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <Button
-                    variant="outlined"
-                    color="success"
-                    onClick={() => handleCountChange('positiveCount', -1)}
-                    disabled={formData.positiveCount === 0}
-                    sx={{ minWidth: 48, minHeight: 48, p: 0 }}
-                  >
-                    <RemoveIcon />
-                  </Button>
-                  <Typography variant="h4" sx={{ minWidth: 60, textAlign: 'center' }}>
-                    {formData.positiveCount}
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    color="success"
-                    onClick={() => handleCountChange('positiveCount', 1)}
-                    sx={{ minWidth: 48, minHeight: 48, p: 0 }}
-                  >
-                    <AddIcon />
-                  </Button>
-                </Box>
-              </Box>
-
-              {/* Negative Interactions */}
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" color="error.main" gutterBottom>
-                  Negative Interactions
-                </Typography>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    onClick={() => handleCountChange('negativeCount', -1)}
-                    disabled={formData.negativeCount === 0}
-                    sx={{ minWidth: 48, minHeight: 48, p: 0 }}
-                  >
-                    <RemoveIcon />
-                  </Button>
-                  <Typography variant="h4" sx={{ minWidth: 60, textAlign: 'center' }}>
-                    {formData.negativeCount}
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    color="error"
-                    onClick={() => handleCountChange('negativeCount', 1)}
-                    sx={{ minWidth: 48, minHeight: 48, p: 0 }}
-                  >
-                    <AddIcon />
-                  </Button>
-                </Box>
-              </Box>
-
-              {/* Ratio Display */}
-              <Box textAlign="center" p={2} bgcolor="grey.100" borderRadius={2}>
-                <Typography variant="overline">Your Ratio</Typography>
-                <Typography variant="h3" color={`${ratioColor}.main`}>
-                  {ratio}:1
-                </Typography>
-                <Chip
-                  label={
-                    parseFloat(ratio) >= 5 || ratio === '∞'
-                      ? 'Great!'
-                      : parseFloat(ratio) >= 3
-                      ? 'Good'
-                      : 'Needs Work'
-                  }
-                  color={ratioColor}
-                  size="small"
-                />
-              </Box>
-            </CardContent>
-          </Card>
-          </PremiumGate>
-        </Grid>
-
-        {/* Mood & Closeness */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                How are you feeling?
-              </Typography>
-
-              <Box sx={{ mb: 4 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Mood
-                </Typography>
-                <MoodEmojiSlider
-                  value={formData.mood}
-                  onChange={(value) => setFormData({ ...formData, mood: value })}
-                />
-              </Box>
-
-              {/* Emotion Chips */}
-              <Box sx={{ mb: 3 }}>
-                <EmotionChips selected={selectedEmotions} onChange={setSelectedEmotions} />
-              </Box>
-
-              <PremiumGate
-                feature="daily_log_closeness"
-                title="Closeness Tracking"
-                subtitle="Track emotional closeness over time with Premium."
-                compact
-              >
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>
-                  Emotional Closeness (1-10)
-                </Typography>
-                <Slider
-                  value={formData.closenessScore}
-                  onChange={(_, value) => setFormData({ ...formData, closenessScore: value })}
-                  min={1}
-                  max={10}
-                  marks
-                  valueLabelDisplay="on"
-                  color="secondary"
-                />
-              </Box>
-              </PremiumGate>
-            </CardContent>
-          </Card>
-
-          {/* Journal Entry with Prompt */}
-          <PremiumGate
-            feature="daily_log_journal"
-            title="Daily Journal — Premium"
-            subtitle="Reflect on your relationship with guided journal prompts. Upgrade to unlock."
-          >
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Journal Entry
-              </Typography>
-
-              {/* Swipeable Prompt Cards */}
-              <Box sx={{ mb: 2 }}>
-                <PromptCards onSelect={(text) => setFormData(prev => ({
-                  ...prev,
-                  journalEntry: prev.journalEntry ? prev.journalEntry + '\n\n' + text + '\n' : text + '\n',
-                }))} />
-              </Box>
-
-              {prompt && (
-                <Box sx={{ mb: 2, p: 2, bgcolor: 'primary.light', borderRadius: 2 }}>
-                  <Typography variant="overline" sx={{ color: 'primary.contrastText' }}>
-                    Today's Prompt
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: 'primary.contrastText', fontWeight: 500 }}>
-                    {prompt.prompt}
-                  </Typography>
-                </Box>
-              )}
-              <TextField
-                multiline
-                minRows={4}
-                maxRows={8}
-                fullWidth
-                placeholder={prompt ? "Respond to today's prompt..." : "Reflect on your day together..."}
-                value={formData.journalEntry}
-                onChange={(e) => setFormData({ ...formData, journalEntry: e.target.value })}
-              />
-            </CardContent>
-          </Card>
-          </PremiumGate>
-        </Grid>
-      </Grid>
-
+      {/* 8. SAVE BUTTON (fixed on mobile) */}
       <Box
         sx={{
           mt: 3,
