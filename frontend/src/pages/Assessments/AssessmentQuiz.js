@@ -533,8 +533,8 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
               mb: 2,
             }}
           >
-            <Typography variant="h4" fontWeight="bold" color={meta.color} gutterBottom>
-              {score.style || score.type || score.primaryLabel || score.primary || score.level || score.healthLevel || (Array.isArray(score.topTwoLabels) && score.topTwoLabels[0] ? String(score.topTwoLabels[0]) : null) || ((score.score ?? score.overall ?? score.overallHealth ?? score.overallScore) != null ? `${score.score ?? score.overall ?? score.overallHealth ?? score.overallScore}/100` : '—')}
+            <Typography variant="h4" fontWeight="bold" color={meta.color} gutterBottom sx={{ textTransform: 'capitalize' }}>
+              {String(score.style || score.type || score.primaryLabel || score.primary || score.level || score.healthLevel || (Array.isArray(score.topTwoLabels) && score.topTwoLabels[0] ? String(score.topTwoLabels[0]) : null) || ((score.score ?? score.overall ?? score.overallHealth ?? score.overallScore) != null ? `${score.score ?? score.overall ?? score.overallHealth ?? score.overallScore}/100` : '—')).replace(/_/g, ' ')}
             </Typography>
             {score.description && (
               <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
@@ -548,7 +548,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
             )}
             {score.secondary && (
               <Typography variant="body2" color="text.secondary">
-                Secondary: {score.secondaryLabel || score.secondary}
+                Secondary: {String(score.secondaryLabel || score.secondary || '').replace(/_/g, ' ')}
               </Typography>
             )}
             {Array.isArray(score.topTwoLabels) && score.topTwoLabels.length > 1 && (
@@ -804,6 +804,65 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                       ))}
                     </Box>
                   </Box>
+                )}
+                {/* Primary interpretation (love language, human needs, etc.) */}
+                {interpretation.primary && typeof interpretation.primary === 'object' && (interpretation.primary.description || interpretation.primary.whatItMeans) && (
+                  <Paper elevation={0} sx={{ p: 2, mt: 2, borderRadius: 2, bgcolor: alpha(meta.color, 0.04), borderLeft: `3px solid ${meta.color}` }}>
+                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                      {interpretation.primary.emoji || '❤️'} {interpretation.primary.title || interpretation.primary.name || 'Your Primary Result'}
+                    </Typography>
+                    {interpretation.primary.description && (
+                      <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
+                        {interpretation.primary.description}
+                      </Typography>
+                    )}
+                    {interpretation.primary.whatItMeans && (
+                      <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary', mt: 1 }}>
+                        <strong>What this means:</strong> {interpretation.primary.whatItMeans}
+                      </Typography>
+                    )}
+                    {interpretation.primary.howToExpress && (
+                      <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary', mt: 1 }}>
+                        <strong>How to express it:</strong> {interpretation.primary.howToExpress}
+                      </Typography>
+                    )}
+                    {interpretation.primary.howToReceive && (
+                      <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary', mt: 1 }}>
+                        <strong>How to receive it:</strong> {interpretation.primary.howToReceive}
+                      </Typography>
+                    )}
+                  </Paper>
+                )}
+                {interpretation.secondary && typeof interpretation.secondary === 'object' && (interpretation.secondary.description || interpretation.secondary.whatItMeans) && (
+                  <Paper elevation={0} sx={{ p: 2, mt: 1.5, borderRadius: 2, bgcolor: 'grey.50', borderLeft: '3px solid #9e9e9e' }}>
+                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                      {interpretation.secondary.emoji || '💜'} Secondary: {interpretation.secondary.title || interpretation.secondary.name || ''}
+                    </Typography>
+                    <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
+                      {interpretation.secondary.description}
+                    </Typography>
+                  </Paper>
+                )}
+                {/* Overall insight / creator reframe */}
+                {interpretation.overallInsight && (
+                  <Paper elevation={0} sx={{ p: 2, mt: 2, borderRadius: 2, bgcolor: alpha('#ff9800', 0.04), borderLeft: '3px solid #ff9800' }}>
+                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                      🧠 Key Insight
+                    </Typography>
+                    <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
+                      {interpretation.overallInsight}
+                    </Typography>
+                  </Paper>
+                )}
+                {interpretation.creatorReframe && (
+                  <Paper elevation={0} sx={{ p: 2, mt: 1.5, borderRadius: 2, bgcolor: alpha('#f5576c', 0.04), borderLeft: '3px solid #f5576c' }}>
+                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                      ⚔️ The Creator Mindset
+                    </Typography>
+                    <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary', fontStyle: 'italic' }}>
+                      {interpretation.creatorReframe}
+                    </Typography>
+                  </Paper>
                 )}
               </Box>
             )}
