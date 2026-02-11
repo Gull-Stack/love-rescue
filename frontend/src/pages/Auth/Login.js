@@ -249,15 +249,15 @@ const Login = () => {
           </Divider>
 
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-            {isNative() ? (
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<GoogleIcon />}
-                onClick={async () => {
-                  setLoading(true);
-                  setFormError('');
-                  try {
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<GoogleIcon />}
+              onClick={async () => {
+                setLoading(true);
+                setFormError('');
+                try {
+                  if (isNative()) {
                     const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
                     await GoogleAuth.initialize({
                       clientId: '665328889617-1a8v62hq6j6iu9ju323dgjol7e0b721p.apps.googleusercontent.com',
@@ -271,43 +271,24 @@ const Login = () => {
                     } else {
                       navigate('/dashboard');
                     }
-                  } catch (err) {
-                    if (err.message !== 'The user canceled the sign-in flow.') {
-                      setFormError(err.response?.data?.error || err.message || 'Google sign-in failed');
-                    }
-                  } finally {
-                    setLoading(false);
+                  } else {
+                    // Web: redirect to Google OAuth
+                    const { googleLogout } = await import('@react-oauth/google');
+                    setFormError('Use the Google button below to sign in on web.');
                   }
-                }}
-                disabled={loading}
-                sx={{ py: 1.5, textTransform: 'none', fontSize: '1rem' }}
-              >
-                Sign in with Google
-              </Button>
-            ) : (
-              <GoogleLogin
-                text="signin_with"
-                onSuccess={async (credentialResponse) => {
-                  setLoading(true);
-                  setFormError('');
-                  try {
-                    const data = await googleLogin(credentialResponse.credential, rememberMe);
-                    if (data.isNewUser) {
-                      navigate('/assessments');
-                    } else {
-                      navigate('/dashboard');
-                    }
-                  } catch (err) {
-                    setFormError(err.response?.data?.error || 'Google sign-in failed');
-                  } finally {
-                    setLoading(false);
+                } catch (err) {
+                  if (err.message !== 'The user canceled the sign-in flow.') {
+                    setFormError(err.response?.data?.error || err.message || 'Google sign-in failed');
                   }
-                }}
-                onError={() => {
-                  setFormError('Google sign-in failed');
-                }}
-              />
-            )}
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
+              sx={{ py: 1.5, textTransform: 'none', fontSize: '1rem' }}
+            >
+              Sign in with Google
+            </Button>
           </Box>
 
           {/* Show biometric button if available but no saved email */}
