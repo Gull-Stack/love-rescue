@@ -249,18 +249,15 @@ const Login = () => {
             </Typography>
           </Divider>
 
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<GoogleIcon />}
+          <Box sx={{ mb: 2 }}>
+            <button
+              type="button"
               onClick={async () => {
                 setLoading(true);
                 setFormError('');
                 try {
                   const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
                   if (!isNative()) {
-                    // Re-initialize for web if needed
                     await GoogleAuth.initialize({
                       clientId: '665328889617-mg6vqui0a5bgkjpj7p85o35lc0f7rnft.apps.googleusercontent.com',
                       scopes: ['profile', 'email'],
@@ -284,60 +281,64 @@ const Login = () => {
                 }
               }}
               disabled={loading}
-              sx={{ py: 1.5, textTransform: 'none', fontSize: '1rem' }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                fontSize: '16px',
+                border: '1px solid #ccc',
+                borderRadius: '8px',
+                backgroundColor: '#fff',
+                cursor: 'pointer',
+                marginBottom: '12px',
+              }}
             >
-              Sign in with Google
-            </Button>
-          </Box>
+              🔵 Sign in with Google
+            </button>
 
-          {/* Sign In with Apple (iOS only — required by App Store Guideline 4.8) */}
-          {isNative() && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<AppleIcon />}
-                onClick={async () => {
-                  setLoading(true);
-                  setFormError('');
-                  try {
-                    const { SignInWithApple } = await import('@capacitor-community/apple-sign-in');
-                    const result = await SignInWithApple.authorize({
-                      clientId: 'com.gullstack.loverescue',
-                      redirectURI: 'https://loverescue.app',
-                      scopes: 'email name',
-                    });
-                    const fullName = result.response.givenName
-                      ? { firstName: result.response.givenName, lastName: result.response.familyName }
-                      : null;
-                    const data = await appleLogin(result.response.identityToken, fullName, rememberMe);
-                    if (data.isNewUser) {
-                      navigate('/assessments');
-                    } else {
-                      navigate('/dashboard');
-                    }
-                  } catch (err) {
-                    if (err.message !== 'The user canceled the sign-in flow.' && err.code !== '1001') {
-                      setFormError(err.response?.data?.error || err.message || 'Apple sign-in failed');
-                    }
-                  } finally {
-                    setLoading(false);
+            <button
+              type="button"
+              onClick={async () => {
+                setLoading(true);
+                setFormError('');
+                try {
+                  const { SignInWithApple } = await import('@capacitor-community/apple-sign-in');
+                  const result = await SignInWithApple.authorize({
+                    clientId: 'com.gullstack.loverescue',
+                    redirectURI: 'https://loverescue.app',
+                    scopes: 'email name',
+                  });
+                  const fullName = result.response.givenName
+                    ? { firstName: result.response.givenName, lastName: result.response.familyName }
+                    : null;
+                  const data = await appleLogin(result.response.identityToken, fullName, rememberMe);
+                  if (data.isNewUser) {
+                    navigate('/assessments');
+                  } else {
+                    navigate('/dashboard');
                   }
-                }}
-                disabled={loading}
-                sx={{
-                  py: 1.5,
-                  textTransform: 'none',
-                  fontSize: '1rem',
-                  bgcolor: '#000',
-                  color: '#fff',
-                  '&:hover': { bgcolor: '#333' },
-                }}
-              >
-                Sign in with Apple
-              </Button>
-            </Box>
-          )}
+                } catch (err) {
+                  if (err.message !== 'The user canceled the sign-in flow.' && err.code !== '1001') {
+                    setFormError(err.response?.data?.error || err.message || 'Apple sign-in failed');
+                  }
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '14px',
+                fontSize: '16px',
+                border: 'none',
+                borderRadius: '8px',
+                backgroundColor: '#000',
+                color: '#fff',
+                cursor: 'pointer',
+              }}
+            >
+              🍎 Sign in with Apple
+            </button>
+          </Box>
 
           {/* Show biometric button if available but no saved email */}
           {biometricAvailable && !savedEmail && (
