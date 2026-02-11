@@ -247,7 +247,7 @@ const Layout = () => {
       {/* Bottom Navigation (mobile only) */}
       {isMobile && (
         <Paper
-          sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1100 }}
+          sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1100, pb: 'env(safe-area-inset-bottom)' }}
           elevation={3}
         >
           <BottomNavigation
