@@ -134,10 +134,17 @@ const Layout = () => {
             </IconButton>
           )}
 
-          <FavoriteIcon color="primary" sx={{ mr: 1 }} />
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
-            Love Rescue
-          </Typography>
+          <Box
+            component="a"
+            href="/dashboard"
+            onClick={(e) => { e.preventDefault(); navigate('/dashboard'); }}
+            sx={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'inherit', flexGrow: 1, cursor: 'pointer' }}
+          >
+            <FavoriteIcon color="primary" sx={{ mr: 1 }} />
+            <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+              Love Rescue
+            </Typography>
+          </Box>
 
           {user && <XPBar />}
 
