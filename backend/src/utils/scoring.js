@@ -1321,6 +1321,8 @@ function scoreDesireAliveness(responses) {
 
   const categoryScores = groupScores(responses, questions, 'category', scaleMax, true);
 
+  const sorted = sortByValue(categoryScores);
+
   const securityDesireBalance = categoryScores.security_desire_balance?.percentage || 0;
   const individualIdentity = categoryScores.individual_identity?.percentage || 0;
   const eroticAliveness = categoryScores.erotic_aliveness?.percentage || 0;
@@ -1345,8 +1347,53 @@ function scoreDesireAliveness(responses) {
     relationshipState = 'seeking';
   }
 
+  // Level
+  let level;
+  if (overallAliveness >= 75) level = 'erotically-alive';
+  else if (overallAliveness >= 55) level = 'simmering';
+  else if (overallAliveness >= 35) level = 'cooling';
+  else level = 'flatlined';
+
+  const categoryLabels = {
+    security_desire_balance: 'Security vs. Desire Balance — How much your relationship leans toward comfort versus passion.',
+    individual_identity: 'Individual Identity — How strong your sense of self is outside the relationship.',
+    erotic_aliveness: 'Erotic Aliveness — The vitality and passion in your intimate connection.',
+    turn_on_off: 'Turn On/Off Awareness — Your awareness of what ignites and extinguishes desire.',
+  };
+
+  const categoryInsights = {
+    security_desire_balance: 'Perel: "Love seeks closeness; desire needs distance." Too much security can extinguish the spark. Growth edge: reintroduce mystery and separateness.',
+    individual_identity: 'Perel: "The quality of your sex life is a function of the quality of your sense of self." Growth edge: cultivate passions that are yours alone.',
+    erotic_aliveness: 'Desire doesn\'t just happen — it requires cultivation, novelty, and intentionality. Growth edge: create space for anticipation and play.',
+    turn_on_off: 'Knowing your accelerators and brakes is essential. Growth edge: name what turns you on and off, and communicate both to your partner.',
+  };
+
+  // Growth edges
+  const growthEdges = [];
+  if (eroticAliveness < 50) growthEdges.push('erotic_aliveness');
+  if (individualIdentity < 50) growthEdges.push('individual_identity');
+  if (securityDesireBalance > 65) growthEdges.push('security_desire_balance');
+  if (turnOnOff < 50) growthEdges.push('turn_on_off');
+
+  const subscores = {};
+  for (const [cat, data] of Object.entries(categoryScores)) {
+    subscores[cat] = {
+      ...data,
+      label: categoryLabels[cat],
+      insight: categoryInsights[cat],
+    };
+  }
+
   return {
     overall: overallAliveness,
+    level,
+    levelDescription: level === 'erotically-alive'
+      ? 'You maintain a vibrant sense of desire and individual identity within your relationship. You\'ve found the balance Perel describes — fire and safety coexisting.'
+      : level === 'simmering'
+        ? 'There\'s warmth in your relationship, but the fire could use tending. You have the raw ingredients — now it\'s about creating the conditions for desire to flourish.'
+        : level === 'cooling'
+          ? 'Your relationship may be leaning too heavily into security at the cost of aliveness. Perel warns: "The very ingredients that nurture love — mutuality, reciprocity, protection — can suffocate desire."'
+          : 'Your erotic connection has flatlined. This is recoverable, but it requires intentional work on individual identity and reintroducing novelty, mystery, and separateness.',
     securityDesireBalance,
     individualIdentity,
     eroticAliveness,
@@ -1354,7 +1401,17 @@ function scoreDesireAliveness(responses) {
     flatlineRisk,
     identityMergeRisk,
     relationshipState,
+    subscores,
+    growthEdges,
+    growthEdgeLabels: growthEdges.map(e => categoryLabels[e]),
+    growthEdgeInsights: growthEdges.map(e => categoryInsights[e]),
     categoryDetails: categoryScores,
+    ranking: sorted.map(([cat, data]) => ({
+      category: cat,
+      label: categoryLabels[cat],
+      insight: categoryInsights[cat],
+      ...data,
+    })),
   };
 }
 
@@ -1369,6 +1426,8 @@ function scoreTacticalEmpathy(responses) {
 
   const categoryScores = groupScores(responses, questions, 'category', scaleMax, true);
 
+  const sortedCategories = sortByValue(categoryScores);
+
   const listeningQuality = categoryScores.listening_quality?.percentage || 0;
   const empathyAccuracy = categoryScores.empathy_accuracy?.percentage || 0;
   const conflictCommunication = categoryScores.conflict_communication?.percentage || 0;
@@ -1382,7 +1441,29 @@ function scoreTacticalEmpathy(responses) {
     thatsRightSkills * 0.20
   );
 
-  // Identify weakest area for targeted improvement
+  // Level
+  let level;
+  if (overall >= 80) level = 'master-negotiator';
+  else if (overall >= 65) level = 'skilled-empath';
+  else if (overall >= 50) level = 'developing';
+  else if (overall >= 35) level = 'reactive';
+  else level = 'disconnected';
+
+  const categoryLabels = {
+    listening_quality: 'Listening Quality — How fully you attend to your partner without planning your response.',
+    empathy_accuracy: 'Empathy Accuracy — Your ability to correctly identify and name what your partner is feeling.',
+    conflict_communication: 'Conflict Communication — How you raise concerns and navigate disagreements constructively.',
+    thats_right_skills: '"That\'s Right" Skills — Your ability to make your partner feel so understood they say "That\'s exactly right."',
+  };
+
+  const categoryInsights = {
+    listening_quality: 'Voss: "The goal is to identify what your counterpart actually needs and get them to feel safe enough to talk." Growth edge: mirror their last 3 words before responding.',
+    empathy_accuracy: 'Tactical empathy isn\'t sympathy — it\'s understanding their perspective and demonstrating that understanding. Growth edge: practice labeling emotions with "It seems like..."',
+    conflict_communication: 'Voss: "No" is the start of a negotiation, not the end. Growth edge: use calibrated questions ("How am I supposed to do that?") instead of demands.',
+    thats_right_skills: 'The two sweetest words in any conversation: "That\'s right." Not "You\'re right" (which means "go away") but "That\'s right" (which means "you see me"). Growth edge: summarize until you hear it.',
+  };
+
+  // Identify weakest and strongest areas
   const areas = {
     listening_quality: listeningQuality,
     empathy_accuracy: empathyAccuracy,
@@ -1393,15 +1474,49 @@ function scoreTacticalEmpathy(responses) {
   const weakestArea = sorted[0][0];
   const strongestArea = sorted[sorted.length - 1][0];
 
+  // Growth edges
+  const growthEdges = sorted.filter(([_, pct]) => pct < 50).map(([cat]) => cat);
+
+  const subscores = {};
+  for (const [cat, data] of Object.entries(categoryScores)) {
+    subscores[cat] = {
+      ...data,
+      label: categoryLabels[cat],
+      insight: categoryInsights[cat],
+    };
+  }
+
   return {
     overall,
+    level,
+    levelDescription: level === 'master-negotiator'
+      ? 'You\'re a skilled communicator who makes others feel deeply understood. Voss would call you a natural — you listen, label, and summarize with precision.'
+      : level === 'skilled-empath'
+        ? 'You have strong empathy skills and generally make your partner feel heard. Fine-tuning your weakest area will take your communication from good to extraordinary.'
+        : level === 'developing'
+          ? 'You have the foundation but still default to reactive patterns under stress. Growth here will transform not just your relationship, but every conversation you have.'
+          : level === 'reactive'
+            ? 'You tend to react before you understand. Voss: "Slow. It. Down." Your biggest opportunity is learning to listen before you respond.'
+            : 'Communication is a significant blind spot. The good news: tactical empathy is a learnable skill, and even small improvements yield massive results.',
     listeningQuality,
     empathyAccuracy,
     conflictCommunication,
     thatsRightSkills,
     weakestArea,
+    weakestAreaLabel: categoryLabels[weakestArea],
     strongestArea,
+    strongestAreaLabel: categoryLabels[strongestArea],
+    subscores,
+    growthEdges,
+    growthEdgeLabels: growthEdges.map(e => categoryLabels[e]),
+    growthEdgeInsights: growthEdges.map(e => categoryInsights[e]),
     categoryDetails: categoryScores,
+    ranking: sortedCategories.map(([cat, data]) => ({
+      category: cat,
+      label: categoryLabels[cat],
+      insight: categoryInsights[cat],
+      ...data,
+    })),
   };
 }
 
