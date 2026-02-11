@@ -55,6 +55,7 @@ const Subscribe = () => {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
   const native = isNative();
+  const [checkingOut, setCheckingOut] = useState(false);
 
   if (isPremiumUser(user)) {
     return (
@@ -89,7 +90,13 @@ const Subscribe = () => {
     try {
       const res = await api.post('/upgrade/checkout', { plan });
       if (res.data.url) {
-        window.location.href = res.data.url;
+        if (native) {
+          // Open Stripe checkout in external Safari (avoids Apple IAP issues)
+          const { Browser } = await import('@capacitor/browser');
+          await Browser.open({ url: res.data.url });
+        } else {
+          window.location.href = res.data.url;
+        }
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to start checkout. Try again later.');
@@ -193,67 +200,29 @@ const Subscribe = () => {
             </Alert>
           )}
 
-          {native ? (
-            // Native iOS: can't link to Stripe directly, send email
-            <>
-              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                Get Your Upgrade Link
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                We'll send you a secure checkout link to your email — takes 30 seconds.
-              </Typography>
-              <TextField
-                fullWidth
-                label="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                sx={{ mb: 2 }}
-                size="small"
-              />
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleSendLink}
-                disabled={sending || !email || sent}
-                startIcon={<AutoAwesomeIcon />}
-                sx={{
-                  background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
-                  fontWeight: 'bold',
-                  py: 1.2,
-                  borderRadius: 2,
-                }}
-              >
-                {sending ? 'Sending...' : sent ? 'Link Sent!' : 'Send Upgrade Link'}
-              </Button>
-            </>
-          ) : (
-            // Web: direct Stripe checkout
-            <>
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleStripeCheckout}
-                disabled={sending}
-                startIcon={<AutoAwesomeIcon />}
-                size="large"
-                sx={{
-                  background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
-                  fontWeight: 'bold',
-                  py: 1.5,
-                  borderRadius: 2,
-                  fontSize: '1.1rem',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #4f46e5 0%, #9333ea 50%, #db2777 100%)',
-                  },
-                }}
-              >
-                {sending ? 'Starting Checkout...' : `Subscribe — ${PRICING[plan].price}${PRICING[plan].period}`}
-              </Button>
-              <Typography variant="caption" color="text.disabled" display="block" textAlign="center" mt={1}>
-                Secure checkout powered by Stripe. Cancel anytime.
-              </Typography>
-            </>
-          )}
+          <Button
+            variant="contained"
+            fullWidth
+            onClick={handleStripeCheckout}
+            disabled={sending}
+            startIcon={<AutoAwesomeIcon />}
+            size="large"
+            sx={{
+              background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
+              fontWeight: 'bold',
+              py: 1.5,
+              borderRadius: 2,
+              fontSize: '1.1rem',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #4f46e5 0%, #9333ea 50%, #db2777 100%)',
+              },
+            }}
+          >
+            {sending ? 'Starting Checkout...' : `Subscribe — ${PRICING[plan].price}${PRICING[plan].period}`}
+          </Button>
+          <Typography variant="caption" color="text.disabled" display="block" textAlign="center" mt={1}>
+            Secure checkout powered by Stripe. Cancel anytime.
+          </Typography>
         </CardContent>
       </Card>
 
