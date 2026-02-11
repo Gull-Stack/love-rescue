@@ -93,6 +93,8 @@ app.use(helmet({
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
   : [process.env.FRONTEND_URL || 'http://localhost:3000'];
+// Capacitor iOS/Android apps use these origins
+allowedOrigins.push('capacitor://localhost', 'http://localhost', 'ionic://localhost');
 app.use(cors({
   origin: allowedOrigins,
   credentials: true
