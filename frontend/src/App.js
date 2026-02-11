@@ -14,6 +14,8 @@ const Landing = React.lazy(() => import('./pages/Landing/Landing'));
 const Login = React.lazy(() => import('./pages/Auth/Login'));
 const Signup = React.lazy(() => import('./pages/Auth/Signup'));
 const JoinRelationship = React.lazy(() => import('./pages/Auth/JoinRelationship'));
+const ForgotPassword = React.lazy(() => import('./pages/Auth/ForgotPassword'));
+const ResetPassword = React.lazy(() => import('./pages/Auth/ResetPassword'));
 
 // Main pages (lazy loaded)
 const Dashboard = React.lazy(() => import('./pages/Dashboard/Dashboard'));
@@ -39,6 +41,7 @@ const AdminUserDetail = React.lazy(() => import('./pages/Admin/UserDetail'));
 const AdminAnalytics = React.lazy(() => import('./pages/Admin/Analytics'));
 const AdminPushNotifications = React.lazy(() => import('./pages/Admin/PushNotifications'));
 const AdminSubscriptions = React.lazy(() => import('./pages/Admin/Subscriptions'));
+const CommandCenter = React.lazy(() => import('./pages/Admin/CommandCenter'));
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -118,6 +121,22 @@ function App() {
           }
         />
         <Route
+          path="/forgot-password"
+          element={
+            <PublicRoute>
+              <ForgotPassword />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <PublicRoute>
+              <ResetPassword />
+            </PublicRoute>
+          }
+        />
+        <Route
           path="/join/:code"
           element={<JoinRelationship />}
         />
@@ -154,6 +173,7 @@ function App() {
           <Route path="admin/analytics" element={<AdminAnalytics />} />
           <Route path="admin/push" element={<AdminPushNotifications />} />
           <Route path="admin/subscriptions" element={<AdminSubscriptions />} />
+          <Route path="admin/command-center" element={<CommandCenter />} />
         </Route>
 
         {/* Catch all — send unauthenticated to landing, authenticated to dashboard */}

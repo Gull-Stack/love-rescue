@@ -809,7 +809,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                 {interpretation.primary && typeof interpretation.primary === 'object' && (interpretation.primary.description || interpretation.primary.whatItMeans) && (
                   <Paper elevation={0} sx={{ p: 2, mt: 2, borderRadius: 2, bgcolor: alpha(meta.color, 0.04), borderLeft: `3px solid ${meta.color}` }}>
                     <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                      {interpretation.primary.emoji || '❤️'} {interpretation.primary.title || interpretation.primary.name || 'Your Primary Result'}
+                      {interpretation.primary.emoji || '❤️'} {interpretation.primary.title || (interpretation.primary.name ? interpretation.primary.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Your Primary Result')}
                     </Typography>
                     {interpretation.primary.description && (
                       <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
@@ -836,7 +836,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                 {interpretation.secondary && typeof interpretation.secondary === 'object' && (interpretation.secondary.description || interpretation.secondary.whatItMeans) && (
                   <Paper elevation={0} sx={{ p: 2, mt: 1.5, borderRadius: 2, bgcolor: 'grey.50', borderLeft: '3px solid #9e9e9e' }}>
                     <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                      {interpretation.secondary.emoji || '💜'} Secondary: {interpretation.secondary.title || interpretation.secondary.name || ''}
+                      {interpretation.secondary.emoji || '💜'} Secondary: {interpretation.secondary.title || (interpretation.secondary.name ? interpretation.secondary.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '')}
                     </Typography>
                     <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
                       {interpretation.secondary.description}

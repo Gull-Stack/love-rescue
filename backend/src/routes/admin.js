@@ -863,4 +863,153 @@ router.get('/push/stats', async (req, res) => {
   }
 });
 
+// ─── Command Center ───────────────────────────────────────────────
+
+/**
+ * GET /api/admin/command-center
+ * Returns all users with journey stage data for the command center view
+ */
+router.get('/command-center', async (req, res) => {
+  try {
+    const ASSESSMENT_TYPES = [
+      'attachment', 'personality', 'love_language', 'human_needs',
+      'gottman_checkup', 'emotional_intelligence', 'conflict_style',
+      'differentiation', 'hormonal_health', 'physical_vitality',
+      'wellness_behavior', 'negative_patterns_closeness'
+    ];
+
+    // Fetch all users with their assessments, daily logs, and course progress
+    const users = await req.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        createdAt: true,
+        lastActiveAt: true,
+        subscriptionStatus: true,
+        assessments: {
+          select: { type: true, completedAt: true },
+        },
+        dailyLogs: {
+          select: { date: true },
+          orderBy: { date: 'desc' },
+        },
+        courseProgress: {
+          select: { currentWeek: true },
+        },
+      },
+    });
+
+    const stageCounts = { assess: 0, learn: 0, practice: 0, transform: 0 };
+
+    const transformedUsers = users.map(user => {
+      const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || null;
+
+      // Unique assessment types completed
+      const completedTypes = [...new Set(user.assessments.map(a => a.type))];
+      const assessmentsCompleted = completedTypes.length;
+
+      // Strategy week from course progress
+      const strategyWeek = user.courseProgress?.currentWeek || 0;
+
+      // Daily log streak calculation
+      const totalDailyLogs = user.dailyLogs.length;
+      let dailyLogStreak = 0;
+      let lastLogDate = null;
+
+      if (user.dailyLogs.length > 0) {
+        lastLogDate = user.dailyLogs[0].date;
+        // Calculate current streak from most recent log backwards
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const sortedDates = user.dailyLogs
+          .map(l => {
+            const d = new Date(l.date);
+            d.setHours(0, 0, 0, 0);
+            return d.getTime();
+          })
+          .sort((a, b) => b - a); // desc
+
+        const uniqueDates = [...new Set(sortedDates)];
+        const oneDayMs = 86400000;
+
+        // Start from most recent log date
+        let expected = uniqueDates[0];
+        // Allow if most recent log is today or yesterday
+        const diffFromToday = (today.getTime() - expected) / oneDayMs;
+        if (diffFromToday <= 1) {
+          for (const dt of uniqueDates) {
+            if (Math.abs(dt - expected) < oneDayMs * 0.5) {
+              dailyLogStreak++;
+              expected -= oneDayMs;
+            } else {
+              break;
+            }
+          }
+        }
+      }
+
+      // XP: simple proxy — assessments * 200 + dailyLogs * 50
+      const xpTotal = (assessmentsCompleted * 200) + (totalDailyLogs * 50);
+      const xpLevel = Math.floor(xpTotal / 500) + 1;
+
+      // Stage determination
+      let stage = 'assess';
+      let stageProgress = 0;
+
+      if (strategyWeek >= 5 && dailyLogStreak >= 14 && assessmentsCompleted >= 8) {
+        stage = 'transform';
+        stageProgress = Math.min(100, Math.round(((assessmentsCompleted / 12) * 50) + ((dailyLogStreak / 30) * 50)));
+      } else if (strategyWeek >= 3 && dailyLogStreak >= 7) {
+        stage = 'practice';
+        const weekProgress = Math.min(1, (strategyWeek - 3) / 2);
+        const streakProgress = Math.min(1, (dailyLogStreak - 7) / 7);
+        stageProgress = Math.round(((weekProgress + streakProgress) / 2) * 100);
+      } else if (assessmentsCompleted >= 3) {
+        stage = 'learn';
+        const weekProgress = Math.min(1, strategyWeek / 3);
+        const assessProgress = Math.min(1, assessmentsCompleted / 6);
+        stageProgress = Math.round(((weekProgress + assessProgress) / 2) * 100);
+      } else {
+        stage = 'assess';
+        stageProgress = Math.round((assessmentsCompleted / 3) * 100);
+      }
+
+      const isPremium = ['paid', 'premium'].includes(user.subscriptionStatus);
+
+      stageCounts[stage]++;
+
+      return {
+        id: user.id,
+        name,
+        email: user.email,
+        createdAt: user.createdAt,
+        lastActiveAt: user.lastActiveAt || lastLogDate,
+        stage,
+        stageProgress,
+        assessmentsCompleted,
+        assessmentsList: completedTypes,
+        dailyLogStreak,
+        totalDailyLogs,
+        strategyWeek,
+        xpTotal,
+        xpLevel,
+        lastLogDate,
+        subscriptionStatus: user.subscriptionStatus,
+        isPremium,
+      };
+    });
+
+    res.json({
+      users: transformedUsers,
+      stageCounts,
+      totalUsers: users.length,
+    });
+  } catch (error) {
+    logger.error('Admin command center error', { error: error.message });
+    res.status(500).json({ error: 'Failed to fetch command center data' });
+  }
+});
+
 module.exports = router;

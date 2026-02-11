@@ -17,8 +17,10 @@ import {
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
+import GoogleIcon from '@mui/icons-material/Google';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../contexts/AuthContext';
+import { isNative } from '../../utils/platform';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -247,28 +249,67 @@ const Login = () => {
           </Divider>
 
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-            <GoogleLogin
-              text="signin_with"
-              onSuccess={async (credentialResponse) => {
-                setLoading(true);
-                setFormError('');
-                try {
-                  const data = await googleLogin(credentialResponse.credential, rememberMe);
-                  if (data.isNewUser) {
-                    navigate('/assessments');
-                  } else {
-                    navigate('/dashboard');
+            {isNative() ? (
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<GoogleIcon />}
+                onClick={async () => {
+                  setLoading(true);
+                  setFormError('');
+                  try {
+                    const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+                    await GoogleAuth.initialize({
+                      clientId: '665328889617-1a8v62hq6j6iu9ju323dgjol7e0b721p.apps.googleusercontent.com',
+                      scopes: ['profile', 'email'],
+                      iosClientId: '665328889617-1a8v62hq6j6iu9ju323dgjol7e0b721p.apps.googleusercontent.com',
+                      iosServerClientId: '665328889617-mg6vqui0a5bgkjpj7p85o35lc0f7rnft.apps.googleusercontent.com',
+                    });
+                    const result = await GoogleAuth.signIn();
+                    const idToken = result.authentication.idToken;
+                    const data = await googleLogin(idToken, rememberMe);
+                    if (data.isNewUser) {
+                      navigate('/assessments');
+                    } else {
+                      navigate('/dashboard');
+                    }
+                  } catch (err) {
+                    if (err.message !== 'The user canceled the sign-in flow.') {
+                      setFormError(err.response?.data?.error || err.message || 'Google sign-in failed');
+                    }
+                  } finally {
+                    setLoading(false);
                   }
-                } catch (err) {
-                  setFormError(err.response?.data?.error || 'Google sign-in failed');
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              onError={() => {
-                setFormError('Google sign-in failed');
-              }}
-            />
+                }}
+                disabled={loading}
+                sx={{ py: 1.5, textTransform: 'none', fontSize: '1rem' }}
+              >
+                Sign in with Google
+              </Button>
+            ) : (
+              <GoogleLogin
+                text="signin_with"
+                onSuccess={async (credentialResponse) => {
+                  setLoading(true);
+                  setFormError('');
+                  try {
+                    const data = await googleLogin(credentialResponse.credential, rememberMe);
+                    if (data.isNewUser) {
+                      navigate('/assessments');
+                    } else {
+                      navigate('/dashboard');
+                    }
+                  } catch (err) {
+                    setFormError(err.response?.data?.error || 'Google sign-in failed');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                onError={() => {
+                  setFormError('Google sign-in failed');
+                }}
+              />
+            )}
           </Box>
 
           {/* Show biometric button if available but no saved email */}

@@ -497,6 +497,7 @@ const AdminDashboard = () => {
                   { label: 'Push Notifications', icon: <NotificationsIcon />, path: '/admin/push' },
                   { label: 'Subscriptions', icon: <PaymentIcon />, path: '/admin/subscriptions' },
                   { label: 'Analytics', icon: <AnalyticsIcon />, path: '/admin/analytics' },
+                  { label: 'Command Center', icon: <TrendingUpIcon />, path: '/admin/command-center' },
                 ].map((action) => (
                   <Grid item xs={6} key={action.label}>
                     <Button

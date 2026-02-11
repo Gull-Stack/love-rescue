@@ -853,6 +853,185 @@ function getInterpretation(type, score, options = {}) {
       };
     }
 
+    // ════════════════════════════════════════════════════════
+    // SHAME & VULNERABILITY (Brené Brown)
+    // ════════════════════════════════════════════════════════
+    case 'shame_vulnerability': {
+      const armorLabels = {
+        perfectionism: 'Perfectionism — "If I look perfect, I can avoid shame"',
+        numbing: 'Numbing — Using food, screens, work, or substances to avoid feeling',
+        foreboding_joy: 'Foreboding Joy — Waiting for the other shoe to drop when things are good',
+        blame: 'Blame — Discharging pain onto others before sitting with it',
+        deflection: 'Deflection — Using humor or sarcasm to avoid emotional intimacy',
+        busyness: 'Busyness — Staying too busy to feel uncomfortable feelings',
+        curation: 'Curation — Showing a filtered self instead of the real, messy truth',
+        anger_shield: 'Anger as Shield — Choosing anger because it feels safer than sadness',
+      };
+
+      let overallLevel;
+      if (score.resilienceGap >= 20) overallLevel = 'resilient';
+      else if (score.resilienceGap >= 0) overallLevel = 'balanced';
+      else if (score.resilienceGap >= -20) overallLevel = 'armored';
+      else overallLevel = 'highly_armored';
+
+      const levelDescriptions = {
+        resilient: {
+          title: 'Shame-Resilient',
+          emoji: '🛡️',
+          description: 'You have strong shame resilience. You can recognize shame when it shows up, name it, and move through it without it hijacking your behavior. This doesn\'t mean you don\'t feel shame — it means shame doesn\'t run you.',
+          creatorReframe: 'Your vulnerability is your superpower. Brown\'s research shows that people who can sit with discomfort and show up authentically have the deepest connections. Keep going.',
+        },
+        balanced: {
+          title: 'Developing Resilience',
+          emoji: '🌱',
+          description: 'You\'re in the growth zone — aware of your shame patterns but still building the muscle to move through them consistently. You have moments of real vulnerability and moments where the armor goes up.',
+          creatorReframe: 'You\'re doing the hardest work there is: learning to be seen. Every time you choose vulnerability over armor, you\'re rewiring decades of protection. Be patient with yourself.',
+        },
+        armored: {
+          title: 'Armor Up',
+          emoji: '🔒',
+          description: 'Shame is running more of your relationship than you realize. Your armor patterns are working overtime to protect you from the pain of "not enough." The irony: the armor that protects you from shame also blocks connection.',
+          creatorReframe: 'Your armor isn\'t a flaw — it\'s a survival strategy that worked at some point. But what protected you then is limiting you now. Brown says: "You can choose courage or you can choose comfort. You cannot have both."',
+        },
+        highly_armored: {
+          title: 'Fortress Mode',
+          emoji: '🏰',
+          description: 'You\'re operating behind significant armor. This isn\'t a judgment — your defenses exist for a reason, likely rooted in experiences where vulnerability was punished or unsafe. But in your current relationship, these walls may be preventing the very connection you need.',
+          creatorReframe: 'Consider this a starting point, not a verdict. Brown\'s research shows that shame resilience can be LEARNED. The fact that you took this assessment? That\'s already a courageous act.',
+        },
+      };
+
+      return {
+        ...levelDescriptions[overallLevel],
+        level: overallLevel,
+        shameTriggers: score.shameTriggers,
+        vulnerabilityCapacity: score.vulnerabilityCapacity,
+        primaryArmor: armorLabels[score.primaryArmor] || score.primaryArmor,
+        storyAwareness: score.storyAwareness,
+        resilienceGap: score.resilienceGap,
+        actionSteps: [
+          'Practice "The story I\'m telling myself right now is..." during your next trigger',
+          'Share one vulnerable truth with your partner this week that you\'d normally hide',
+          'When you catch your armor going up, name it: "I\'m armoring up right now with ' + (score.primaryArmor || 'my pattern') + '"',
+          'Read Brené Brown\'s "Daring Greatly" — it will change how you see yourself',
+        ],
+        connectedFrameworks: ['Brené Brown (Shame Resilience)', 'Sue Johnson (Attachment Injuries)', 'Gottman (Defensiveness Antidote)'],
+        dailyPractice: 'Each evening, name one moment where shame showed up today. Don\'t judge it. Just see it. Awareness is the first step.',
+      };
+    }
+
+    // ════════════════════════════════════════════════════════
+    // DESIRE & ALIVENESS (Esther Perel)
+    // ════════════════════════════════════════════════════════
+    case 'desire_aliveness': {
+      const stateDescriptions = {
+        thriving: {
+          title: 'Alive & Desiring',
+          emoji: '🔥',
+          description: 'Your relationship balances security and desire beautifully. You maintain a strong individual identity AND a passionate connection. You haven\'t lost yourself in the "we" — and that\'s exactly why the spark is alive.',
+          creatorReframe: 'Perel says this is the hardest thing to sustain. Don\'t get complacent. Keep choosing novelty, keep investing in yourself, keep seeing your partner with fresh eyes.',
+        },
+        stable: {
+          title: 'Stable Ground',
+          emoji: '🌿',
+          description: 'Your relationship has a solid foundation with room to grow in the desire department. You\'re not in crisis, but you may be sensing that something is missing — a vibrancy, an aliveness that used to be there.',
+          creatorReframe: 'The good news: you have the security to take risks. The question is: will you? Perel: "Committed sex is premeditated sex. It\'s willful. It\'s intentional."',
+        },
+        flatline: {
+          title: 'Safe But Asleep',
+          emoji: '💤',
+          description: 'Your relationship is secure but desire has flatlined. You may feel like roommates — loving, caring, responsible roommates who have lost the spark. Perel calls this the most common crisis in modern love: too much closeness, not enough air.',
+          creatorReframe: '"Fire needs air." Your relationship has plenty of fuel (love, commitment) but the oxygen of desire — novelty, mystery, individual identity — has been squeezed out. This is recoverable. Start by reclaiming yourself.',
+        },
+        seeking: {
+          title: 'Seeking Aliveness',
+          emoji: '🔍',
+          description: 'You\'re actively searching for something — more passion, more identity, more aliveness. This seeking energy is healthy when directed inward ("What parts of ME have I buried?") and dangerous when directed outward ("Maybe someone else can make me feel alive").',
+          creatorReframe: 'Perel: "It isn\'t so much that we\'re looking for another person, as much as we are looking for another self." The aliveness you\'re seeking starts with you.',
+        },
+      };
+
+      const state = score.relationshipState || 'stable';
+      return {
+        ...stateDescriptions[state],
+        state,
+        individualIdentity: score.individualIdentity,
+        eroticAliveness: score.eroticAliveness,
+        securityDesireBalance: score.securityDesireBalance,
+        flatlineRisk: score.flatlineRisk,
+        identityMergeRisk: score.identityMergeRisk,
+        actionSteps: [
+          'Answer Perel\'s key question: "When do I feel most drawn to my partner?" Write it down.',
+          'Do one thing this week that is entirely YOURS — a passion, a friendship, a solo adventure',
+          'Plan one intentional intimate moment — not spontaneous, PREMEDITATED. Perel says that\'s how it works.',
+          'Ask yourself: "I turn myself on when..." and "I turn myself off when..." — the answers are about YOU, not your partner',
+        ],
+        connectedFrameworks: ['Esther Perel (Erotic Intelligence)', 'Gottman (Rituals of Connection)', 'Finlayson-Fife (Differentiation)'],
+        dailyPractice: 'Each day, notice one moment where you feel ALIVE — not just content, but genuinely vibrant. What were you doing? Were you being yourself?',
+      };
+    }
+
+    // ════════════════════════════════════════════════════════
+    // TACTICAL EMPATHY (Chris Voss)
+    // ════════════════════════════════════════════════════════
+    case 'tactical_empathy': {
+      let overallLevel;
+      if (score.overall >= 75) overallLevel = 'master';
+      else if (score.overall >= 55) overallLevel = 'developing';
+      else if (score.overall >= 35) overallLevel = 'beginner';
+      else overallLevel = 'unaware';
+
+      const areaLabels = {
+        listening_quality: 'Listening Quality',
+        empathy_accuracy: 'Empathy Accuracy',
+        conflict_communication: 'Conflict Communication',
+        thats_right_skills: '"That\'s Right" Skills',
+      };
+
+      const levelDescriptions = {
+        master: {
+          title: 'Empathy Master',
+          emoji: '🎯',
+          description: 'You make people feel deeply understood. Your listening, labeling, and conflict skills are strong. Your partner likely feels heard and valued in conversations with you. Voss would say you\'re "weapons-grade empathetic."',
+        },
+        developing: {
+          title: 'Growing Communicator',
+          emoji: '📈',
+          description: 'You have solid communication foundations with clear areas for growth. You\'re better at some aspects of empathy than others — which is normal. Focus on your weakest area for the biggest improvement.',
+        },
+        beginner: {
+          title: 'Communication Foundations',
+          emoji: '🧱',
+          description: 'You\'re building the basics of empathetic communication. You may be more focused on making your point than on understanding your partner\'s. This isn\'t a character flaw — it\'s a skill gap, and skills can be learned.',
+        },
+        unaware: {
+          title: 'Empathy Blind Spot',
+          emoji: '🔇',
+          description: 'Communication is your biggest growth area. Your partner may often feel unheard or misunderstood — not because you don\'t care, but because you haven\'t developed the tools yet. The good news: Voss learned these skills too. Nobody is born an FBI negotiator.',
+        },
+      };
+
+      return {
+        ...levelDescriptions[overallLevel],
+        level: overallLevel,
+        listeningQuality: score.listeningQuality,
+        empathyAccuracy: score.empathyAccuracy,
+        conflictCommunication: score.conflictCommunication,
+        thatsRightSkills: score.thatsRightSkills,
+        weakestArea: areaLabels[score.weakestArea] || score.weakestArea,
+        strongestArea: areaLabels[score.strongestArea] || score.strongestArea,
+        actionSteps: [
+          'Practice labeling: 3 times today, say "It seems like you\'re feeling [emotion]" to your partner',
+          'Practice mirroring: repeat your partner\'s last 3 words as a question. Watch what happens.',
+          'Replace one "Why did you..." with "What made you..." this week',
+          'Your growth area is ' + (areaLabels[score.weakestArea] || 'communication') + ' — focus your practice there',
+        ],
+        creatorReframe: 'Empathy isn\'t a gift you\'re born with — it\'s a skill you build. Voss went from a small-town kid in Iowa to the FBI\'s lead international kidnapping negotiator. If he can learn it, so can you.',
+        connectedFrameworks: ['Chris Voss (Tactical Empathy)', 'Gottman (Repair Attempts)', 'Sue Johnson (Emotional Responsiveness)'],
+        dailyPractice: 'In one conversation today, your only goal is to get the other person to say "That\'s right." Not "you\'re right" — "THAT\'s right." Summarize their world so perfectly they can\'t help but agree.',
+      };
+    }
+
     default:
       return { title: 'Assessment Complete', description: 'Results processed.', creatorReframe: 'You are the creator of your relationship experience.' };
   }
@@ -869,5 +1048,7 @@ module.exports = {
   differentiationInterpretations,
   personalityInterpretations,
   hormonalHealthInterpretations,
-  physicalVitalityInterpretations
+  physicalVitalityInterpretations,
+  // New assessment interpretations are handled via getInterpretation() switch cases
+  // for: shame_vulnerability, desire_aliveness, tactical_empathy
 };
