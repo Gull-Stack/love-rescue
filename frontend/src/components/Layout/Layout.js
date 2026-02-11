@@ -120,7 +120,7 @@ const Layout = () => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       {/* App Bar */}
-      <AppBar position="fixed" color="inherit" elevation={0}>
+      <AppBar position="fixed" color="inherit" elevation={0} sx={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <Toolbar variant={isMobile ? 'dense' : 'regular'}>
           {isMobile && (
             <IconButton
@@ -233,11 +233,11 @@ const Layout = () => {
         sx={{
           flexGrow: 1,
           p: { xs: 1.5, sm: 2, md: 3 },
-          mt: { xs: '48px', md: '64px' },
+          mt: { xs: 'calc(48px + env(safe-area-inset-top))', md: '64px' },
           mb: isMobile ? '56px' : 0,
           ml: isMobile ? 0 : '240px',
           bgcolor: 'background.default',
-          minHeight: { xs: 'calc(100vh - 48px)', md: 'calc(100vh - 64px)' },
+          minHeight: { xs: 'calc(100vh - 48px - env(safe-area-inset-top))', md: 'calc(100vh - 64px)' },
           overflowX: 'hidden', // Prevent horizontal scroll on mobile
         }}
       >

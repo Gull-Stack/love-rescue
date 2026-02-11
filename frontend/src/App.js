@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box, CircularProgress } from '@mui/material';
 import { useAuth } from './contexts/AuthContext';
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
 
 // Layout (static - needed immediately)
 import Layout from './components/Layout/Layout';
@@ -82,6 +84,13 @@ const PublicRoute = ({ children }) => {
 };
 
 function App() {
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      StatusBar.setStyle({ style: Style.Light });
+      StatusBar.setOverlaysWebView({ overlay: false });
+    }
+  }, []);
+
   return (
     <>
       <Disclaimer />
