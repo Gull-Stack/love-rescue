@@ -174,8 +174,8 @@ const Layout = () => {
         open={isMobile ? drawerOpen : true}
         onClose={() => setDrawerOpen(false)}
         ModalProps={{
-          keepMounted: true, // Better mobile performance
-          onBackdropClick: () => setDrawerOpen(false), // Explicit backdrop click handler
+          keepMounted: false,
+          onBackdropClick: () => setDrawerOpen(false),
         }}
         sx={{
           display: isMobile ? 'block' : { xs: 'none', md: 'block' },
