@@ -18,13 +18,14 @@ import {
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import GoogleIcon from '@mui/icons-material/Google';
-import { GoogleLogin } from '@react-oauth/google';
+import AppleIcon from '@mui/icons-material/Apple';
+// GoogleLogin web component removed — using capacitor-google-auth for both platforms
 import { useAuth } from '../../contexts/AuthContext';
 import { isNative } from '../../utils/platform';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, googleLogin, biometricLogin, checkBiometricAvailability, error } = useAuth();
+  const { login, googleLogin, appleLogin, biometricLogin, checkBiometricAvailability, error } = useAuth();
   const [loading, setLoading] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -257,24 +258,22 @@ const Login = () => {
                 setLoading(true);
                 setFormError('');
                 try {
-                  if (isNative()) {
-                    const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+                  const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+                  if (!isNative()) {
+                    // Re-initialize for web if needed
                     await GoogleAuth.initialize({
-                      clientId: '665328889617-1a8v62hq6j6iu9ju323dgjol7e0b721p.apps.googleusercontent.com',
+                      clientId: '665328889617-mg6vqui0a5bgkjpj7p85o35lc0f7rnft.apps.googleusercontent.com',
                       scopes: ['profile', 'email'],
+                      grantOfflineAccess: true,
                     });
-                    const result = await GoogleAuth.signIn();
-                    const idToken = result.authentication.idToken;
-                    const data = await googleLogin(idToken, rememberMe);
-                    if (data.isNewUser) {
-                      navigate('/assessments');
-                    } else {
-                      navigate('/dashboard');
-                    }
+                  }
+                  const result = await GoogleAuth.signIn();
+                  const idToken = result.authentication.idToken;
+                  const data = await googleLogin(idToken, rememberMe);
+                  if (data.isNewUser) {
+                    navigate('/assessments');
                   } else {
-                    // Web: redirect to Google OAuth
-                    const { googleLogout } = await import('@react-oauth/google');
-                    setFormError('Use the Google button below to sign in on web.');
+                    navigate('/dashboard');
                   }
                 } catch (err) {
                   if (err.message !== 'The user canceled the sign-in flow.') {
@@ -290,6 +289,55 @@ const Login = () => {
               Sign in with Google
             </Button>
           </Box>
+
+          {/* Sign In with Apple (iOS only — required by App Store Guideline 4.8) */}
+          {isNative() && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+              <Button
+                fullWidth
+                variant="contained"
+                startIcon={<AppleIcon />}
+                onClick={async () => {
+                  setLoading(true);
+                  setFormError('');
+                  try {
+                    const { SignInWithApple } = await import('@capacitor-community/apple-sign-in');
+                    const result = await SignInWithApple.authorize({
+                      clientId: 'com.gullstack.loverescue',
+                      redirectURI: 'https://loverescue.app',
+                      scopes: 'email name',
+                    });
+                    const fullName = result.response.givenName
+                      ? { firstName: result.response.givenName, lastName: result.response.familyName }
+                      : null;
+                    const data = await appleLogin(result.response.identityToken, fullName, rememberMe);
+                    if (data.isNewUser) {
+                      navigate('/assessments');
+                    } else {
+                      navigate('/dashboard');
+                    }
+                  } catch (err) {
+                    if (err.message !== 'The user canceled the sign-in flow.' && err.code !== '1001') {
+                      setFormError(err.response?.data?.error || err.message || 'Apple sign-in failed');
+                    }
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                sx={{
+                  py: 1.5,
+                  textTransform: 'none',
+                  fontSize: '1rem',
+                  bgcolor: '#000',
+                  color: '#fff',
+                  '&:hover': { bgcolor: '#333' },
+                }}
+              >
+                Sign in with Apple
+              </Button>
+            </Box>
+          )}
 
           {/* Show biometric button if available but no saved email */}
           {biometricAvailable && !savedEmail && (

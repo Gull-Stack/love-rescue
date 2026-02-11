@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api, { setTokens, getToken, clearTokens, biometricApi } from '../services/api';
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
+import { Capacitor } from '@capacitor/core';
 
 // TODO: HIGH-01 — Move JWT storage from localStorage to httpOnly cookies.
 // This requires backend changes (set-cookie headers, cookie-parser middleware,
@@ -48,6 +49,19 @@ export const AuthProvider = ({ children }) => {
       return response.data.biometricEnabled;
     } catch {
       return false;
+    }
+  }, []);
+
+  // Initialize Capacitor Google Auth on native platforms at startup
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      import('@codetrix-studio/capacitor-google-auth').then(({ GoogleAuth }) => {
+        GoogleAuth.initialize({
+          clientId: '665328889617-1a8v62hq6j6iu9ju323dgjol7e0b721p.apps.googleusercontent.com',
+          scopes: ['profile', 'email'],
+        });
+        console.log('[Auth] GoogleAuth initialized for native platform');
+      }).catch(err => console.warn('[Auth] GoogleAuth init failed:', err));
     }
   }, []);
 
@@ -126,6 +140,20 @@ export const AuthProvider = ({ children }) => {
       return response.data;
     } catch (err) {
       setError(err.response?.data?.error || 'Google sign-in failed');
+      throw err;
+    }
+  };
+
+  const appleLogin = async (identityToken, fullName, rememberMe = true) => {
+    try {
+      setError(null);
+      const response = await api.post('/auth/apple', { identityToken, fullName });
+      setTokens(response.data.token, response.data.refreshToken, rememberMe);
+      setUser(response.data.user);
+      await fetchUser();
+      return response.data;
+    } catch (err) {
+      setError(err.response?.data?.error || 'Apple sign-in failed');
       throw err;
     }
   };
@@ -228,6 +256,7 @@ export const AuthProvider = ({ children }) => {
     login,
     signup,
     googleLogin,
+    appleLogin,
     logout,
     invitePartner,
     joinRelationship,

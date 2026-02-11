@@ -1282,4 +1282,87 @@ router.post('/reset-password', async (req, res, next) => {
   }
 });
 
+/**
+ * POST /api/auth/apple
+ * Authenticate with Apple ID token (Sign In with Apple)
+ */
+router.post('/apple', async (req, res, next) => {
+  try {
+    const { identityToken, fullName } = req.body;
+
+    if (!identityToken) {
+      return res.status(400).json({ error: 'Apple identity token is required' });
+    }
+
+    // Decode and verify Apple ID token
+    const jose = require('jose');
+    const JWKS = jose.createRemoteJWKSet(new URL('https://appleid.apple.com/auth/keys'));
+    
+    let payload;
+    try {
+      const { payload: verified } = await jose.jwtVerify(identityToken, JWKS, {
+        issuer: 'https://appleid.apple.com',
+        audience: 'com.gullstack.loverescue',
+      });
+      payload = verified;
+    } catch (err) {
+      console.error('Apple token verification failed:', err.message);
+      return res.status(401).json({ error: 'Invalid Apple token' });
+    }
+
+    const { sub: appleId, email, email_verified } = payload;
+
+    // Look up by appleId first
+    let user = await req.prisma.user.findFirst({
+      where: { googleId: `apple_${appleId}` }
+    });
+
+    if (!user && email) {
+      // Check if email exists
+      user = await req.prisma.user.findUnique({ where: { email } });
+      if (user) {
+        // Link Apple account to existing user
+        await req.prisma.user.update({
+          where: { id: user.id },
+          data: { googleId: `apple_${appleId}` }
+        });
+      }
+    }
+
+    const isNewUser = !user;
+
+    if (!user) {
+      // Create new user with trial
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 7);
+
+      user = await req.prisma.user.create({
+        data: {
+          email: email || `apple_${appleId}@privaterelay.appleid.com`,
+          passwordHash: crypto.randomBytes(32).toString('hex'),
+          googleId: `apple_${appleId}`,
+          firstName: fullName?.firstName || 'User',
+          lastName: fullName?.lastName || '',
+          authProvider: 'apple',
+          emailVerified: !!email_verified,
+          subscriptionStatus: 'trial',
+          trialEndsAt,
+        }
+      });
+    }
+
+    // Generate tokens using same function as other auth methods
+    const { accessToken, refreshToken } = await generateTokenPair(user.id, req.prisma);
+
+    res.json({
+      token: accessToken,
+      refreshToken,
+      user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName },
+      isNewUser,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
