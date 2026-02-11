@@ -6,6 +6,7 @@
 const webpush = require('web-push');
 const { PrismaClient } = require('@prisma/client');
 const logger = require('./logger');
+const apns = require('./apns');
 
 const prisma = new PrismaClient();
 
@@ -41,6 +42,24 @@ async function sendToUser(userId, notification) {
     tag: notification.tag || 'love-rescue',
     data: notification.data || { url: '/dashboard' }
   });
+
+  // Also send via APNs if user has iOS token
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { pushToken: true, pushPlatform: true },
+  });
+
+  if (user?.pushToken && user.pushPlatform === 'ios') {
+    const apnsResult = await apns.sendToDevice(user.pushToken, {
+      title: notification.title,
+      body: notification.body,
+      sound: 'default',
+      data: notification.data,
+    });
+    if (!apnsResult.success) {
+      logger.warn(`APNs send failed for user ${userId}: ${apnsResult.reason}`);
+    }
+  }
 
   const results = { success: 0, failed: 0, errors: [] };
 

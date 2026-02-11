@@ -2,6 +2,7 @@ const express = require('express');
 const webpush = require('web-push');
 const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth');
+const apns = require('../utils/apns');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -59,6 +60,68 @@ router.post('/subscribe', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Push subscribe error:', error);
     res.status(500).json({ error: 'Failed to subscribe' });
+  }
+});
+
+// Register native device token (iOS APNs / Android FCM)
+router.post('/register-device', authenticate, async (req, res) => {
+  try {
+    const { token, platform } = req.body;
+    const userId = req.user.id;
+
+    if (!token || !platform) {
+      return res.status(400).json({ error: 'token and platform required' });
+    }
+
+    if (!['ios', 'android'].includes(platform)) {
+      return res.status(400).json({ error: 'platform must be ios or android' });
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { pushToken: token, pushPlatform: platform },
+    });
+
+    console.log(`Device token registered for user ${userId} (${platform})`);
+    res.json({ success: true, message: `${platform} push token registered` });
+  } catch (error) {
+    console.error('Register device error:', error);
+    res.status(500).json({ error: 'Failed to register device token' });
+  }
+});
+
+// Unregister device token
+router.post('/unregister-device', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { pushToken: null, pushPlatform: null },
+    });
+
+    res.json({ success: true, message: 'Device token removed' });
+  } catch (error) {
+    console.error('Unregister device error:', error);
+    res.status(500).json({ error: 'Failed to unregister device' });
+  }
+});
+
+// Send test APNs notification
+router.post('/test-apns', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await apns.sendToUser(prisma, userId, {
+      title: '💝 Love Rescue',
+      body: 'Test notification — push is working!',
+      sound: 'default',
+      data: { url: '/dashboard' },
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('APNs test error:', error);
+    res.status(500).json({ error: 'Failed to send APNs notification' });
   }
 });
 

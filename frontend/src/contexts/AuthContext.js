@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import api, { setTokens, getToken, clearTokens, biometricApi } from '../services/api';
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import { Capacitor } from '@capacitor/core';
+import { registerNativePush, setupPushListeners } from '../utils/capacitor-init';
 
 // TODO: HIGH-01 — Move JWT storage from localStorage to httpOnly cookies.
 // This requires backend changes (set-cookie headers, cookie-parser middleware,
@@ -88,6 +89,21 @@ export const AuthProvider = ({ children }) => {
       const response = await api.get('/auth/me');
       setUser(response.data.user);
       setRelationship(response.data.relationship);
+
+      // Register for native push notifications after successful auth
+      if (Capacitor.isNativePlatform()) {
+        registerNativePush().then((token) => {
+          if (token) {
+            api.post('/push/register-device', {
+              token,
+              platform: Capacitor.getPlatform(),
+            }).catch((err) => console.warn('Push register failed:', err));
+          }
+        });
+        setupPushListeners((notification) => {
+          console.log('Foreground push:', notification);
+        });
+      }
     } catch (err) {
       clearTokens();
       setUser(null);
