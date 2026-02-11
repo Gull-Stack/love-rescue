@@ -5,9 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Love Rescue',
   webDir: 'build',
   server: {
-    // For development, uncomment and set your dev server URL:
-    // url: 'http://localhost:3000',
-    // cleartext: true,
+    // Point to local backend for testing
+    cleartext: true,
   },
   plugins: {
     SplashScreen: {
