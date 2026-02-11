@@ -15,11 +15,11 @@ const emailRateLimit = new Map();
 
 const PRICING = {
   monthly: {
-    stripe_price_id: process.env.STRIPE_MONTHLY_PRICE_ID,
+    stripe_price_id: process.env.STRIPE_PRICE_ID || process.env.STRIPE_MONTHLY_PRICE_ID,
     label: '$9.99/month',
   },
   yearly: {
-    stripe_price_id: process.env.STRIPE_YEARLY_PRICE_ID,
+    stripe_price_id: process.env.STRIPE_ANNUAL_PRICE_ID || process.env.STRIPE_YEARLY_PRICE_ID,
     label: '$79.99/year (save 33%)',
   },
 };
