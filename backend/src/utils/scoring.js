@@ -1211,6 +1211,8 @@ function scoreShameVulnerability(responses) {
 
   const categoryScores = groupScores(responses, questions, 'category', scaleMax);
 
+  const sorted = sortByValue(categoryScores);
+
   const shameTriggers = categoryScores.shame_triggers?.percentage || 0;
   const armorPatterns = categoryScores.armor_patterns?.percentage || 0;
   const vulnerabilityCapacity = categoryScores.vulnerability_capacity?.percentage || 0;
@@ -1220,6 +1222,30 @@ function scoreShameVulnerability(responses) {
   const shameScore = Math.round((shameTriggers + armorPatterns) / 2);
   const resilienceScore = Math.round((vulnerabilityCapacity + storyAwareness) / 2);
   const resilienceGap = resilienceScore - shameScore; // positive = resilient, negative = armored
+
+  // Overall: resilience capacity (higher = healthier)
+  const overall = resilienceScore;
+
+  // Level based on resilience
+  let level;
+  if (resilienceScore >= 75) level = 'shame-resilient';
+  else if (resilienceScore >= 55) level = 'developing-resilience';
+  else if (resilienceScore >= 35) level = 'shame-prone';
+  else level = 'deeply-armored';
+
+  const categoryLabels = {
+    shame_triggers: 'Shame Triggers — How intensely you experience shame and where it gets activated.',
+    armor_patterns: 'Armor Patterns — The protective strategies you use to avoid vulnerability.',
+    vulnerability_capacity: 'Vulnerability Capacity — Your ability to show up authentically and unguarded.',
+    story_awareness: 'Story Awareness — Your ability to separate what happened from the meaning you assign to it.',
+  };
+
+  const categoryInsights = {
+    shame_triggers: 'Brené Brown distinguishes shame ("I am bad") from guilt ("I did something bad"). Growth edge: notice when you collapse a mistake into an identity.',
+    armor_patterns: 'We all armor up — perfectionism, numbing, foreboding joy, blame. Growth edge: name your go-to armor and practice setting it down in safe moments.',
+    vulnerability_capacity: 'Vulnerability is the birthplace of love, belonging, and joy. Growth edge: practice small acts of vulnerability — saying "I\'m scared" or "I need help."',
+    story_awareness: 'Brown\'s "SFD" (Sh*tty First Draft) — the story you tell yourself in the moment is rarely the whole truth. Growth edge: practice "The story I\'m telling myself is..."',
+  };
 
   // Determine primary armor pattern
   const armorQuestions = questions.filter(q => q.category === 'armor_patterns');
@@ -1235,8 +1261,32 @@ function scoreShameVulnerability(responses) {
   const topArmor = Object.entries(armorDetails).sort((a, b) => b[1] - a[1]);
   const primaryArmor = topArmor.length > 0 ? topArmor[0][0] : 'unknown';
 
+  // Growth edges: high shame/armor areas or low resilience areas
+  const growthEdges = [];
+  if (shameTriggers >= 60) growthEdges.push('shame_triggers');
+  if (armorPatterns >= 60) growthEdges.push('armor_patterns');
+  if (vulnerabilityCapacity < 50) growthEdges.push('vulnerability_capacity');
+  if (storyAwareness < 50) growthEdges.push('story_awareness');
+
+  const subscores = {};
+  for (const [cat, data] of Object.entries(categoryScores)) {
+    subscores[cat] = {
+      ...data,
+      label: categoryLabels[cat],
+      insight: categoryInsights[cat],
+    };
+  }
+
   return {
-    overall: resilienceScore,
+    overall,
+    level,
+    levelDescription: level === 'shame-resilient'
+      ? 'You have strong shame resilience — you can recognize shame, practice vulnerability, and separate your identity from your mistakes. This is the foundation of wholehearted living.'
+      : level === 'developing-resilience'
+        ? 'You\'re building shame resilience. You have moments of vulnerability but still armor up under pressure. Keep practicing — resilience is a skill, not a trait.'
+        : level === 'shame-prone'
+          ? 'Shame has a significant grip on your relationship patterns. Your armor is doing its job — protecting you — but it\'s also keeping love at arm\'s length.'
+          : 'You\'re heavily armored against vulnerability, which means you\'re also armored against connection. This is your biggest growth frontier.',
     shameTriggers,
     armorPatterns,
     vulnerabilityCapacity,
@@ -1246,7 +1296,17 @@ function scoreShameVulnerability(responses) {
     resilienceGap,
     primaryArmor,
     armorDetails,
+    subscores,
+    growthEdges,
+    growthEdgeLabels: growthEdges.map(e => categoryLabels[e]),
+    growthEdgeInsights: growthEdges.map(e => categoryInsights[e]),
     categoryDetails: categoryScores,
+    ranking: sorted.map(([cat, data]) => ({
+      category: cat,
+      label: categoryLabels[cat],
+      insight: categoryInsights[cat],
+      ...data,
+    })),
   };
 }
 
