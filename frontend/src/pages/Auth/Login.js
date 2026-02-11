@@ -260,7 +260,7 @@ const Login = () => {
                   try {
                     const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
                     await GoogleAuth.initialize({
-                      clientId: '665328889617-1a8v62hq6j6iu9ju323dgjol7e0b721p.apps.googleusercontent.com',
+                      clientId: '665328889617-mg6vqui0a5bgkjpj7p85o35lc0f7rnft.apps.googleusercontent.com',
                       scopes: ['profile', 'email'],
                       iosClientId: '665328889617-1a8v62hq6j6iu9ju323dgjol7e0b721p.apps.googleusercontent.com',
                       iosServerClientId: '665328889617-mg6vqui0a5bgkjpj7p85o35lc0f7rnft.apps.googleusercontent.com',
