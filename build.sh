@@ -3,7 +3,7 @@ set -e
 
 echo "=== Building frontend ==="
 cd frontend
-npm install
+npm install --legacy-peer-deps
 CI=false npm run build
 cd ..
 
