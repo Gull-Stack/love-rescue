@@ -259,6 +259,7 @@ export const adminApi = {
   // Push notifications
   sendPush: (data) => api.post('/admin/push/send', data),
   getPushStats: () => api.get('/admin/push/stats'),
+  getCommandCenter: () => api.get('/admin/command-center'),
 };
 
 // Biometric/WebAuthn API

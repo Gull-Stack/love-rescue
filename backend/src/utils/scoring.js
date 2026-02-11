@@ -1201,6 +1201,151 @@ function calculateMatchupScore(user1Assessments, user2Assessments) {
   };
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 11. SHAME & VULNERABILITY SCORING (Brené Brown)
+// ═══════════════════════════════════════════════════════════════
+
+function scoreShameVulnerability(responses) {
+  const questions = questionBank.shame_vulnerability.questions;
+  const scaleMax = 7;
+
+  const categoryScores = groupScores(responses, questions, 'category', scaleMax);
+
+  const shameTriggers = categoryScores.shame_triggers?.percentage || 0;
+  const armorPatterns = categoryScores.armor_patterns?.percentage || 0;
+  const vulnerabilityCapacity = categoryScores.vulnerability_capacity?.percentage || 0;
+  const storyAwareness = categoryScores.story_awareness?.percentage || 0;
+
+  // Higher shame + armor = more armored; higher vulnerability + story = more resilient
+  const shameScore = Math.round((shameTriggers + armorPatterns) / 2);
+  const resilienceScore = Math.round((vulnerabilityCapacity + storyAwareness) / 2);
+  const resilienceGap = resilienceScore - shameScore; // positive = resilient, negative = armored
+
+  // Determine primary armor pattern
+  const armorQuestions = questions.filter(q => q.category === 'armor_patterns');
+  const armorDetails = {};
+  const armorLabels = {
+    sv_9: 'perfectionism', sv_10: 'numbing', sv_11: 'foreboding_joy', sv_12: 'blame',
+    sv_13: 'deflection', sv_14: 'busyness', sv_15: 'curation', sv_16: 'anger_shield'
+  };
+  for (const q of armorQuestions) {
+    const val = Number(responses[q.id]);
+    if (!isNaN(val)) armorDetails[armorLabels[q.id] || q.id] = val;
+  }
+  const topArmor = Object.entries(armorDetails).sort((a, b) => b[1] - a[1]);
+  const primaryArmor = topArmor.length > 0 ? topArmor[0][0] : 'unknown';
+
+  return {
+    overall: resilienceScore,
+    shameTriggers,
+    armorPatterns,
+    vulnerabilityCapacity,
+    storyAwareness,
+    shameScore,
+    resilienceScore,
+    resilienceGap,
+    primaryArmor,
+    armorDetails,
+    categoryDetails: categoryScores,
+  };
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// 12. DESIRE & ALIVENESS SCORING (Esther Perel)
+// ═══════════════════════════════════════════════════════════════
+
+function scoreDesireAliveness(responses) {
+  const questions = questionBank.desire_aliveness.questions;
+  const scaleMax = 7;
+
+  const categoryScores = groupScores(responses, questions, 'category', scaleMax, true);
+
+  const securityDesireBalance = categoryScores.security_desire_balance?.percentage || 0;
+  const individualIdentity = categoryScores.individual_identity?.percentage || 0;
+  const eroticAliveness = categoryScores.erotic_aliveness?.percentage || 0;
+  const turnOnOff = categoryScores.turn_on_off?.percentage || 0;
+
+  // Security-desire balance: HIGH score = relationship leans heavily toward security (risk of flatline)
+  // Individual identity: HIGH = strong self (healthy)
+  // Erotic aliveness: HIGH = alive and passionate (healthy)
+  const overallAliveness = Math.round((individualIdentity + eroticAliveness) / 2);
+  const flatlineRisk = securityDesireBalance > 70 && eroticAliveness < 40;
+  const identityMergeRisk = individualIdentity < 40;
+
+  // Determine relationship state
+  let relationshipState;
+  if (eroticAliveness >= 60 && individualIdentity >= 60) {
+    relationshipState = 'thriving';
+  } else if (eroticAliveness >= 40 && individualIdentity >= 40) {
+    relationshipState = 'stable';
+  } else if (securityDesireBalance > 60 && eroticAliveness < 40) {
+    relationshipState = 'flatline';
+  } else {
+    relationshipState = 'seeking';
+  }
+
+  return {
+    overall: overallAliveness,
+    securityDesireBalance,
+    individualIdentity,
+    eroticAliveness,
+    turnOnOffAwareness: turnOnOff,
+    flatlineRisk,
+    identityMergeRisk,
+    relationshipState,
+    categoryDetails: categoryScores,
+  };
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// 13. TACTICAL EMPATHY SCORING (Chris Voss)
+// ═══════════════════════════════════════════════════════════════
+
+function scoreTacticalEmpathy(responses) {
+  const questions = questionBank.tactical_empathy.questions;
+  const scaleMax = 7;
+
+  const categoryScores = groupScores(responses, questions, 'category', scaleMax, true);
+
+  const listeningQuality = categoryScores.listening_quality?.percentage || 0;
+  const empathyAccuracy = categoryScores.empathy_accuracy?.percentage || 0;
+  const conflictCommunication = categoryScores.conflict_communication?.percentage || 0;
+  const thatsRightSkills = categoryScores.thats_right_skills?.percentage || 0;
+
+  // Weighted overall — empathy accuracy is the most critical skill
+  const overall = Math.round(
+    listeningQuality * 0.20 +
+    empathyAccuracy * 0.35 +
+    conflictCommunication * 0.25 +
+    thatsRightSkills * 0.20
+  );
+
+  // Identify weakest area for targeted improvement
+  const areas = {
+    listening_quality: listeningQuality,
+    empathy_accuracy: empathyAccuracy,
+    conflict_communication: conflictCommunication,
+    thats_right_skills: thatsRightSkills,
+  };
+  const sorted = Object.entries(areas).sort((a, b) => a[1] - b[1]);
+  const weakestArea = sorted[0][0];
+  const strongestArea = sorted[sorted.length - 1][0];
+
+  return {
+    overall,
+    listeningQuality,
+    empathyAccuracy,
+    conflictCommunication,
+    thatsRightSkills,
+    weakestArea,
+    strongestArea,
+    categoryDetails: categoryScores,
+  };
+}
+
+
 /**
  * Calculate positive/negative interaction ratio
  * @param {number} positives - Count of positive interactions
@@ -1243,6 +1388,9 @@ function scoreAssessment(type, responses) {
     physical_vitality: scorePhysicalVitality,
     wellness_behavior: scoreWellnessBehavior,
     negative_patterns_closeness: scoreNegativePatterns,
+    shame_vulnerability: scoreShameVulnerability,
+    desire_aliveness: scoreDesireAliveness,
+    tactical_empathy: scoreTacticalEmpathy,
   };
 
   const scorer = scorers[type];
@@ -1273,6 +1421,11 @@ module.exports = {
   scoreDifferentiation,
   scoreHormonalHealth,
   scorePhysicalVitality,
+
+  // New assessments (Brown, Perel, Voss)
+  scoreShameVulnerability,
+  scoreDesireAliveness,
+  scoreTacticalEmpathy,
 
   // Legacy scorers
   scoreWellnessBehavior,

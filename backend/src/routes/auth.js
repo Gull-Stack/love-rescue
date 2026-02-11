@@ -14,8 +14,10 @@ const { authenticate } = require('../middleware/auth');
 const logger = require('../utils/logger');
 const { sendPasswordResetEmail, sendPartnerInviteEmail } = require('../utils/email');
 
-// Google OAuth Client ID - required from environment
+// Google OAuth Client IDs - web + iOS
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_IOS_CLIENT_ID = process.env.GOOGLE_IOS_CLIENT_ID || '665328889617-1a8v62hq6j6iu9ju323dgjol7e0b721p.apps.googleusercontent.com';
+const GOOGLE_CLIENT_IDS = [GOOGLE_CLIENT_ID, GOOGLE_IOS_CLIENT_ID].filter(Boolean);
 if (!GOOGLE_CLIENT_ID) {
   console.warn('WARNING: GOOGLE_CLIENT_ID not set. Google OAuth login will be unavailable.');
 }
@@ -334,7 +336,7 @@ router.post('/google', async (req, res, next) => {
     try {
       ticket = await googleClient.verifyIdToken({
         idToken: credential,
-        audience: GOOGLE_CLIENT_ID,
+        audience: GOOGLE_CLIENT_IDS,
       });
     } catch (err) {
       return res.status(401).json({ error: 'Invalid Google token' });

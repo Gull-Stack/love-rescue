@@ -69,13 +69,40 @@ router.post('/send', authenticate, async (req, res) => {
     }
 
     if (targetUser.pushPlatform === 'ios') {
-      // TODO: Implement APNs push via @parse/node-apn
-      // Requires: APNs Auth Key (.p8), Key ID, Team ID
-      // See CAPACITOR-SETUP.md for configuration details
-      return res.status(501).json({
-        error: 'iOS native push not yet configured',
-        hint: 'Configure APNs key in environment. See CAPACITOR-SETUP.md',
+      const apn = require('@parse/node-apn');
+      const path = require('path');
+      
+      const apnProvider = new apn.Provider({
+        token: {
+          key: process.env.APNS_KEY_PATH || path.join(__dirname, '../../credentials/AuthKey_V3FGPYWSFB.p8'),
+          keyId: process.env.APNS_KEY_ID || 'V3FGPYWSFB',
+          teamId: process.env.APNS_TEAM_ID || '2762667BPS',
+        },
+        production: process.env.NODE_ENV === 'production',
       });
+
+      const notification = new apn.Notification();
+      notification.alert = { title, body };
+      notification.topic = 'com.gullstack.loverescue';
+      notification.sound = 'default';
+      notification.badge = 1;
+      if (data) notification.payload = data;
+
+      try {
+        const result = await apnProvider.send(notification, targetUser.pushToken);
+        apnProvider.shutdown();
+        
+        if (result.failed.length > 0) {
+          logger.error('APNs push failed:', result.failed);
+          return res.status(500).json({ error: 'APNs delivery failed', details: result.failed });
+        }
+        
+        return res.json({ success: true, sent: result.sent.length });
+      } catch (apnError) {
+        apnProvider.shutdown();
+        logger.error('APNs error:', apnError);
+        return res.status(500).json({ error: 'APNs connection error' });
+      }
     }
 
     if (targetUser.pushPlatform === 'web') {

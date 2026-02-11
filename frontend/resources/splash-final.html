@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 2732px; height: 2732px; overflow: hidden;
+  background: #0f0f0f;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+  font-family: 'DM Sans', -apple-system, sans-serif;
+}
+.logo-wrap {
+  display: flex; flex-direction: column; align-items: center; gap: 60px;
+}
+svg { width: 320px; height: 320px; filter: drop-shadow(0 6px 30px rgba(240,147,251,0.3)); }
+.wordmark {
+  font-size: 96px; font-weight: 700; letter-spacing: -2px;
+  background: linear-gradient(135deg, #f093fb, #f5576c);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.tagline {
+  font-size: 38px; font-weight: 400; color: rgba(255,255,255,0.35);
+  letter-spacing: 6px; text-transform: uppercase; margin-top: -20px;
+}
+</style>
+</head>
+<body>
+<div class="logo-wrap">
+  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#f093fb"/>
+        <stop offset="100%" stop-color="#f5576c"/>
+      </linearGradient>
+      <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#f093fb" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="#f5576c" stop-opacity="0.25"/>
+      </linearGradient>
+    </defs>
+    <path d="M256 60 C140 60 72 148 72 240 C72 360 256 462 256 462 C256 462 440 360 440 240 C440 148 372 60 256 60Z"
+          fill="none" stroke="url(#g2)" stroke-width="18" stroke-linecap="round"/>
+    <path d="M256 400 C256 400 108 295 108 195 C108 138 152 96 205 96 C235 96 256 116 256 116 C256 116 277 96 307 96 C360 96 404 138 404 195 C404 295 256 400 256 400Z"
+          fill="url(#g)"/>
+    <path d="M256 155 C256 155 220 175 200 210 C180 250 200 290 256 340 C312 290 332 250 312 210 C292 175 256 155 256 155Z"
+          fill="rgba(255,255,255,0.15)"/>
+    <line x1="256" y1="140" x2="256" y2="370" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+  </svg>
+  <span class="wordmark">LoveRescue</span>
+  <span class="tagline">Repair · Reconnect · Renew</span>
+</div>
+</body>
+</html>

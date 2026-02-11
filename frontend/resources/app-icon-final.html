@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1024px; height: 1024px; overflow: hidden; background: #000; }
+.icon {
+  width: 1024px; height: 1024px;
+  background: #1a1a1a;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+svg { width: 620px; height: 620px; filter: drop-shadow(0 8px 40px rgba(240,147,251,0.35)); }
+</style>
+</head>
+<body>
+<div class="icon">
+  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#f093fb"/>
+        <stop offset="100%" stop-color="#f5576c"/>
+      </linearGradient>
+      <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#f093fb" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="#f5576c" stop-opacity="0.25"/>
+      </linearGradient>
+    </defs>
+    <!-- Outer shield/embrace arc -->
+    <path d="M256 60 C140 60 72 148 72 240 C72 360 256 462 256 462 C256 462 440 360 440 240 C440 148 372 60 256 60Z"
+          fill="none" stroke="url(#g2)" stroke-width="18" stroke-linecap="round"/>
+    <!-- Heart -->
+    <path d="M256 400 C256 400 108 295 108 195 C108 138 152 96 205 96 C235 96 256 116 256 116 C256 116 277 96 307 96 C360 96 404 138 404 195 C404 295 256 400 256 400Z"
+          fill="url(#g)"/>
+    <!-- Inner shield notch — subtle protective feel -->
+    <path d="M256 155 C256 155 220 175 200 210 C180 250 200 290 256 340 C312 290 332 250 312 210 C292 175 256 155 256 155Z"
+          fill="rgba(255,255,255,0.15)"/>
+    <!-- Two halves embrace line -->
+    <line x1="256" y1="140" x2="256" y2="370" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+  </svg>
+</div>
+</body>
+</html>

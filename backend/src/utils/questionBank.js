@@ -522,6 +522,127 @@ const physicalVitalityQuestions = [
 
 
 // ═══════════════════════════════════════════════════════════════
+// 11. SHAME & VULNERABILITY — 28 questions (Scale 1-7)
+//     Based on Brené Brown's Shame Resilience Theory
+//     Categories: shame_triggers, armor_patterns, vulnerability_capacity, story_awareness
+// ═══════════════════════════════════════════════════════════════
+const shameVulnerabilityQuestions = [
+  // --- SHAME TRIGGERS (8) ---
+  { id: 'sv_1',  text: 'When I make a mistake in my relationship, I feel like I AM the mistake — not that I made one.', category: 'shame_triggers' },
+  { id: 'sv_2',  text: 'I\'m afraid that if my partner really knew everything about me, they wouldn\'t love me.', category: 'shame_triggers' },
+  { id: 'sv_3',  text: 'When my partner criticizes me, I feel it as a judgment of my entire worth as a person.', category: 'shame_triggers' },
+  { id: 'sv_4',  text: 'I often compare my relationship to others\' and feel like mine falls short.', category: 'shame_triggers' },
+  { id: 'sv_5',  text: 'When conflict arises, my first instinct is to prove I\'m not the "bad one."', category: 'shame_triggers' },
+  { id: 'sv_6',  text: 'I feel ashamed of certain needs I have in my relationship (emotional, physical, or otherwise).', category: 'shame_triggers' },
+  { id: 'sv_7',  text: 'I avoid bringing up issues because I\'m afraid my partner will think less of me for having them.', category: 'shame_triggers' },
+  { id: 'sv_8',  text: 'When I\'m hurt, I\'d rather hide it than show my partner I\'m in pain.', category: 'shame_triggers' },
+
+  // --- ARMOR PATTERNS (8) ---
+  { id: 'sv_9',  text: 'I tend to try to be "perfect" in my relationship to avoid criticism or rejection.', category: 'armor_patterns' },
+  { id: 'sv_10', text: 'When emotional pain gets too intense, I numb out — with food, screens, work, or alcohol.', category: 'armor_patterns' },
+  { id: 'sv_11', text: 'When things are going really well, I catch myself waiting for something to go wrong.', category: 'armor_patterns' },
+  { id: 'sv_12', text: 'When something goes wrong, my first reaction is to figure out whose fault it is.', category: 'armor_patterns' },
+  { id: 'sv_13', text: 'I use humor or sarcasm to deflect when conversations get too emotionally intimate.', category: 'armor_patterns' },
+  { id: 'sv_14', text: 'I keep myself busy enough that I rarely have to sit with uncomfortable feelings.', category: 'armor_patterns' },
+  { id: 'sv_15', text: 'I present a curated version of myself to my partner rather than the full, messy truth.', category: 'armor_patterns' },
+  { id: 'sv_16', text: 'I\'d rather be angry than sad — anger feels safer.', category: 'armor_patterns' },
+
+  // --- VULNERABILITY CAPACITY (8) ---
+  { id: 'sv_17', text: 'I can say "I\'m scared" to my partner without feeling weak.', category: 'vulnerability_capacity' },
+  { id: 'sv_18', text: 'I can admit when I\'m wrong without it destroying my sense of self.', category: 'vulnerability_capacity' },
+  { id: 'sv_19', text: 'I can ask for help when I need it without feeling like a burden.', category: 'vulnerability_capacity' },
+  { id: 'sv_20', text: 'I can express "I love you" first without needing to hear it back immediately.', category: 'vulnerability_capacity' },
+  { id: 'sv_21', text: 'I can tell my partner when my feelings are hurt without attacking them.', category: 'vulnerability_capacity' },
+  { id: 'sv_22', text: 'I can sit with uncertainty in my relationship without needing to control the outcome.', category: 'vulnerability_capacity' },
+  { id: 'sv_23', text: 'I feel worthy of love without having to earn it through performance.', category: 'vulnerability_capacity' },
+  { id: 'sv_24', text: 'I can receive compliments and expressions of love without deflecting them.', category: 'vulnerability_capacity' },
+
+  // --- STORY AWARENESS (4) ---
+  { id: 'sv_25', text: 'When I\'m triggered, I can recognize that the story in my head may not be the full truth.', category: 'story_awareness' },
+  { id: 'sv_26', text: 'I can pause between a trigger and my reaction to check what I\'m actually feeling underneath.', category: 'story_awareness' },
+  { id: 'sv_27', text: 'I\'ve practiced saying "The story I\'m telling myself right now is..." during conflict.', category: 'story_awareness' },
+  { id: 'sv_28', text: 'I can distinguish between what happened and the meaning I\'m assigning to it.', category: 'story_awareness' },
+];
+
+// ═══════════════════════════════════════════════════════════════
+// 12. DESIRE & ALIVENESS — 24 questions (Scale 1-7)
+//     Based on Esther Perel's Erotic Intelligence framework
+//     Categories: security_desire_balance, individual_identity, erotic_aliveness, turn_on_off
+// ═══════════════════════════════════════════════════════════════
+const desireAlivenessQuestions = [
+  // --- SECURITY VS DESIRE BALANCE (6) ---
+  { id: 'da_1',  text: 'My relationship feels more like a safe harbor than an adventure.', category: 'security_desire_balance' },
+  { id: 'da_2',  text: 'I sometimes feel like my partner and I have become more like roommates than lovers.', category: 'security_desire_balance' },
+  { id: 'da_3',  text: 'The comfort and predictability of my relationship sometimes feels like a trap.', category: 'security_desire_balance' },
+  { id: 'da_4',  text: 'I miss the excitement and uncertainty of the early days of our relationship.', category: 'security_desire_balance' },
+  { id: 'da_5',  text: 'I feel torn between wanting more closeness and wanting more independence.', category: 'security_desire_balance' },
+  { id: 'da_6',  text: 'I sometimes feel more alive outside my relationship than inside it.', category: 'security_desire_balance' },
+
+  // --- INDIVIDUAL IDENTITY (6) ---
+  { id: 'da_7',  text: 'I have passions and interests that are entirely my own, separate from my partner.', category: 'individual_identity' },
+  { id: 'da_8',  text: 'I sometimes lose track of who I am outside of being a partner or spouse.', category: 'individual_identity', reverseScored: true },
+  { id: 'da_9',  text: 'My partner sees me as a confident, independent person — not just as their partner.', category: 'individual_identity' },
+  { id: 'da_10', text: 'I regularly spend time doing things I love without my partner.', category: 'individual_identity' },
+  { id: 'da_11', text: 'I would describe myself as self-sustaining — I don\'t need my partner to complete me.', category: 'individual_identity' },
+  { id: 'da_12', text: 'When I imagine my life, my individual dreams are as vivid as our shared dreams.', category: 'individual_identity' },
+
+  // --- EROTIC ALIVENESS (6) ---
+  { id: 'da_13', text: 'I feel free to express my desires and fantasies with my partner.', category: 'erotic_aliveness' },
+  { id: 'da_14', text: 'I regularly feel physically desired by my partner — not just loved.', category: 'erotic_aliveness' },
+  { id: 'da_15', text: 'I can access a playful, uninhibited part of myself during intimate moments.', category: 'erotic_aliveness' },
+  { id: 'da_16', text: 'Our physical intimacy feels intentional and exciting, not routine.', category: 'erotic_aliveness' },
+  { id: 'da_17', text: 'I can be fully present during intimate moments without my mind wandering to obligations.', category: 'erotic_aliveness' },
+  { id: 'da_18', text: 'I feel like my partner and I actively cultivate desire rather than waiting for it to happen.', category: 'erotic_aliveness' },
+
+  // --- TURN ON / TURN OFF AWARENESS (6) ---
+  { id: 'da_19', text: 'I feel most drawn to my partner when I see them doing something they\'re passionate about.', category: 'turn_on_off' },
+  { id: 'da_20', text: 'I feel desire fade when I take on too much of a caretaking role.', category: 'turn_on_off' },
+  { id: 'da_21', text: 'I feel most alive and attractive when I\'m investing in myself.', category: 'turn_on_off' },
+  { id: 'da_22', text: 'I feel desire diminish when my relationship lacks novelty or surprise.', category: 'turn_on_off' },
+  { id: 'da_23', text: 'I feel most sexually alive when there\'s a sense of anticipation or longing.', category: 'turn_on_off' },
+  { id: 'da_24', text: 'I notice my desire shutting down when I feel overwhelmed by responsibility.', category: 'turn_on_off' },
+];
+
+// ═══════════════════════════════════════════════════════════════
+// 13. TACTICAL EMPATHY / COMMUNICATION — 24 questions (Scale 1-7)
+//     Based on Chris Voss's "Never Split the Difference"
+//     Categories: listening_quality, empathy_accuracy, conflict_communication, thats_right_skills
+// ═══════════════════════════════════════════════════════════════
+const tacticalEmpathyQuestions = [
+  // --- LISTENING QUALITY (6) ---
+  { id: 'te_1',  text: 'When my partner is talking, I\'m truly listening rather than planning my response.', category: 'listening_quality' },
+  { id: 'te_2',  text: 'I can repeat back what my partner said accurately before I respond with my own perspective.', category: 'listening_quality' },
+  { id: 'te_3',  text: 'I let my partner finish their complete thought before I start speaking.', category: 'listening_quality' },
+  { id: 'te_4',  text: 'I ask questions to understand rather than to make a point.', category: 'listening_quality' },
+  { id: 'te_5',  text: 'When my partner says something I disagree with, I try to understand their perspective first.', category: 'listening_quality' },
+  { id: 'te_6',  text: 'I notice myself mentally arguing with my partner while they\'re still talking.', category: 'listening_quality', reverseScored: true },
+
+  // --- EMPATHY ACCURACY (6) ---
+  { id: 'te_7',  text: 'I can accurately name what my partner is feeling, even when they haven\'t said it directly.', category: 'empathy_accuracy' },
+  { id: 'te_8',  text: 'When my partner is upset, I focus on understanding their emotion before offering solutions.', category: 'empathy_accuracy' },
+  { id: 'te_9',  text: 'I use phrases like "It seems like you\'re feeling..." to check my understanding.', category: 'empathy_accuracy' },
+  { id: 'te_10', text: 'I can see a situation from my partner\'s perspective, even when I disagree.', category: 'empathy_accuracy' },
+  { id: 'te_11', text: 'My partner would say I make them feel deeply understood.', category: 'empathy_accuracy' },
+  { id: 'te_12', text: 'I can distinguish between what my partner is saying and what they\'re actually feeling underneath.', category: 'empathy_accuracy' },
+
+  // --- CONFLICT COMMUNICATION (6) ---
+  { id: 'te_13', text: 'In disagreements, I describe my own feelings rather than blaming my partner.', category: 'conflict_communication' },
+  { id: 'te_14', text: 'I can raise a concern without it sounding like an attack on my partner\'s character.', category: 'conflict_communication' },
+  { id: 'te_15', text: 'When I realize I\'m wrong, I can say so without defensiveness.', category: 'conflict_communication' },
+  { id: 'te_16', text: 'I ask "How" and "What" questions rather than "Why" during conflict.', category: 'conflict_communication' },
+  { id: 'te_17', text: 'After an argument, I initiate repair — I don\'t wait for my partner to make the first move.', category: 'conflict_communication' },
+  { id: 'te_18', text: 'I notice when my partner is flooding (overwhelmed) and suggest a break rather than pushing forward.', category: 'conflict_communication' },
+
+  // --- "THAT'S RIGHT" SKILLS (6) ---
+  { id: 'te_19', text: 'I can summarize my partner\'s position so accurately that they\'d say "That\'s exactly right."', category: 'thats_right_skills' },
+  { id: 'te_20', text: 'I validate my partner\'s experience even when I see things differently.', category: 'thats_right_skills' },
+  { id: 'te_21', text: 'I resist the urge to jump to "you\'re right" just to end a conversation.', category: 'thats_right_skills' },
+  { id: 'te_22', text: 'I can acknowledge my partner\'s pain without feeling like I\'m admitting fault.', category: 'thats_right_skills' },
+  { id: 'te_23', text: 'When my partner feels truly heard by me, I can feel the shift in the conversation.', category: 'thats_right_skills' },
+  { id: 'te_24', text: 'I prioritize making my partner feel understood over making my point.', category: 'thats_right_skills' },
+];
+
+// ═══════════════════════════════════════════════════════════════
 // QUESTION BANK API
 // ═══════════════════════════════════════════════════════════════
 
@@ -584,6 +705,24 @@ const questionBank = {
     questions: physicalVitalityQuestions,
     scale: { min: 1, max: 7, labels: ['Strongly Disagree', 'Disagree', 'Slightly Disagree', 'Neutral', 'Slightly Agree', 'Agree', 'Strongly Agree'] },
     description: 'Physical Vitality Assessment — Evaluates your fitness, nutrition, sleep, energy, and body confidence. Your physical health IS your relationship health.',
+    estimatedMinutes: 7,
+  },
+  shame_vulnerability: {
+    questions: shameVulnerabilityQuestions,
+    scale: { min: 1, max: 7, labels: ['Strongly Disagree', 'Disagree', 'Slightly Disagree', 'Neutral', 'Slightly Agree', 'Agree', 'Strongly Agree'] },
+    description: 'Shame & Vulnerability Assessment — Based on Brené Brown\'s Shame Resilience Theory. Measures your shame triggers, armor patterns, vulnerability capacity, and narrative awareness.',
+    estimatedMinutes: 8,
+  },
+  desire_aliveness: {
+    questions: desireAlivenessQuestions,
+    scale: { min: 1, max: 7, labels: ['Strongly Disagree', 'Disagree', 'Slightly Disagree', 'Neutral', 'Slightly Agree', 'Agree', 'Strongly Agree'] },
+    description: 'Desire & Aliveness Assessment — Based on Esther Perel\'s Erotic Intelligence framework. Explores the balance between security and desire, individual identity, and erotic aliveness.',
+    estimatedMinutes: 7,
+  },
+  tactical_empathy: {
+    questions: tacticalEmpathyQuestions,
+    scale: { min: 1, max: 7, labels: ['Strongly Disagree', 'Disagree', 'Slightly Disagree', 'Neutral', 'Slightly Agree', 'Agree', 'Strongly Agree'] },
+    description: 'Tactical Empathy Assessment — Based on Chris Voss\'s "Never Split the Difference." Measures listening quality, empathy accuracy, conflict communication, and the ability to make your partner feel truly understood.',
     estimatedMinutes: 7,
   },
 };
