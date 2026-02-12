@@ -186,6 +186,32 @@ app.post('/api/cron/daily-reminders', async (req, res) => {
   }
 });
 
+// Temporary: link partners via secret key (no auth required)
+app.post('/api/internal/link-partners', async (req, res) => {
+  if (req.headers['x-internal-key'] !== 'gullstack-link-2026') {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const { email1, email2 } = req.body;
+    const user1 = await prisma.user.findUnique({ where: { email: email1 } });
+    const user2 = await prisma.user.findUnique({ where: { email: email2 } });
+    if (!user1) return res.status(404).json({ error: `Not found: ${email1}` });
+    if (!user2) return res.status(404).json({ error: `Not found: ${email2}` });
+    await prisma.relationship.deleteMany({ where: { user1Id: user1.id, user2Id: null } });
+    await prisma.relationship.deleteMany({ where: { user1Id: user2.id, user2Id: null } });
+    const existing = await prisma.relationship.findFirst({
+      where: { OR: [{ user1Id: user1.id, user2Id: user2.id }, { user1Id: user2.id, user2Id: user1.id }] }
+    });
+    if (existing) return res.json({ message: 'Already linked', id: existing.id });
+    const rel = await prisma.relationship.create({
+      data: { user1Id: user1.id, user2Id: user2.id, status: 'active' }
+    });
+    res.json({ message: 'Linked!', id: rel.id, user1: email1, user2: email2 });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // MED-15: 404 handler BEFORE error handler so unmatched routes get a proper 404
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
@@ -282,38 +308,6 @@ async function bootstrapPlatformAdmins() {
     // Don't fail startup - this is a safety net, not a requirement
   }
 }
-
-// Temporary: link partners via secret key (no auth required)
-app.post('/api/internal/link-partners', async (req, res) => {
-  if (req.headers['x-internal-key'] !== 'gullstack-link-2026') {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  try {
-    const { email1, email2 } = req.body;
-    const user1 = await prisma.user.findUnique({ where: { email: email1 } });
-    const user2 = await prisma.user.findUnique({ where: { email: email2 } });
-    if (!user1) return res.status(404).json({ error: `Not found: ${email1}` });
-    if (!user2) return res.status(404).json({ error: `Not found: ${email2}` });
-
-    // Delete solo relationships
-    await prisma.relationship.deleteMany({ where: { user1Id: user1.id, user2Id: null } });
-    await prisma.relationship.deleteMany({ where: { user1Id: user2.id, user2Id: null } });
-
-    // Check existing
-    const existing = await prisma.relationship.findFirst({
-      where: { OR: [{ user1Id: user1.id, user2Id: user2.id }, { user1Id: user2.id, user2Id: user1.id }] }
-    });
-    if (existing) return res.json({ message: 'Already linked', id: existing.id });
-
-    const rel = await prisma.relationship.create({
-      data: { user1Id: user1.id, user2Id: user2.id, status: 'active' }
-    });
-    res.json({ message: 'Linked!', id: rel.id, user1: email1, user2: email2 });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // Start server
 async function startServer() {
   try {
