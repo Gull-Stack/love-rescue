@@ -30,7 +30,7 @@ root.render(
       {isNativePlatform ? (
         AppTree
       ) : (
-        <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || '665328889617-mg6vqui0a5bgkjpj7p85o35lc0f7rnft.apps.googleusercontent.com'}>
+        <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || '' /* SECURITY FIX: removed hardcoded client ID fallback */}>
           {AppTree}
         </GoogleOAuthProvider>
       )}
