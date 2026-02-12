@@ -141,22 +141,6 @@ const Strategies = () => {
     }
   };
 
-  if (!isPremiumUser(user)) {
-    return (
-      <Box>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
-          Personalized Strategies
-        </Typography>
-        <PremiumGate
-          feature="strategies"
-          title="Personalized Strategies — Premium Feature"
-          subtitle="Get AI-powered relationship strategies tailored to your unique assessment results. Weekly action plans, not generic advice."
-          fullBlock
-        />
-      </Box>
-    );
-  }
-
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
