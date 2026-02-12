@@ -91,7 +91,7 @@ const JoinRelationship = () => {
               </Typography>
               <Button
                 component={RouterLink}
-                to="/signup"
+                to={`/signup?join=${code}`}
                 fullWidth
                 variant="contained"
                 size="large"
@@ -101,7 +101,7 @@ const JoinRelationship = () => {
               </Button>
               <Button
                 component={RouterLink}
-                to="/login"
+                to={`/login?join=${code}`}
                 fullWidth
                 variant="outlined"
                 size="large"
