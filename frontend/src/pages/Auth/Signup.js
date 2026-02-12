@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -19,6 +19,9 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const Signup = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const joinCode = searchParams.get('join');
+  const redirectTo = joinCode ? `/join/${joinCode}` : '/dashboard';
   const { signup, googleLogin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -60,7 +63,7 @@ const Signup = () => {
         email: formData.email,
         password: formData.password,
       });
-      navigate('/assessments');
+      navigate(redirectTo);
     } catch (err) {
       setError(err.response?.data?.error || 'Signup failed');
     } finally {
@@ -236,7 +239,7 @@ const Signup = () => {
                 setError('');
                 try {
                   await googleLogin(credentialResponse.credential);
-                  navigate('/assessments');
+                  navigate(redirectTo);
                 } catch (err) {
                   setError(err.response?.data?.error || 'Google sign-up failed');
                 } finally {

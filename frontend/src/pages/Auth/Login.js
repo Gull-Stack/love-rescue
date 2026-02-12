@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -25,6 +25,9 @@ import { isNative } from '../../utils/platform';
 
 const Login = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const joinCode = searchParams.get('join');
+  const redirectTo = joinCode ? `/join/${joinCode}` : '/dashboard';
   const { login, googleLogin, appleLogin, biometricLogin, checkBiometricAvailability, error } = useAuth();
   const [loading, setLoading] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
@@ -66,7 +69,7 @@ const Login = () => {
       setBiometricLoading(true);
       setFormError('');
       await biometricLogin(email);
-      navigate('/dashboard');
+      navigate(redirectTo);
     } catch (err) {
       // Silent fail on auto-prompt - user can manually try
       console.log('Auto biometric prompt failed:', err.message);
@@ -98,7 +101,7 @@ const Login = () => {
 
     try {
       await login(formData.email, formData.password, rememberMe);
-      navigate('/dashboard');
+      navigate(redirectTo);
     } catch (err) {
       setFormError(err.response?.data?.error || 'Login failed');
     } finally {
@@ -120,7 +123,7 @@ const Login = () => {
 
     try {
       await biometricLogin(email);
-      navigate('/dashboard');
+      navigate(redirectTo);
     } catch (err) {
       if (err.message.includes('not set up')) {
         setSnackMessage('Biometric login not set up for this account. Sign in with password first, then set up biometrics in Settings.');
@@ -270,7 +273,7 @@ const Login = () => {
                   if (data.isNewUser) {
                     navigate('/assessments');
                   } else {
-                    navigate('/dashboard');
+                    navigate(redirectTo);
                   }
                 } catch (err) {
                   if (err.message !== 'The user canceled the sign-in flow.') {
@@ -328,7 +331,7 @@ const Login = () => {
                   if (data.isNewUser) {
                     navigate('/assessments');
                   } else {
-                    navigate('/dashboard');
+                    navigate(redirectTo);
                   }
                 } catch (err) {
                   if (err.message !== 'The user canceled the sign-in flow.' && err.code !== '1001') {
