@@ -1013,3 +1013,57 @@ router.get('/command-center', async (req, res) => {
 });
 
 module.exports = router;
+
+// ─── Link Partners (Admin) ────────────────────────────────────────
+/**
+ * POST /api/admin/link-partners
+ * Manually link two users as partners
+ * Body: { email1, email2 }
+ */
+router.post('/link-partners', async (req, res) => {
+  try {
+    const { email1, email2 } = req.body;
+    if (!email1 || !email2) return res.status(400).json({ error: 'email1 and email2 required' });
+
+    const user1 = await req.prisma.user.findUnique({ where: { email: email1 } });
+    const user2 = await req.prisma.user.findUnique({ where: { email: email2 } });
+    if (!user1) return res.status(404).json({ error: `User not found: ${email1}` });
+    if (!user2) return res.status(404).json({ error: `User not found: ${email2}` });
+
+    // Delete any solo relationships for both users
+    await req.prisma.relationship.deleteMany({
+      where: { user1Id: user1.id, user2Id: null }
+    });
+    await req.prisma.relationship.deleteMany({
+      where: { user1Id: user2.id, user2Id: null }
+    });
+
+    // Check if they already share a relationship
+    const existing = await req.prisma.relationship.findFirst({
+      where: {
+        OR: [
+          { user1Id: user1.id, user2Id: user2.id },
+          { user1Id: user2.id, user2Id: user1.id },
+        ]
+      }
+    });
+
+    if (existing) {
+      return res.json({ message: 'Already linked', relationshipId: existing.id });
+    }
+
+    // Create linked relationship
+    const relationship = await req.prisma.relationship.create({
+      data: {
+        user1Id: user1.id,
+        user2Id: user2.id,
+        status: 'active',
+      }
+    });
+
+    res.json({ message: 'Partners linked', relationshipId: relationship.id, user1: email1, user2: email2 });
+  } catch (error) {
+    console.error('Link partners error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
