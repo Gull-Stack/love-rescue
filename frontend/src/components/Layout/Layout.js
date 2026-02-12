@@ -182,20 +182,16 @@ const Layout = () => {
         onClose={() => setDrawerOpen(false)}
         ModalProps={{
           keepMounted: false,
-          onBackdropClick: () => setDrawerOpen(false),
         }}
         sx={{
           display: isMobile ? 'block' : { xs: 'none', md: 'block' },
           '& .MuiDrawer-paper': {
             width: 240,
             boxSizing: 'border-box',
-            mt: { xs: '48px', md: '64px' },
-            height: { xs: 'calc(100% - 48px)', md: 'calc(100% - 64px)' },
+            mt: { xs: 'calc(48px + env(safe-area-inset-top))', md: '64px' },
+            height: { xs: 'calc(100% - 48px - env(safe-area-inset-top))', md: 'calc(100% - 64px)' },
             borderRight: '1px solid',
             borderColor: 'divider',
-          },
-          '& .MuiBackdrop-root': {
-            mt: { xs: '48px', md: '64px' }, // Position backdrop below AppBar
           },
         }}
       >
