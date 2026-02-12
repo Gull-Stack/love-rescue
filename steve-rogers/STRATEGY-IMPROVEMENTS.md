@@ -416,3 +416,48 @@ Track subjective improvement alongside activity completion to show users their R
 
 *Each improvement includes code-level suggestions ready for implementation.*
 *Version 1.0 — First Session — 2026-02-10*
+
+---
+
+## Improvement 9: Standalone Assessment Quiz Funnel (Web) — Added 2026-02-12
+*Source: Ad spy report — every top competitor uses quiz-to-app funnels but none have our assessment depth*
+
+### The Problem
+LoveRescue has 10+ assessments (more than Paired, Lasting, Coral, Flamme, or any competitor) — but they're ALL locked behind app download. Zero top-of-funnel web presence.
+
+### What Competitors Do
+- **Paired:** Sunday quiz → in-app engagement loop
+- **Lasting:** Onboarding assessment → "94% report new strengths" proof point → subscription
+- **SYMBIS:** Full pre-marriage assessment → church facilitator network
+- **Standalone sites** (myattachmentstylequiz.com): SEO-optimized quizzes capturing organic traffic with zero app
+
+### The Fix
+Build `loverescue.app/quiz` — a standalone web-based Attachment Style Quiz that:
+
+1. **5-7 questions** (subset of full in-app assessment, based on Amir Levine's "Attached")
+2. **No app download required** — runs in mobile browser
+3. **Email capture gate** before showing results
+4. **Results page shows:**
+   - Attachment style (Secure/Anxious/Avoidant/Disorganized)
+   - 2-sentence explanation
+   - "You scored X/100 on attachment security"
+   - Teaser: "Your full relationship profile covers 11 more dimensions"
+   - CTA: "Download LoveRescue to unlock your complete profile"
+5. **Meta Pixel + retargeting:** Quiz completers become warm audience for paid ads
+6. **SEO play:** Target "attachment style quiz" (high-volume keyword) for organic traffic
+7. **Shareability:** "I got Anxious-Preoccupied — what are you?" social share button on results
+
+### Code-Level Suggestions
+- New route: `/quiz` in React frontend (or standalone Next.js page for SEO)
+- Reuse existing assessment logic from `/assessments` but simplified
+- New API endpoint: `POST /api/quiz/submit` (email + answers → store lead)
+- Prisma model: `QuizLead { email, attachmentStyle, score, createdAt, convertedToUser }`
+- Email drip: Day 1 (results), Day 3 ("Did you know your love language affects..."), Day 7 ("Your partner's attachment style matters too")
+
+### Why This Wins
+- **Lowest friction entry point** in the entire relationship app market
+- **Data moat:** Every quiz-taker = lead with known attachment style for targeting
+- **Content engine:** Quiz results fuel social proof ("47% of our users are Anxious-Preoccupied")
+- **SEO + Paid synergy:** Organic quiz traffic + paid retargeting = compounding acquisition
+
+### Priority: 🔴 CRITICAL — This should be built BEFORE spending any paid ad budget

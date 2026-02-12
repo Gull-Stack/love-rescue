@@ -30,7 +30,7 @@ root.render(
       {isNativePlatform ? (
         AppTree
       ) : (
-        <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || '' /* SECURITY FIX: removed hardcoded client ID fallback */}>
+        <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || (() => { console.error('REACT_APP_GOOGLE_CLIENT_ID is not set — Google Sign-In will not work'); return ''; })() }>
           {AppTree}
         </GoogleOAuthProvider>
       )}

@@ -1,5 +1,5 @@
 # AD-INTEL.md — Cumulative Ad Intelligence for LoveRescue
-*Last updated: 2026-02-11*
+*Last updated: 2026-02-12*
 
 ## Competitive Landscape
 
@@ -94,9 +94,27 @@
 
 ---
 
+## Valentine's Window Strategy (Added 2026-02-12)
+- **Feb 12-15:** CPMs spike 20-40%. Run organic content only (social posts).
+- **Feb 16-28:** GOLDEN WINDOW. CPMs drop, relationship intent stays high (post-V-Day reflection). Launch paid ads here.
+- **Post-V-Day hooks:** "Flowers die in a week. Your communication patterns last forever." / "Valentine's Day is over. The real work starts now."
+
+## Quiz Funnel Blueprint (Added 2026-02-12)
+LoveRescue has 10+ assessments — MORE than any competitor. But they're trapped inside the app.
+**The Play:**
+1. Standalone web quiz at loverescue.app/quiz (Attachment Style, 5-7 questions)
+2. Email gate before results
+3. Results page → "Unlock full relationship profile" → app download
+4. Retarget quiz completers with "Your score is waiting" ads
+**Why it wins:** Paired has 1 weekly quiz. Lasting has 1 onboarding assessment. We have 12. Nobody else can run this play at our depth.
+
+## Coral Rebrand Alert (2026-02-12)
+Coral rebranded from "Intimacy for Couples" → "Couples & Relationship" — expanding into our TAM. Their Apple awards (App of the Day, Valentine's Essentials) give them visibility. Their "make connection a daily habit" micro-habit framing is effective.
+
 ## Report Log
 | Date | Key Findings |
 |------|-------------|
+| 2026-02-12 | Coral rebrand expanding TAM. Post-V-Day golden window (Feb 16-28) identified. Quiz funnel blueprint created. Lasting at $30/mo proves premium pricing works. Paired rebrand push active. Meta Andromeda = creative velocity > audience targeting. |
 | 2026-02-11 | Initial report. LoveFix identified as new competitor. UGC testimonials dead — skit-style Reels dominate. Assessment quiz funnels = high-intent CTA. Flamme's "gym for relationships" framing worth adopting. |
 
 ---

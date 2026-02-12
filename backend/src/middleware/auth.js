@@ -151,8 +151,12 @@ const requireRole = (...roles) => {
  * Platform admin middleware
  * Checks if user is a platform admin by isPlatformAdmin flag or email allowlist
  */
-// SECURITY FIX: No hardcoded admin emails — must be configured via environment variable
-const PLATFORM_ADMIN_EMAILS = (process.env.PLATFORM_ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
+// SECURITY FIX: No hardcoded admin emails — must be configured via PLATFORM_ADMIN_EMAILS env var
+// If empty, admin access is restricted to users with isPlatformAdmin flag in the database only
+const PLATFORM_ADMIN_EMAILS = (process.env.PLATFORM_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+if (PLATFORM_ADMIN_EMAILS.length === 0) {
+  logger.warn('PLATFORM_ADMIN_EMAILS env var is empty — admin access limited to isPlatformAdmin flag only');
+}
 
 const requirePlatformAdmin = (req, res, next) => {
   if (!req.user) {
