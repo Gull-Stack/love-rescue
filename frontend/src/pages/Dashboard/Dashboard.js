@@ -349,13 +349,7 @@ const Dashboard = () => {
             {/* Daily Video */}
             <DailyVideo />
 
-            {/* Strategy Card - Simplified */}
-            <PremiumGate
-              feature="strategies"
-              title="Strategy Plan — Premium"
-              subtitle="Get a personalized 6-week roadmap for your relationship."
-              compact
-            >
+            {/* Strategy Card */}
             {data.strategy ? (
               <Card 
                 onClick={() => navigate('/strategies')}
@@ -423,7 +417,6 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             )}
-            </PremiumGate>
 
             {/* Meetings Card - Simplified */}
             <Card 
