@@ -285,7 +285,7 @@ async function bootstrapPlatformAdmins() {
         await prisma.user.create({
           data: {
             email,
-            password: tempPassword,
+            passwordHash: tempPassword, // SECURITY FIX: matches Prisma schema field name
             firstName,
             lastName: 'Admin',
             isPlatformAdmin: true,
