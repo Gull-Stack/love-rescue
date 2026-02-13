@@ -5,7 +5,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { useAuth } from '../../contexts/AuthContext';
 import { isPremiumUser } from '../../utils/featureGating';
-import { isNative } from '../../utils/platform';
+import { useAppleIAP } from '../../utils/platform';
 
 /**
  * PremiumGate — wraps content that requires a premium subscription.
@@ -36,12 +36,7 @@ const PremiumGate = ({
   }
 
   const handleUpgrade = () => {
-    if (isNative()) {
-      // On native iOS, we can't link to web checkout — prompt email
-      navigate('/subscribe');
-    } else {
-      navigate('/subscribe');
-    }
+    navigate('/subscribe');
   };
 
   // Full block: don't render children at all
@@ -93,7 +88,7 @@ const PremiumGate = ({
 };
 
 const GateOverlay = ({ title, subtitle, compact, onUpgrade }) => {
-  const native = isNative();
+  const appleIAP = useAppleIAP();
 
   return (
     <Box
@@ -165,14 +160,8 @@ const GateOverlay = ({ title, subtitle, compact, onUpgrade }) => {
           },
         }}
       >
-        {native ? 'Learn More' : 'Unlock Premium'}
+        {appleIAP ? 'Subscribe Now' : 'Unlock Premium'}
       </Button>
-
-      {native && (
-        <Typography variant="caption" color="text.disabled" sx={{ mt: 1 }}>
-          Check your email for an exclusive upgrade link
-        </Typography>
-      )}
     </Box>
   );
 };

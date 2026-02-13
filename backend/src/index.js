@@ -60,6 +60,7 @@ const courseRoutes = require('./routes/course');
 const notificationsRoutes = require('./routes/notifications');
 const subscriptionsRoutes = require('./routes/subscriptions');
 const upgradeRoutes = require('./routes/upgrade');
+const iapRoutes = require('./routes/iap');
 const integrationRoutes = require('./routes/integration');
 
 const { auditLogger } = require('./middleware/auditLogger');
@@ -169,6 +170,7 @@ app.use('/api/course', courseRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
 app.use('/api/upgrade', upgradeRoutes);
+app.use('/api/iap', iapRoutes);
 app.use('/api/integration', integrationRoutes);
 
 // Cron endpoint for daily reminders (called by external scheduler)
