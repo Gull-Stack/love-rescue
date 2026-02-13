@@ -1300,9 +1300,8 @@ const AssessmentQuiz = () => {
       maxWidth="md" 
       mx="auto"
       sx={{
-        // On mobile, use full viewport height layout
+        // On mobile, flex column but no forced height — content flows naturally
         ...(isSmallMobile && {
-          minHeight: 'calc(100vh - 120px)',
           display: 'flex',
           flexDirection: 'column',
         }),
@@ -1404,14 +1403,13 @@ const AssessmentQuiz = () => {
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       />
 
-      {/* QUESTION SECTION - Takes available space, question centered */}
+      {/* QUESTION SECTION - Compact, no wasted space */}
       <Box
         sx={{
-          flex: isSmallMobile ? 1 : 'none',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: isSmallMobile ? 'center' : 'flex-start',
-          py: isSmallMobile ? 2 : 3,
+          justifyContent: 'flex-start',
+          py: isSmallMobile ? 1.5 : 3,
         }}
       >
         <Fade in key={currentIndex}>

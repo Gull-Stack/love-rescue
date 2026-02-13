@@ -886,14 +886,21 @@ const Assessments = () => {
     setExpandedResults((prev) => ({ ...prev, [type]: !prev[type] }));
   };
 
-  // Group assessments by category
+  // Group assessments by category — untaken float to top
   const groupedAssessments = useMemo(() => {
     const groups = {};
     categories.forEach((cat) => {
-      groups[cat.name] = assessmentTypes.filter((a) => a.category === cat.name);
+      const catAssessments = assessmentTypes.filter((a) => a.category === cat.name);
+      // Sort: untaken first, then completed
+      catAssessments.sort((a, b) => {
+        const aDone = completedTypes.has(a.type) ? 1 : 0;
+        const bDone = completedTypes.has(b.type) ? 1 : 0;
+        return aDone - bDone;
+      });
+      groups[cat.name] = catAssessments;
     });
     return groups;
-  }, []);
+  }, [completedTypes]);
 
   // Overall progress
   const totalAssessments = assessmentTypes.length;
@@ -1013,8 +1020,12 @@ const Assessments = () => {
         />
       </Paper>
 
-      {/* Category Sections */}
-      {categories.map((category) => (
+      {/* Category Sections — categories with untaken assessments first */}
+      {[...categories].sort((a, b) => {
+        const aAllDone = groupedAssessments[a.name]?.every(x => completedTypes.has(x.type)) ? 1 : 0;
+        const bAllDone = groupedAssessments[b.name]?.every(x => completedTypes.has(x.type)) ? 1 : 0;
+        return aAllDone - bAllDone;
+      }).map((category) => (
         <CategorySection
           key={category.name}
           category={category}

@@ -36,6 +36,14 @@ const Subscribe = React.lazy(() => import('./pages/Subscribe/Subscribe'));
 const CourseJourney = React.lazy(() => import('./pages/Course/Journey'));
 const CourseWeekDetail = React.lazy(() => import('./pages/Course/WeekDetail'));
 
+// Therapist pages (lazy loaded)
+const TherapistDashboard = React.lazy(() => import('./pages/Therapist/TherapistDashboard'));
+const ClientProgress = React.lazy(() => import('./pages/Therapist/ClientProgress'));
+const SessionPrep = React.lazy(() => import('./pages/Therapist/SessionPrep'));
+const CoupleView = React.lazy(() => import('./pages/Therapist/CoupleView'));
+const AlertsPage = React.lazy(() => import('./pages/Therapist/AlertsPage'));
+const TreatmentPlanner = React.lazy(() => import('./pages/Therapist/TreatmentPlanner'));
+
 // Admin pages (lazy loaded)
 const AdminDashboard = React.lazy(() => import('./pages/Admin'));
 const AdminUsers = React.lazy(() => import('./pages/Admin/Users'));
@@ -77,6 +85,25 @@ const PublicRoute = ({ children }) => {
   }
 
   if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
+
+// Therapist Route wrapper
+const TherapistRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!user || user.role !== 'therapist') {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -175,6 +202,13 @@ function App() {
           <Route path="course" element={<CourseJourney />} />
           <Route path="course/week" element={<CourseWeekDetail />} />
           <Route path="course/week/:weekNumber" element={<CourseWeekDetail />} />
+          {/* Therapist routes */}
+          <Route path="therapist" element={<TherapistRoute><TherapistDashboard /></TherapistRoute>} />
+          <Route path="therapist/clients/:id" element={<TherapistRoute><ClientProgress /></TherapistRoute>} />
+          <Route path="therapist/clients/:id/session-prep" element={<TherapistRoute><SessionPrep /></TherapistRoute>} />
+          <Route path="therapist/clients/:id/treatment-plan" element={<TherapistRoute><TreatmentPlanner /></TherapistRoute>} />
+          <Route path="therapist/couples/:id" element={<TherapistRoute><CoupleView /></TherapistRoute>} />
+          <Route path="therapist/alerts" element={<TherapistRoute><AlertsPage /></TherapistRoute>} />
           {/* Admin routes - protected by backend + frontend checks */}
           <Route path="admin" element={<AdminDashboard />} />
           <Route path="admin/users" element={<AdminUsers />} />

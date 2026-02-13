@@ -386,6 +386,56 @@ const EXPERT_TECHNIQUES = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// THERAPIST ALERT INTEGRATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Lazy-loaded reference to therapist alert system.
+ * Avoids circular dependency — loaded on first use.
+ * @private
+ */
+let _therapistAlerts = null;
+
+/**
+ * Gets the therapist alerts module (lazy-loaded).
+ * @private
+ * @returns {Object|null}
+ */
+function _getTherapistAlerts() {
+  if (_therapistAlerts === null) {
+    try {
+      _therapistAlerts = require('./therapistAlerts');
+    } catch (err) {
+      console.warn('[CrisisPathway] therapistAlerts module not available:', err.message);
+      _therapistAlerts = false; // Mark as unavailable, don't retry
+    }
+  }
+  return _therapistAlerts || null;
+}
+
+/**
+ * Notifies linked therapists when a crisis is detected for a client.
+ * Called automatically by detectCrisisLevel when used with a clientId.
+ * Level 2-3 crises trigger immediate push notifications.
+ *
+ * @param {string} clientId - UUID of the client in crisis
+ * @param {CrisisDetectionResult} crisisResult - Detection result
+ * @returns {Promise<void>}
+ * @private
+ */
+async function _notifyTherapists(clientId, crisisResult) {
+  const alerts = _getTherapistAlerts();
+  if (!alerts || !crisisResult.isCrisis) return;
+
+  try {
+    await alerts.handleCrisisDetection(clientId, crisisResult);
+  } catch (err) {
+    // Never let alert failure break the crisis response flow
+    console.error('[CrisisPathway] Failed to notify therapists:', err.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // CRISIS DETECTION
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -405,17 +455,20 @@ const EXPERT_TECHNIQUES = {
  * severity level using pattern matching against known crisis language.
  *
  * @param {string} userInput - Raw text from user (free-form or assessment answers)
+ * @param {string} [clientId] - Optional client UUID. When provided and crisis is detected,
+ *   automatically notifies linked therapists. Level 2-3 crises get immediate push notification.
  * @returns {CrisisDetectionResult} Detection result with type, level, and safety info
  *
  * @example
- * const result = detectCrisisLevel("I just found out my wife has been cheating");
+ * const result = detectCrisisLevel("I just found out my wife has been cheating", "user-uuid");
  * // { isCrisis: true, level: 2, primaryType: 'AFFAIR_DISCOVERY', ... }
+ * // → Linked therapists receive immediate push notification
  *
  * @example
  * const result = detectCrisisLevel("We had a nice dinner last night");
  * // { isCrisis: false, level: 0, primaryType: null, ... }
  */
-function detectCrisisLevel(userInput) {
+function detectCrisisLevel(userInput, clientId) {
   if (!userInput || typeof userInput !== 'string') {
     return {
       isCrisis: false,
@@ -535,7 +588,7 @@ function detectCrisisLevel(userInput) {
     safetyResources.push(SAFETY_RESOURCES.samhsa);
   }
 
-  return {
+  const result = {
     isCrisis: true,
     level,
     primaryType: primaryType || CRISIS_TYPE.EMOTIONAL_FLOODING,
@@ -544,6 +597,13 @@ function detectCrisisLevel(userInput) {
     safetyResources,
     confidence: Math.round(confidence * 100) / 100,
   };
+
+  // Notify linked therapists (async, non-blocking — never breaks client flow)
+  if (clientId) {
+    _notifyTherapists(clientId, result).catch(() => {});
+  }
+
+  return result;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
