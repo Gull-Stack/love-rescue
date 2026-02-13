@@ -28,6 +28,7 @@ import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useAuth } from '../../contexts/AuthContext';
 import api, { calendarApi, paymentsApi, therapistApi } from '../../services/api';
+import MyTherapistSection from './MyTherapistSection';
 
 const Settings = () => {
   const [searchParams] = useSearchParams();
@@ -620,27 +621,8 @@ const Settings = () => {
         </CardContent>
       </Card>
 
-      {/* Therapist Access */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Therapist Integration
-          </Typography>
-          <Typography color="text.secondary" paragraph>
-            Allow licensed therapists to assign tasks to your relationship
-          </Typography>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={therapistConsent}
-                onChange={(e) => handleTherapistConsent(e.target.checked)}
-                disabled={loading.consent}
-              />
-            }
-            label="Enable therapist access"
-          />
-        </CardContent>
-      </Card>
+      {/* Therapist Access — Full Consent Management */}
+      <MyTherapistSection />
 
       {/* Legal */}
       <Card>

@@ -12,6 +12,7 @@ const RECOMMENDED_ENV_VARS = [
   'GOOGLE_CLIENT_ID',
   'ALLOWED_ORIGINS',
   'FRONTEND_URL',
+  'INTEGRATION_JWT_SECRET',
 ];
 
 const missing = REQUIRED_ENV_VARS.filter(key => !process.env[key]);
@@ -59,6 +60,7 @@ const courseRoutes = require('./routes/course');
 const notificationsRoutes = require('./routes/notifications');
 const subscriptionsRoutes = require('./routes/subscriptions');
 const upgradeRoutes = require('./routes/upgrade');
+const integrationRoutes = require('./routes/integration');
 
 const { auditLogger } = require('./middleware/auditLogger');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -167,6 +169,7 @@ app.use('/api/course', courseRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
 app.use('/api/upgrade', upgradeRoutes);
+app.use('/api/integration', integrationRoutes);
 
 // Cron endpoint for daily reminders (called by external scheduler)
 app.post('/api/cron/daily-reminders', async (req, res) => {

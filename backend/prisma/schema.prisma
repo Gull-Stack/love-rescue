@@ -74,6 +74,36 @@ enum AssignmentStatus {
   revoked
 }
 
+// Therapist-client consent permission level
+enum PermissionLevel {
+  BASIC     // assessment scores + activity completion only
+  STANDARD  // + mood trends + crisis alerts + session prep
+  FULL      // + individual responses + journal entries + messaging
+}
+
+// Therapist-client consent status
+enum ConsentStatus {
+  PENDING
+  GRANTED
+  REVOKED
+}
+
+// Therapist alert types
+enum AlertType {
+  CRISIS
+  RISK
+  MILESTONE
+  STAGNATION
+}
+
+// Therapist alert severity
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 // Shared goal status
 enum GoalStatus {
   active
@@ -127,6 +157,8 @@ model User {
   pushSubscriptions       PushSubscription[]
   notificationPreferences NotificationPreferences?
   courseProgress          CourseProgress?
+  therapistLinks         TherapistClient[]
+  therapistAlerts        TherapistAlert[]
 
   @@map("users")
   @@index([email])
@@ -148,13 +180,96 @@ model Therapist {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
+  licenseType    String?  @map("license_type") @db.VarChar(50)
+  practiceName   String?  @map("practice_name") @db.VarChar(255)
+
   // Relations
   assignments    TherapistAssignment[]
   tasks          TherapistTask[]       @relation("TaskTherapist")
+  clientLinks    TherapistClient[]
+  alerts         TherapistAlert[]
+  sessionReports SessionPrepReport[]
 
   @@map("therapists")
   @@index([email])
   @@index([apiKeyHash])
+}
+
+// Therapist-Client link with consent & permission levels
+model TherapistClient {
+  id               String          @id @default(uuid()) @db.Uuid
+  therapistId      String          @map("therapist_id") @db.Uuid
+  clientId         String          @map("client_id") @db.Uuid
+  coupleId         String?         @map("couple_id") @db.Uuid
+  inviteCode       String?         @unique @map("invite_code") @db.VarChar(50)
+  consentStatus    ConsentStatus   @default(PENDING) @map("consent_status")
+  consentGrantedAt DateTime?       @map("consent_granted_at")
+  consentRevokedAt DateTime?       @map("consent_revoked_at")
+  permissionLevel  PermissionLevel @default(BASIC) @map("permission_level")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  therapist    Therapist     @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  client       User          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  couple       Relationship? @relation(fields: [coupleId], references: [id], onDelete: SetNull)
+
+  @@unique([therapistId, clientId])
+  @@map("therapist_clients")
+  @@index([therapistId])
+  @@index([clientId])
+  @@index([coupleId])
+  @@index([consentStatus])
+  @@index([inviteCode])
+}
+
+// Therapist alerts (crisis, risk, milestone, stagnation)
+model TherapistAlert {
+  id          String        @id @default(uuid()) @db.Uuid
+  therapistId String        @map("therapist_id") @db.Uuid
+  clientId    String        @map("client_id") @db.Uuid
+  alertType   AlertType     @map("alert_type")
+  severity    AlertSeverity @default(MEDIUM)
+  message     String        @db.Text
+  metadata    Json?         @db.JsonB
+  readAt      DateTime?     @map("read_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  therapist Therapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  client    User      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("therapist_alerts")
+  @@index([therapistId, readAt])
+  @@index([therapistId, alertType])
+  @@index([clientId])
+  @@index([createdAt(sort: Desc)])
+}
+
+// Auto-generated session prep reports
+model SessionPrepReport {
+  id                   String   @id @default(uuid()) @db.Uuid
+  therapistId          String   @map("therapist_id") @db.Uuid
+  clientId             String?  @map("client_id") @db.Uuid
+  coupleId             String?  @map("couple_id") @db.Uuid
+  reportDate           DateTime @default(now()) @map("report_date")
+  lastSessionDate      DateTime? @map("last_session_date")
+  activitiesCompleted  Json     @default("[]") @map("activities_completed") @db.JsonB
+  assessmentChanges    Json     @default("{}") @map("assessment_changes") @db.JsonB
+  moodTrends           Json     @default("{}") @map("mood_trends") @db.JsonB
+  crisisFlags          Json     @default("[]") @map("crisis_flags") @db.JsonB
+  generatedSummary     String   @map("generated_summary") @db.Text
+  expertInsights       Json     @default("[]") @map("expert_insights") @db.JsonB
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  // Relations
+  therapist Therapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+
+  @@map("session_prep_reports")
+  @@index([therapistId])
+  @@index([clientId])
+  @@index([coupleId])
+  @@index([reportDate(sort: Desc)])
 }
 
 // Therapist-to-couple assignments
@@ -202,6 +317,7 @@ model Relationship {
   consentLogs        ConsentLog[]
   sharedGoals        SharedGoal[]
   therapistAssignments TherapistAssignment[]
+  therapistClients     TherapistClient[]
 
   @@map("relationships")
   @@index([user1Id])
@@ -629,4 +745,52 @@ model WeeklyStrategy {
   @@map("weekly_strategies")
   @@index([courseProgressId])
   @@index([weekNumber])
+}
+
+// Integration partner status
+enum IntegrationPartnerStatus {
+  active
+  suspended
+  revoked
+}
+
+// External integration partners (e.g., SuperTool)
+model IntegrationPartner {
+  id              String                   @id @default(uuid()) @db.Uuid
+  name            String                   @db.VarChar(255)
+  apiKey          String                   @unique @map("api_key") @db.VarChar(255)
+  apiSecret       String                   @map("api_secret") @db.VarChar(255) // bcrypt hashed
+  webhookUrl      String?                  @map("webhook_url") @db.VarChar(500)
+  webhookSecret   String?                  @map("webhook_secret") @db.VarChar(255)
+  status          IntegrationPartnerStatus @default(active)
+  rateLimitPerMin Int                      @default(100) @map("rate_limit_per_min")
+  ipAllowlist     String[]                 @default([]) @map("ip_allowlist")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+
+  // Relations
+  accessLogs IntegrationAccessLog[]
+
+  @@map("integration_partners")
+  @@index([apiKey])
+  @@index([status])
+}
+
+// HIPAA-compliant integration access logging
+model IntegrationAccessLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  partnerId    String   @map("partner_id") @db.Uuid
+  endpoint     String   @db.VarChar(500)
+  clientId     String?  @map("client_id") @db.Uuid
+  responseCode Int      @map("response_code") @db.SmallInt
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  partner IntegrationPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@map("integration_access_logs")
+  @@index([partnerId, createdAt(sort: Desc)])
+  @@index([clientId])
+  @@index([createdAt(sort: Desc)])
 }
