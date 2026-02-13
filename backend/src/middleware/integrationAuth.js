@@ -10,14 +10,11 @@
 const jwt = require('jsonwebtoken');
 const logger = require('../utils/logger');
 
-// C3 fix: require dedicated INTEGRATION_JWT_SECRET — never fall back to JWT_SECRET
-if (!process.env.INTEGRATION_JWT_SECRET) {
-  throw new Error(
-    'FATAL: INTEGRATION_JWT_SECRET environment variable is required. ' +
-    'Do NOT reuse JWT_SECRET for integration tokens.'
-  );
-}
+// Use dedicated INTEGRATION_JWT_SECRET if available, warn if missing but don't crash
 const INTEGRATION_JWT_SECRET = process.env.INTEGRATION_JWT_SECRET;
+if (!INTEGRATION_JWT_SECRET) {
+  logger.warn('INTEGRATION_JWT_SECRET not set — integration API endpoints will reject all requests until configured.');
+}
 
 // ═══════════════════════════════════════════════════════════════
 // IN-MEMORY RATE LIMITER (per API key)
