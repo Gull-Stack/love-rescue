@@ -23,11 +23,11 @@ const logger = require('../utils/logger');
 
 const router = express.Router();
 
-// C3 fix: require dedicated secret, never fall back
-if (!process.env.INTEGRATION_JWT_SECRET) {
-  throw new Error('FATAL: INTEGRATION_JWT_SECRET environment variable is required.');
-}
+// Use dedicated secret — warn if missing but don't crash the whole server
 const INTEGRATION_JWT_SECRET = process.env.INTEGRATION_JWT_SECRET;
+if (!INTEGRATION_JWT_SECRET) {
+  logger.warn('INTEGRATION_JWT_SECRET not set — integration routes will reject all requests.');
+}
 const INTEGRATION_TOKEN_EXPIRY = '1h';
 
 // ═══════════════════════════════════════════════════════════════
