@@ -19,6 +19,7 @@ import therapistService from '../../services/therapistService';
 const SessionPrep = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const theme = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
@@ -63,7 +64,6 @@ const SessionPrep = () => {
     crisisFlags = [], insights = [], moodTrend = [],
   } = data || {};
 
-  const theme = useTheme();
   const moodChartData = {
     labels: moodTrend.map(m => new Date(m.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })),
     datasets: [{

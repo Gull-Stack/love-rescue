@@ -31,6 +31,7 @@ const moodIcon = (val) => {
 const ClientProgress = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const theme = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
@@ -83,7 +84,6 @@ const ClientProgress = () => {
     );
   }
 
-  const theme = useTheme();
   const { client, progress, assessments } = data || {};
   const weeklyActivity = progress?.weeklyActivity || [];
 

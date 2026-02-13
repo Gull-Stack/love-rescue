@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -7,7 +7,6 @@ import {
   CardContent,
   Grid,
   Chip,
-  TextField,
   Alert,
   Paper,
   List,
@@ -16,6 +15,7 @@ import {
   ListItemText,
   ToggleButton,
   ToggleButtonGroup,
+  CircularProgress,
   alpha,
   useTheme,
 } from '@mui/material';
@@ -27,10 +27,13 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import GroupsIcon from '@mui/icons-material/Groups';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
+import RestoreIcon from '@mui/icons-material/Restore';
+import AppleIcon from '@mui/icons-material/Apple';
 import { useAuth } from '../../contexts/AuthContext';
 import { isPremiumUser } from '../../utils/featureGating';
-import { isNative } from '../../utils/platform';
+import { useAppleIAP } from '../../utils/platform';
 import api from '../../services/api';
+import iapService from '../../services/iapService';
 
 const FEATURES_LIST = [
   { icon: <PsychologyIcon />, text: 'All 12 relationship assessments', sub: 'Attachment, personality, EQ, conflict style & more' },
@@ -41,22 +44,50 @@ const FEATURES_LIST = [
   { icon: <CalendarMonthIcon />, text: 'Detailed reports & insights', sub: 'Track your relationship health over time' },
 ];
 
-const PRICING = {
+// Web/Stripe pricing (unchanged)
+const STRIPE_PRICING = {
   monthly: { price: '$9.99', period: '/month', savings: null },
   yearly: { price: '$79.99', period: '/year', savings: 'Save 33%' },
 };
 
 const Subscribe = () => {
   const theme = useTheme();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [plan, setPlan] = useState('yearly');
-  const [email, setEmail] = useState(user?.email || '');
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
-  const native = isNative();
-  const [checkingOut, setCheckingOut] = useState(false);
+  const appleIAP = useAppleIAP();
 
+  // ── Apple IAP State ────────────────────────────────────────────────
+  const [iapReady, setIapReady] = useState(false);
+  const [iapLoading, setIapLoading] = useState(appleIAP);
+  const [iapProducts, setIapProducts] = useState([]);
+  const [restoring, setRestoring] = useState(false);
+
+  // ── Initialize Apple IAP on mount ──────────────────────────────────
+  const initializeIAP = useCallback(async () => {
+    if (!appleIAP) return;
+
+    setIapLoading(true);
+    try {
+      const success = await iapService.initialize();
+      if (success) {
+        setIapReady(true);
+        const products = iapService.getProducts();
+        setIapProducts(products);
+      }
+    } catch (err) {
+      console.error('[Subscribe] IAP init error:', err);
+    } finally {
+      setIapLoading(false);
+    }
+  }, [appleIAP]);
+
+  useEffect(() => {
+    initializeIAP();
+  }, [initializeIAP]);
+
+  // ── Already Premium ────────────────────────────────────────────────
   if (isPremiumUser(user)) {
     return (
       <Box textAlign="center" py={8}>
@@ -71,32 +102,14 @@ const Subscribe = () => {
     );
   }
 
-  const handleSendLink = async () => {
-    setSending(true);
-    setError('');
-    try {
-      await api.post('/upgrade/send-link', { email, plan });
-      setSent(true);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to send upgrade link. Try again later.');
-    } finally {
-      setSending(false);
-    }
-  };
-
+  // ── Stripe Checkout (web only — UNTOUCHED) ─────────────────────────
   const handleStripeCheckout = async () => {
     setSending(true);
     setError('');
     try {
       const res = await api.post('/upgrade/checkout', { plan });
       if (res.data.url) {
-        if (native) {
-          // Open Stripe checkout in external Safari (avoids Apple IAP issues)
-          const { Browser } = await import('@capacitor/browser');
-          await Browser.open({ url: res.data.url });
-        } else {
-          window.location.href = res.data.url;
-        }
+        window.location.href = res.data.url;
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to start checkout. Try again later.');
@@ -104,6 +117,62 @@ const Subscribe = () => {
       setSending(false);
     }
   };
+
+  // ── Apple IAP Purchase (iOS native only) ───────────────────────────
+  const handleApplePurchase = async () => {
+    setSending(true);
+    setError('');
+    try {
+      await iapService.purchase(plan);
+      // Purchase succeeded — refresh user data from backend
+      await refreshUser();
+    } catch (err) {
+      const msg = err.message || 'Purchase failed. Please try again.';
+      // Don't show error for user cancellations
+      if (!msg.toLowerCase().includes('cancel')) {
+        setError(msg);
+      }
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // ── Restore Purchases (iOS native only) ────────────────────────────
+  const handleRestore = async () => {
+    setRestoring(true);
+    setError('');
+    try {
+      await iapService.restorePurchases();
+      // Give a moment for the approved handler to fire
+      await new Promise((r) => setTimeout(r, 2000));
+      await refreshUser();
+      // Check if user is now premium
+      if (isPremiumUser(user)) {
+        // Component will re-render with the "already premium" view
+      } else {
+        setError('No previous purchases found for this account.');
+      }
+    } catch (err) {
+      setError(err.message || 'Could not restore purchases. Please try again.');
+    } finally {
+      setRestoring(false);
+    }
+  };
+
+  // ── Pricing (Apple IAP or Stripe) ──────────────────────────────────
+  const getDisplayPricing = () => {
+    if (appleIAP && iapProducts.length > 0) {
+      const product = iapProducts.find((p) => p.plan === plan);
+      if (product && product.price) {
+        return { price: product.price, period: product.period, savings: product.savings };
+      }
+    }
+    // On Apple IAP without loaded products, return null (shows loading)
+    if (appleIAP) return null;
+    return STRIPE_PRICING[plan];
+  };
+
+  const pricing = getDisplayPricing();
 
   return (
     <Box>
@@ -176,57 +245,113 @@ const Subscribe = () => {
           <ToggleButton value="monthly" sx={{ px: 3 }}>Monthly</ToggleButton>
           <ToggleButton value="yearly" sx={{ px: 3 }}>
             Yearly
-            {PRICING.yearly.savings && (
-              <Chip label={PRICING.yearly.savings} size="small" color="success" sx={{ ml: 1, fontWeight: 'bold' }} />
+            {pricing && pricing.savings && (
+              <Chip label={pricing.savings} size="small" color="success" sx={{ ml: 1, fontWeight: 'bold' }} />
             )}
           </ToggleButton>
         </ToggleButtonGroup>
 
-        <Typography variant="h3" fontWeight="bold" gutterBottom>
-          {PRICING[plan].price}
-          <Typography component="span" variant="h6" color="text.secondary" fontWeight="normal">
-            {PRICING[plan].period}
+        {/* Price display — loading state for Apple IAP */}
+        {!pricing ? (
+          <Box display="flex" alignItems="center" justifyContent="center" gap={1} py={2}>
+            <CircularProgress size={24} />
+            <Typography variant="body2" color="text.secondary">Loading prices from App Store...</Typography>
+          </Box>
+        ) : (
+          <Typography variant="h3" fontWeight="bold" gutterBottom>
+            {pricing.price}
+            <Typography component="span" variant="h6" color="text.secondary" fontWeight="normal">
+              {pricing.period}
+            </Typography>
           </Typography>
-        </Typography>
+        )}
       </Box>
 
-      {/* CTA */}
+      {/* CTA Card */}
       <Card sx={{ maxWidth: 480, mx: 'auto', borderRadius: 3, mb: 4 }}>
         <CardContent sx={{ p: 3 }}>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-          {sent && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              Check your email! We sent you a personalized upgrade link.
-            </Alert>
-          )}
 
-          <Button
-            variant="contained"
-            fullWidth
-            onClick={handleStripeCheckout}
-            disabled={sending}
-            startIcon={<AutoAwesomeIcon />}
-            size="large"
-            sx={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
-              fontWeight: 'bold',
-              py: 1.5,
-              borderRadius: 2,
-              fontSize: '1.1rem',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #4f46e5 0%, #9333ea 50%, #db2777 100%)',
-              },
-            }}
-          >
-            {sending ? 'Starting Checkout...' : `Subscribe — ${PRICING[plan].price}${PRICING[plan].period}`}
-          </Button>
-          <Typography variant="caption" color="text.disabled" display="block" textAlign="center" mt={1}>
-            Secure checkout powered by Stripe. Cancel anytime.
-          </Typography>
+          {/* ── Apple IAP Button (iOS native only) ──────────────────── */}
+          {appleIAP ? (
+            <>
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={handleApplePurchase}
+                disabled={sending || iapLoading || !pricing}
+                startIcon={sending ? <CircularProgress size={20} color="inherit" /> : <AutoAwesomeIcon />}
+                size="large"
+                sx={{
+                  background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
+                  fontWeight: 'bold',
+                  py: 1.5,
+                  borderRadius: 2,
+                  fontSize: '1.1rem',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #4f46e5 0%, #9333ea 50%, #db2777 100%)',
+                  },
+                }}
+              >
+                {sending
+                  ? 'Processing...'
+                  : !pricing
+                    ? 'Loading...'
+                    : `Subscribe — ${pricing.price}${pricing.period}`}
+              </Button>
+
+              {/* Restore Purchases */}
+              <Button
+                variant="text"
+                fullWidth
+                onClick={handleRestore}
+                disabled={restoring || iapLoading}
+                startIcon={restoring ? <CircularProgress size={16} /> : <RestoreIcon />}
+                sx={{ mt: 1.5, color: 'text.secondary' }}
+              >
+                {restoring ? 'Restoring...' : 'Restore Purchases'}
+              </Button>
+
+              {/* Powered by Apple */}
+              <Box display="flex" alignItems="center" justifyContent="center" gap={0.5} mt={1}>
+                <AppleIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
+                <Typography variant="caption" color="text.disabled">
+                  Secure checkout powered by Apple. Cancel anytime.
+                </Typography>
+              </Box>
+            </>
+          ) : (
+            /* ── Stripe Button (web only — UNCHANGED) ───────────────── */
+            <>
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={handleStripeCheckout}
+                disabled={sending}
+                startIcon={<AutoAwesomeIcon />}
+                size="large"
+                sx={{
+                  background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
+                  fontWeight: 'bold',
+                  py: 1.5,
+                  borderRadius: 2,
+                  fontSize: '1.1rem',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #4f46e5 0%, #9333ea 50%, #db2777 100%)',
+                  },
+                }}
+              >
+                {sending ? 'Starting Checkout...' : `Subscribe — ${STRIPE_PRICING[plan].price}${STRIPE_PRICING[plan].period}`}
+              </Button>
+              <Typography variant="caption" color="text.disabled" display="block" textAlign="center" mt={1}>
+                Secure checkout powered by Stripe. Cancel anytime.
+              </Typography>
+            </>
+          )}
         </CardContent>
       </Card>
 
-      {/* What you already get (free tier) */}
+      {/* What's included free */}
       <Paper elevation={0} sx={{ p: 3, borderRadius: 3, bgcolor: alpha(theme.palette.success.main, 0.05), border: `1px solid ${alpha(theme.palette.success.main, 0.2)}` }}>
         <Typography variant="subtitle1" fontWeight="bold" gutterBottom color="success.main">
           ✅ What's Included Free
