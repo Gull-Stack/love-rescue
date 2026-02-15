@@ -1520,7 +1520,31 @@ const AssessmentQuiz = () => {
             {isSmallMobile ? '←' : '← Back'}
           </Button>
 
-          {currentIndex >= questions.length - 1 && (
+          {currentIndex < questions.length - 1 ? (
+            <Button
+              variant="contained"
+              onClick={handleNext}
+              disabled={currentResponse === undefined}
+              sx={{
+                borderRadius: 2,
+                minHeight: 44,
+                minWidth: isSmallMobile ? 80 : 120,
+                fontWeight: 'bold',
+                fontSize: isSmallMobile ? '0.85rem' : '0.875rem',
+                bgcolor: meta.color,
+                '&:hover': {
+                  bgcolor: meta.color,
+                  filter: 'brightness(0.9)',
+                },
+                '&:disabled': {
+                  bgcolor: 'grey.300',
+                  color: 'grey.500',
+                },
+              }}
+            >
+              {isSmallMobile ? '→' : 'Next →'}
+            </Button>
+          ) : (
             <Button
               variant="contained"
               color="success"
