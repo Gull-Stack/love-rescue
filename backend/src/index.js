@@ -124,7 +124,7 @@ app.use('/api/auth/reset-password', authLimiter);
 
 // CRIT-02: Conditionally skip JSON parsing for Stripe webhook (needs raw body)
 app.use((req, res, next) => {
-  if (req.originalUrl === '/api/payments/webhook') {
+  if (req.originalUrl === '/api/payments/webhook' || req.originalUrl.startsWith('/api/stripe/webhook')) {
     next(); // skip json parsing for stripe webhook — route uses express.raw()
   } else {
     express.json({ limit: '10kb' })(req, res, next);
@@ -156,6 +156,12 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/therapist', therapistRoutes);
 app.use('/api/payments', paymentsRoutes);
+// Alias: Stripe dashboard configured to send to /api/stripe/webhooks
+app.post('/api/stripe/webhooks', express.raw({ type: 'application/json' }), (req, res, next) => {
+  // Forward to the payments webhook handler
+  req.url = '/webhook';
+  paymentsRoutes(req, res, next);
+});
 app.use('/api/insights', insightsRoutes);
 app.use('/api/videos', videosRoutes);
 app.use('/api/mediators', mediatorsRoutes);
