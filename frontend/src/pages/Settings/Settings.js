@@ -434,8 +434,8 @@ const Settings = () => {
         </CardContent>
       </Card>
 
-      {/* Subscription */}
-      <Card sx={{ mb: 3 }}>
+      {/* Subscription — hidden during FREE ERA (no StoreKit yet) */}
+      <Card sx={{ mb: 3, display: 'none' }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>
             Subscription
