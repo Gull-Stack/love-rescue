@@ -27,6 +27,10 @@ const PremiumGate = ({
   fullBlock = false,
   compact = false,
 }) => {
+  // FREE ERA: all content is unlocked — always render children
+  return <>{children}</>;
+
+  /* Original gating logic (restore when subscriptions are ready):
   const { user } = useAuth();
   const navigate = useNavigate();
 

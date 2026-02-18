@@ -52,11 +52,15 @@ export const PREMIUM_FEATURES = new Set(
 
 /**
  * Check if a user has an active premium subscription.
+ * NOTE: Temporarily returning true for all users while app is free.
+ * Restore original logic when StoreKit subscriptions are implemented.
  */
 export function isPremiumUser(user) {
   if (!user) return false;
-  if (user.isPlatformAdmin) return true;
-  return ['paid', 'premium'].includes(user.subscriptionStatus);
+  return true; // FREE ERA: all users get premium features
+  // Original logic (restore when subscriptions are ready):
+  // if (user.isPlatformAdmin) return true;
+  // return ['paid', 'premium'].includes(user.subscriptionStatus);
 }
 
 /**
