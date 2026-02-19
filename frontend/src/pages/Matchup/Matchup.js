@@ -17,8 +17,6 @@ import WarningIcon from '@mui/icons-material/Warning';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAuth } from '../../contexts/AuthContext';
 import { matchupApi, strategiesApi } from '../../services/api';
-import { isPremiumUser } from '../../utils/featureGating';
-import PremiumGate from '../../components/common/PremiumGate';
 
 const Matchup = () => {
   const navigate = useNavigate();
@@ -65,23 +63,6 @@ const Matchup = () => {
       setGenerating(false);
     }
   };
-
-  // Full page gate for free users
-  if (!isPremiumUser(user)) {
-    return (
-      <Box>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
-          Matchup Score
-        </Typography>
-        <PremiumGate
-          feature="matchup"
-          title="Matchup Score — Premium Feature"
-          subtitle="See how you and your partner complement each other across all dimensions. Invite your partner and discover your compatibility."
-          fullBlock
-        />
-      </Box>
-    );
-  }
 
   if (loading) {
     return (
