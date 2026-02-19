@@ -24,8 +24,6 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAuth } from '../../contexts/AuthContext';
 import { strategiesApi, calendarApi } from '../../services/api';
-import { isPremiumUser } from '../../utils/featureGating';
-import PremiumGate from '../../components/common/PremiumGate';
 
 const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 

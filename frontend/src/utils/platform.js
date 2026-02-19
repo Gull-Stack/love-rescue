@@ -2,8 +2,7 @@ import { Capacitor } from '@capacitor/core';
 
 /**
  * Platform detection utilities for Love Rescue.
- * Use these to conditionally show native IAP vs Stripe, 
- * register push tokens, and adjust UI.
+ * IAP/payment hooks always return false — the app is fully free.
  */
 
 export const isNative = () => Capacitor.isNativePlatform();
@@ -20,13 +19,11 @@ export const isWeb = () => Capacitor.getPlatform() === 'web';
 export const getPlatform = () => Capacitor.getPlatform();
 
 /**
- * Should we use Apple IAP for subscriptions?
- * True only when running natively on iOS.
+ * Apple IAP — always disabled; app is free.
  */
-export const useAppleIAP = () => isIOS() && isNative();
+export const useAppleIAP = () => false;
 
 /**
- * Should we use Stripe for subscriptions?
- * True on web or Android.
+ * Stripe checkout — always disabled; app is free.
  */
-export const useStripeCheckout = () => !useAppleIAP();
+export const useStripeCheckout = () => false;

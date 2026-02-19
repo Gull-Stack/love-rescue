@@ -42,7 +42,8 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ error: 'User not found' });
     }
 
-    req.user = user;
+    // App is free — treat all users as premium regardless of DB status
+    req.user = { ...user, subscriptionStatus: 'premium' };
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -57,20 +58,10 @@ const authenticate = async (req, res, next) => {
 };
 
 /**
- * Check subscription status middleware
+ * requireSubscription — DISABLED: app is fully free.
+ * All users are allowed through unconditionally.
  */
-const requireSubscription = async (req, res, next) => {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-
-  if (req.user.subscriptionStatus === 'expired') {
-    return res.status(403).json({
-      error: 'Subscription expired',
-      code: 'SUBSCRIPTION_EXPIRED'
-    });
-  }
-
+const requireSubscription = (req, res, next) => {
   next();
 };
 
@@ -109,20 +100,10 @@ const optionalAuth = async (req, res, next) => {
 };
 
 /**
- * Check premium subscription status middleware
+ * requirePremium — DISABLED: app is fully free.
+ * All users are allowed through unconditionally.
  */
-const requirePremium = async (req, res, next) => {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-
-  if (req.user.subscriptionStatus !== 'premium') {
-    return res.status(403).json({
-      error: 'Premium subscription required',
-      code: 'PREMIUM_REQUIRED'
-    });
-  }
-
+const requirePremium = (req, res, next) => {
   next();
 };
 

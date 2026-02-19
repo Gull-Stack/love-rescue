@@ -195,11 +195,7 @@ router.post('/signup', async (req, res, next) => {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Calculate trial end date (14 days)
-    const trialEndsAt = new Date();
-    trialEndsAt.setDate(trialEndsAt.getDate() + 14);
-
-    // Create user
+    // Create user — app is free, all users get premium status
     const user = await req.prisma.user.create({
       data: {
         email: email.toLowerCase(),
@@ -207,8 +203,7 @@ router.post('/signup', async (req, res, next) => {
         firstName,
         lastName,
         gender: gender || null,
-        subscriptionStatus: 'trial',
-        trialEndsAt
+        subscriptionStatus: 'premium',
       },
       select: {
         id: true,
@@ -288,15 +283,6 @@ router.post('/login', async (req, res, next) => {
     // Clear failed attempts on successful login
     await clearFailedAttempts(normalizedEmail);
 
-    // Check and update subscription status if trial expired
-    if (user.subscriptionStatus === 'trial' && user.trialEndsAt < new Date()) {
-      await req.prisma.user.update({
-        where: { id: user.id },
-        data: { subscriptionStatus: 'expired' }
-      });
-      user.subscriptionStatus = 'expired';
-    }
-
     // Generate token pair
     const { accessToken, refreshToken } = await generateTokenPair(user.id, req.prisma);
 
@@ -371,9 +357,6 @@ router.post('/google', async (req, res, next) => {
         });
       } else {
         // 3. Create new user (no password)
-        const trialEndsAt = new Date();
-        trialEndsAt.setDate(trialEndsAt.getDate() + 14);
-
         user = await req.prisma.user.create({
           data: {
             email: email.toLowerCase(),
@@ -381,8 +364,7 @@ router.post('/google', async (req, res, next) => {
             authProvider: 'google',
             firstName: given_name || null,
             lastName: family_name || null,
-            subscriptionStatus: 'trial',
-            trialEndsAt
+            subscriptionStatus: 'premium',
           }
         });
 
@@ -872,8 +854,9 @@ router.get('/me', authenticate, async (req, res, next) => {
       }
     });
 
+    // App is free — all users are treated as premium
     res.json({
-      user,
+      user: { ...user, subscriptionStatus: 'premium' },
       relationship: relationship ? {
         id: relationship.id,
         hasPartner: !!relationship.user2Id,
@@ -1332,10 +1315,7 @@ router.post('/apple', async (req, res, next) => {
     const isNewUser = !user;
 
     if (!user) {
-      // Create new user with trial
-      const trialEndsAt = new Date();
-      trialEndsAt.setDate(trialEndsAt.getDate() + 7);
-
+      // Create new user — app is free, all users get premium status
       user = await req.prisma.user.create({
         data: {
           email: email || `apple_${appleId}@privaterelay.appleid.com`,
@@ -1345,8 +1325,7 @@ router.post('/apple', async (req, res, next) => {
           lastName: fullName?.lastName || '',
           authProvider: 'apple',
           emailVerified: !!email_verified,
-          subscriptionStatus: 'trial',
-          trialEndsAt,
+          subscriptionStatus: 'premium',
         }
       });
     }

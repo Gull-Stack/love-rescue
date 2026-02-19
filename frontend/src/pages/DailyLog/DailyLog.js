@@ -31,14 +31,11 @@ import PromptCards from '../../components/gamification/PromptCards';
 import StreakFlames from '../../components/gamification/StreakFlames';
 import SaveCheckmark from '../../components/gamification/SaveCheckmark';
 import { useAuth } from '../../contexts/AuthContext';
-import { isPremiumUser } from '../../utils/featureGating';
-import PremiumGate from '../../components/common/PremiumGate';
 
 const DailyLog = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user } = useAuth();
-  const premium = isPremiumUser(user);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [prompt, setPrompt] = useState(null);
@@ -359,13 +356,8 @@ const DailyLog = () => {
         </CardContent>
       </Card>
 
-      {/* 4. JOURNAL + PROMPT CARDS (Premium) */}
+      {/* 4. JOURNAL + PROMPT CARDS */}
       <Box sx={{ mb: 2 }}>
-        <PremiumGate
-          feature="daily_log_journal"
-          title="Daily Journal — Premium"
-          subtitle="Reflect on your relationship with guided journal prompts. Upgrade to unlock."
-        >
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
@@ -400,7 +392,6 @@ const DailyLog = () => {
             />
           </CardContent>
         </Card>
-        </PremiumGate>
       </Box>
 
       {/* 5. STREAK COUNTER + XP */}
