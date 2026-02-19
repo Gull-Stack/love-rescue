@@ -33,8 +33,6 @@ import {
 } from '../../services/api';
 import DailyInsight from '../../components/common/DailyInsight';
 import DailyVideo from '../../components/common/DailyVideo';
-import { isPremiumUser, isAssessmentFree } from '../../utils/featureGating';
-import PremiumGate from '../../components/common/PremiumGate';
 import {
   StreakHero,
   QuickLogFAB,
@@ -445,25 +443,15 @@ const Dashboard = () => {
                   <Typography variant="body2" color="text.secondary">
                     Next: {new Date(data.meetings[0].scheduledAt).toLocaleDateString()} with {data.meetings[0].mediator?.name}
                   </Typography>
-                ) : data.subscription?.isPremium ? (
-                  <Typography variant="body2" color="text.secondary">
-                    Schedule a guided conversation with a facilitator
-                  </Typography>
                 ) : (
                   <Typography variant="body2" color="text.secondary">
-                    Premium feature — facilitated video sessions
+                    Schedule a guided conversation with a facilitator
                   </Typography>
                 )}
               </CardContent>
             </Card>
 
             {/* Matchup Score - If available */}
-            <PremiumGate
-              feature="matchup"
-              title="Matchup Score — Premium"
-              subtitle="See your compatibility with your partner."
-              compact
-            >
             {data.matchup && (
               <Card 
                 onClick={() => navigate('/matchup')}
@@ -494,7 +482,6 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             )}
-            </PremiumGate>
           </Box>
         </Collapse>
       </Box>

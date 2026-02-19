@@ -8,75 +8,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 /**
  * POST /api/payments/create-checkout
- * Create Stripe checkout session
+ * DISABLED — app is free.
  */
-router.post('/create-checkout', authenticate, async (req, res, next) => {
-  try {
-    // Get or create Stripe customer
-    let customerId = req.user.stripeCustomerId;
-
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: req.user.email,
-        metadata: {
-          userId: req.user.id
-        }
-      });
-      customerId = customer.id;
-
-      await req.prisma.user.update({
-        where: { id: req.user.id },
-        data: { stripeCustomerId: customerId }
-      });
-    }
-
-    // Determine tier and price
-    const { tier } = req.body || {};
-    let priceId;
-    let tierLabel;
-    if (tier === 'annual') {
-      priceId = process.env.STRIPE_ANNUAL_PRICE_ID;
-      tierLabel = 'annual';
-    } else if (tier === 'premium') {
-      priceId = process.env.STRIPE_PREMIUM_PRICE_ID;
-      tierLabel = 'premium';
-    } else {
-      priceId = process.env.STRIPE_PRICE_ID;
-      tierLabel = 'standard';
-    }
-
-    // Create checkout session
-    const sessionParams = {
-      customer: customerId,
-      payment_method_types: ['card'],
-      line_items: [{
-        price: priceId,
-        quantity: 1
-      }],
-      mode: 'subscription',
-      success_url: `${process.env.FRONTEND_URL}/settings?payment=success`,
-      cancel_url: `${process.env.FRONTEND_URL}/settings?payment=cancelled`,
-      metadata: {
-        userId: req.user.id,
-        tier: tierLabel
-      }
-    };
-
-    // Annual tier has a 12-month minimum commitment
-    if (tier === 'annual') {
-      sessionParams.subscription_data = {
-        metadata: { tier: 'annual', commitment: '12_months' }
-      };
-    }
-
-    const session = await stripe.checkout.sessions.create(sessionParams);
-
-    logger.info('Checkout session created', { userId: req.user.id });
-
-    res.json({ sessionId: session.id, url: session.url });
-  } catch (error) {
-    next(error);
-  }
+router.post('/create-checkout', authenticate, (req, res) => {
+  res.status(410).json({ error: 'LoveRescue is now free. No checkout required.', code: 'APP_IS_FREE' });
 });
 
 /**
@@ -226,14 +161,13 @@ router.get('/subscription', authenticate, async (req, res, next) => {
       }
     }
 
+    // App is free — always return premium status
     res.json({
-      status: user.subscriptionStatus,
-      isPremium: user.subscriptionStatus === 'premium',
-      trialEndsAt: user.trialEndsAt,
+      status: 'premium',
+      isPremium: true,
+      trialEndsAt: null,
       subscription,
-      trialDaysRemaining: user.subscriptionStatus === 'trial' && user.trialEndsAt
-        ? Math.max(0, Math.ceil((user.trialEndsAt - new Date()) / (1000 * 60 * 60 * 24)))
-        : null
+      trialDaysRemaining: null,
     });
   } catch (error) {
     next(error);
@@ -242,67 +176,18 @@ router.get('/subscription', authenticate, async (req, res, next) => {
 
 /**
  * POST /api/payments/cancel
- * Cancel subscription
+ * DISABLED — app is free.
  */
-router.post('/cancel', authenticate, async (req, res, next) => {
-  try {
-    const user = await req.prisma.user.findUnique({
-      where: { id: req.user.id }
-    });
-
-    if (!user.stripeCustomerId) {
-      return res.status(400).json({ error: 'No active subscription' });
-    }
-
-    const subscriptions = await stripe.subscriptions.list({
-      customer: user.stripeCustomerId,
-      status: 'active',
-      limit: 1
-    });
-
-    if (subscriptions.data.length === 0) {
-      return res.status(400).json({ error: 'No active subscription' });
-    }
-
-    // Cancel at period end (user keeps access until then)
-    await stripe.subscriptions.update(subscriptions.data[0].id, {
-      cancel_at_period_end: true
-    });
-
-    logger.info('Subscription cancellation scheduled', { userId: req.user.id });
-
-    res.json({
-      message: 'Subscription will be cancelled at the end of the billing period',
-      endsAt: new Date(subscriptions.data[0].current_period_end * 1000)
-    });
-  } catch (error) {
-    next(error);
-  }
+router.post('/cancel', authenticate, (req, res) => {
+  res.status(410).json({ error: 'LoveRescue is now free. No subscription to cancel.', code: 'APP_IS_FREE' });
 });
 
 /**
  * POST /api/payments/portal
- * Create customer portal session
+ * DISABLED — app is free.
  */
-router.post('/portal', authenticate, async (req, res, next) => {
-  try {
-    const user = await req.prisma.user.findUnique({
-      where: { id: req.user.id }
-    });
-
-    if (!user.stripeCustomerId) {
-      return res.status(400).json({ error: 'No customer record found' });
-    }
-
-    const session = await stripe.billingPortal.sessions.create({
-      customer: user.stripeCustomerId,
-      return_url: `${process.env.FRONTEND_URL}/settings`
-    });
-
-    res.json({ url: session.url });
-  } catch (error) {
-    next(error);
-  }
+router.post('/portal', authenticate, (req, res) => {
+  res.status(410).json({ error: 'LoveRescue is now free. No billing portal required.', code: 'APP_IS_FREE' });
 });
 
 module.exports = router;
