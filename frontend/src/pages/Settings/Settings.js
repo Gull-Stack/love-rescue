@@ -18,16 +18,14 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Grid,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import PaymentIcon from '@mui/icons-material/Payment';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useAuth } from '../../contexts/AuthContext';
-import api, { calendarApi, paymentsApi, therapistApi } from '../../services/api';
+import api, { calendarApi, therapistApi } from '../../services/api';
 import MyTherapistSection from './MyTherapistSection';
 
 const Settings = () => {
@@ -40,9 +38,7 @@ const Settings = () => {
   const [partnerEmail, setPartnerEmail] = useState('');
   const [copied, setCopied] = useState(false);
   const [calendarStatus, setCalendarStatus] = useState(null);
-  const [subscription, setSubscription] = useState(null);
   const [therapistConsent, setTherapistConsent] = useState(false);
-  const [cancelDialog, setCancelDialog] = useState(false);
   const [legalDialog, setLegalDialog] = useState(null); // 'privacy' or 'terms'
   const [gender, setGender] = useState(user?.gender || '');
   const [biometricAvailable, setBiometricAvailable] = useState(false);
@@ -78,7 +74,7 @@ const Settings = () => {
     const calendar = searchParams.get('calendar');
 
     if (payment === 'success') {
-      setSuccess('Payment successful! Your subscription is now active.');
+      setSuccess('Payment information received.');
       refreshUser();
     } else if (payment === 'cancelled') {
       setError('Payment was cancelled.');
@@ -93,14 +89,12 @@ const Settings = () => {
 
   const fetchSettings = async () => {
     try {
-      const [calRes, subRes, consentRes] = await Promise.all([
+      const [calRes, consentRes] = await Promise.all([
         calendarApi.getStatus().catch(() => ({ data: { connected: false } })),
-        paymentsApi.getSubscription().catch(() => ({ data: null })),
         therapistApi.getConsent().catch(() => ({ data: { consent: false } })),
       ]);
 
       setCalendarStatus(calRes.data);
-      setSubscription(subRes.data);
       setTherapistConsent(consentRes.data.consent);
     } catch {
       // Settings fetch failed — individual catches above provide fallback defaults
@@ -172,42 +166,6 @@ const Settings = () => {
       setError('Failed to disconnect calendar');
     } finally {
       setLoading({ ...loading, calendar: false });
-    }
-  };
-
-  const handleSubscribe = async (tier = 'standard') => {
-    setLoading({ ...loading, payment: true });
-    try {
-      const response = await paymentsApi.createCheckout(tier);
-      window.location.href = response.data.url;
-    } catch (err) {
-      setError('Failed to start checkout');
-      setLoading({ ...loading, payment: false });
-    }
-  };
-
-  const handleManageSubscription = async () => {
-    setLoading({ ...loading, payment: true });
-    try {
-      const response = await paymentsApi.getPortal();
-      window.location.href = response.data.url;
-    } catch (err) {
-      setError('Failed to open billing portal');
-      setLoading({ ...loading, payment: false });
-    }
-  };
-
-  const handleCancelSubscription = async () => {
-    setLoading({ ...loading, cancel: true });
-    try {
-      await paymentsApi.cancel();
-      setCancelDialog(false);
-      setSuccess('Subscription will be cancelled at the end of the billing period');
-      fetchSettings();
-    } catch (err) {
-      setError('Failed to cancel subscription');
-    } finally {
-      setLoading({ ...loading, cancel: false });
     }
   };
 
@@ -434,147 +392,6 @@ const Settings = () => {
         </CardContent>
       </Card>
 
-      {/* Subscription — hidden during FREE ERA (no StoreKit yet) */}
-      <Card sx={{ mb: 3, display: 'none' }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Subscription
-          </Typography>
-          <Box display="flex" alignItems="center" gap={2} mb={2}>
-            <Chip
-              label={user?.subscriptionStatus?.toUpperCase() || 'UNKNOWN'}
-              color={
-                user?.subscriptionStatus === 'premium'
-                  ? 'secondary'
-                  : user?.subscriptionStatus === 'paid'
-                  ? 'success'
-                  : user?.subscriptionStatus === 'trial'
-                  ? 'primary'
-                  : 'error'
-              }
-            />
-            {subscription?.trialDaysRemaining !== null && subscription?.trialDaysRemaining !== undefined && (
-              <Typography variant="body2" color="text.secondary">
-                {subscription.trialDaysRemaining} days remaining in trial
-              </Typography>
-            )}
-          </Box>
-
-          {user?.subscriptionStatus === 'paid' || user?.subscriptionStatus === 'premium' ? (
-            <Box>
-              {user?.subscriptionStatus === 'paid' && (
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  <Typography variant="body2">
-                    <strong>Upgrade to Premium</strong> for mediated video meetings with neutral
-                    facilitators, included at no extra per-session cost.
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    size="small"
-                    sx={{ mt: 1 }}
-                    onClick={() => handleSubscribe('premium')}
-                    disabled={loading.payment}
-                  >
-                    {/* LOW-02: Fixed pricing consistency - Premium is $249/month */}
-                    {loading.payment ? <CircularProgress size={20} /> : 'Upgrade to Premium - $249/month'}
-                  </Button>
-                </Alert>
-              )}
-              <Box display="flex" gap={2}>
-                <Button variant="outlined" onClick={handleManageSubscription}>
-                  Manage Subscription
-                </Button>
-                <Button color="error" onClick={() => setCancelDialog(true)}>
-                  Cancel
-                </Button>
-              </Box>
-            </Box>
-          ) : (
-            <Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Choose a plan to continue using Love Rescue:
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={4}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="h6" gutterBottom>Standard</Typography>
-                      <Typography variant="h4" color="primary" gutterBottom>
-                        $29.99<Typography component="span" variant="body2" color="text.secondary">/mo</Typography>
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" paragraph>
-                        Assessments, daily logs, insights, videos, strategies, and reports.
-                      </Typography>
-                      <Button
-                        variant="contained"
-                        fullWidth
-                        startIcon={<PaymentIcon />}
-                        onClick={() => handleSubscribe('standard')}
-                        disabled={loading.payment}
-                      >
-                        {loading.payment ? <CircularProgress size={20} /> : 'Subscribe'}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Card variant="outlined" sx={{ borderColor: 'secondary.main', borderWidth: 2 }}>
-                    <CardContent>
-                      <Box display="flex" alignItems="center" gap={1} mb={1}>
-                        <Typography variant="h6">Premium</Typography>
-                      </Box>
-                      <Typography variant="h4" color="secondary" gutterBottom>
-                        $249<Typography component="span" variant="body2" color="text.secondary">/mo</Typography>
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" paragraph>
-                        Everything in Standard, plus mediated video meetings with professional facilitators.
-                      </Typography>
-                      <Button
-                        variant="contained"
-                        color="secondary"
-                        fullWidth
-                        startIcon={<PaymentIcon />}
-                        onClick={() => handleSubscribe('premium')}
-                        disabled={loading.payment}
-                      >
-                        {loading.payment ? <CircularProgress size={20} /> : 'Subscribe'}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Card variant="outlined" sx={{ borderColor: 'success.main', borderWidth: 2 }}>
-                    <CardContent>
-                      <Box display="flex" alignItems="center" gap={1} mb={1}>
-                        <Typography variant="h6">Annual Unlimited</Typography>
-                        <Chip label="Best Value" size="small" color="success" />
-                      </Box>
-                      <Typography variant="h4" color="success.main" gutterBottom>
-                        $200<Typography component="span" variant="body2" color="text.secondary">/mo</Typography>
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" paragraph>
-                        Unlimited access including all mediated sessions. $2,400/year billed monthly. 12-month commitment.
-                      </Typography>
-                      <Button
-                        variant="contained"
-                        color="success"
-                        fullWidth
-                        startIcon={<PaymentIcon />}
-                        onClick={() => handleSubscribe('annual')}
-                        disabled={loading.payment}
-                      >
-                        {loading.payment ? <CircularProgress size={20} /> : 'Subscribe'}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
-            </Box>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Google Calendar */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -641,26 +458,6 @@ const Settings = () => {
         </CardContent>
       </Card>
 
-      {/* Cancel Dialog */}
-      <Dialog open={cancelDialog} onClose={() => setCancelDialog(false)}>
-        <DialogTitle>Cancel Subscription?</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Your subscription will remain active until the end of the current billing period.
-            After that, you'll lose access to premium features.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCancelDialog(false)}>Keep Subscription</Button>
-          <Button
-            color="error"
-            onClick={handleCancelSubscription}
-            disabled={loading.cancel}
-          >
-            {loading.cancel ? <CircularProgress size={20} /> : 'Cancel Subscription'}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Privacy Policy Dialog */}
       <Dialog
@@ -760,12 +557,9 @@ const Settings = () => {
             licensed professional.
           </Typography>
           <Typography paragraph variant="body2">
-            <strong>4. Subscription and Payments</strong><br />
-            After a 14-day free trial, a paid subscription is required to continue
-            using the app. Plans include Standard ($29.99/month), Premium ($249/month),
-            and Annual Unlimited ($200/month billed monthly). Payments are processed
-            securely via Stripe. You may cancel at any time; access continues until the
-            end of the current billing period.
+            <strong>4. Access and Features</strong><br />
+            LoveRescue is provided free of charge. All features are available to all users
+            at no cost. There are no subscriptions, paywalls, or in-app purchases.
           </Typography>
           <Typography paragraph variant="body2">
             <strong>5. User Responsibilities</strong><br />
