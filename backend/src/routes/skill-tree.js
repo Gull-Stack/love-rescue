@@ -524,7 +524,7 @@ router.post('/practice', authenticate, async (req, res, next) => {
     const justMastered = mastered && progress.uses === technique.uses_required;
 
     res.json({
-      message: justMastered ? 'Technique mastered!' : 'Practice logged',
+      message: justMastered ? `New capability installed: ${technique.name}` : 'Practice logged',
       techniqueId,
       uses: progress.uses,
       uses_required: technique.uses_required,
