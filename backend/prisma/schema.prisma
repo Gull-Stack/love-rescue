@@ -104,6 +104,13 @@ enum AlertSeverity {
   CRITICAL
 }
 
+// Real Talk effectiveness rating
+enum RealTalkEffectiveness {
+  effective
+  somewhat
+  ineffective
+}
+
 // Shared goal status
 enum GoalStatus {
   active
@@ -159,6 +166,7 @@ model User {
   courseProgress          CourseProgress?
   therapistLinks         TherapistClient[]
   therapistAlerts        TherapistAlert[]
+  realTalks              RealTalk[]
 
   @@map("users")
   @@index([email])
@@ -648,6 +656,30 @@ model GratitudeEntry {
   @@index([userId])
   @@index([date])
   @@index([userId, date])
+}
+
+// Real Talk — guided gentle startup generator
+model RealTalk {
+  id                String                 @id @default(uuid()) @db.Uuid
+  userId            String                 @map("user_id") @db.Uuid
+  issue             String                 @db.Text
+  feeling           String                 @db.Text
+  need              String                 @db.Text
+  generatedStartup  String                 @map("generated_startup") @db.Text
+  effectiveness     RealTalkEffectiveness?
+  usedAt            DateTime?              @map("used_at")
+  notes             String?                @db.Text
+  deletedAt         DateTime?              @map("deleted_at")
+  createdAt         DateTime               @default(now()) @map("created_at")
+  updatedAt         DateTime               @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("real_talks")
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+  @@index([userId, deletedAt])
 }
 
 // Push notification subscriptions for PWA
