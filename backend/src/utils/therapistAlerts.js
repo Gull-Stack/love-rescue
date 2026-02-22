@@ -471,7 +471,7 @@ async function handleCrisisDetection(clientId, crisisResult, prisma) {
 
   const title = crisisResult.safetyRisk
     ? `⚠️ SAFETY RISK — Level ${crisisResult.level} Crisis Detected`
-    : `Crisis Detected — ${levelLabels[crisisResult.level] || 'Unknown'} (${_formatCrisisType(crisisResult.primaryType)})`;
+    : `⚠️ Conflict Detection Alert — ${levelLabels[crisisResult.level] || 'Unknown'} (${_formatCrisisType(crisisResult.primaryType)})`;
 
   const summary = _buildCrisisSummary(crisisResult);
 
@@ -975,8 +975,8 @@ async function _checkPhaseCompletion(clientId, db) {
 
     if (recentCompletion) {
       const generated = await triggerTherapistAlert(clientId, ALERT_TYPE.MILESTONE, ALERT_SEVERITY.LOW, {
-        title: `Phase Completed — Week ${recentCompletion.weekNumber}`,
-        summary: `Client completed Week ${recentCompletion.weekNumber} (${recentCompletion.theme}). Now on Week ${progress.currentWeek}.`,
+        title: `📊 System Report Available`,
+        summary: `Week ${recentCompletion.weekNumber} analysis complete. Client progressed through ${recentCompletion.theme}. Now on Week ${progress.currentWeek}.`,
         details: {
           completedWeek: recentCompletion.weekNumber,
           theme: recentCompletion.theme,

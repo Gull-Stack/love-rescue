@@ -218,8 +218,8 @@ router.post('/nudge-partner', authenticate, async (req, res) => {
       data: {
         userId: partner.id,
         type: 'PARTNER_NUDGE',
-        title: `${user.firstName || 'Your partner'} is thinking of you`,
-        body: `${user.firstName || 'Your partner'} completed their daily check-in and is waiting for you! 💕`,
+        title: '🔄 Partner Sync Complete',
+        body: 'Both instances operational.',
         read: false
       }
     }).catch(() => {});
