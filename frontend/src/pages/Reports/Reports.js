@@ -20,6 +20,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
@@ -157,15 +158,26 @@ const Reports = () => {
         <Typography variant="h4" fontWeight="bold">
           Reports
         </Typography>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<AutoAwesomeIcon />}
-          onClick={() => navigate('/weekly-review')}
-          sx={{ borderRadius: 2, textTransform: 'none' }}
-        >
-          Weekly Review
-        </Button>
+        <Box display="flex" gap={1}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<CompareArrowsIcon />}
+            onClick={() => navigate('/transformation')}
+            sx={{ borderRadius: 2, textTransform: 'none' }}
+          >
+            Mirror
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AutoAwesomeIcon />}
+            onClick={() => navigate('/weekly-review')}
+            sx={{ borderRadius: 2, textTransform: 'none' }}
+          >
+            Weekly Review
+          </Button>
+        </Box>
       </Box>
 
       {error && (

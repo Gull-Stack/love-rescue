@@ -20,6 +20,8 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   logsApi, 
@@ -456,6 +458,48 @@ const Dashboard = () => {
                     Schedule a guided conversation with a facilitator
                   </Typography>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Skill Tree */}
+            <Card
+              onClick={() => navigate('/skills')}
+              sx={{
+                cursor: 'pointer',
+                '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.12)' },
+              }}
+            >
+              <CardContent sx={{ p: 2.5 }}>
+                <Box display="flex" alignItems="center" gap={1} mb={1}>
+                  <AccountTreeIcon sx={{ color: '#1976d2' }} />
+                  <Typography variant="subtitle1" fontWeight="bold">
+                    Skill Tree
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  Master relationship techniques across 3 RPG-style paths
+                </Typography>
+              </CardContent>
+            </Card>
+
+            {/* Transformation Mirror */}
+            <Card
+              onClick={() => navigate('/transformation')}
+              sx={{
+                cursor: 'pointer',
+                '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.12)' },
+              }}
+            >
+              <CardContent sx={{ p: 2.5 }}>
+                <Box display="flex" alignItems="center" gap={1} mb={1}>
+                  <CompareArrowsIcon sx={{ color: '#e91e63' }} />
+                  <Typography variant="subtitle1" fontWeight="bold">
+                    Transformation Mirror
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  See your THEN vs NOW growth side by side
+                </Typography>
               </CardContent>
             </Card>
 
