@@ -33,6 +33,7 @@ const GRADIENTS = {
   daily: 'linear-gradient(135deg, #f093fb, #f5576c)',
   strategy: 'linear-gradient(135deg, #4facfe, #00f2fe)',
   gratitude: 'linear-gradient(135deg, #43e97b, #38f9d7)',
+  realTalk: 'linear-gradient(135deg, #4facfe, #00f2fe)',
   loveNote: 'linear-gradient(135deg, #f093fb, #f5576c)',
   done: 'linear-gradient(135deg, #d4fc79, #96e6a1)',
 };
@@ -42,6 +43,7 @@ function getAction({
   totalAssessments,
   hasLoggedToday,
   hasGratitudeToday,
+  hasTriedRealTalk,
   strategy,
   loveNote,
   partnerName,
@@ -106,6 +108,17 @@ function getAction({
     };
   }
 
+  // 5.5 Real Talk — show when user hasn't tried it yet
+  if (!hasTriedRealTalk) {
+    return {
+      gradient: GRADIENTS.realTalk,
+      message: 'Need to say something hard? Let us help you say it well.',
+      subtitle: '~2 min',
+      cta: 'Try Real Talk',
+      path: '/real-talk',
+    };
+  }
+
   // 6. Love note available
   if (loveNote) {
     return {
@@ -134,6 +147,7 @@ const ActionCard = ({
   totalAssessments = 10,
   hasLoggedToday = false,
   hasGratitudeToday = false,
+  hasTriedRealTalk = false,
   strategy = null,
   loveNote = null,
   partnerName = null,
@@ -146,6 +160,7 @@ const ActionCard = ({
     totalAssessments,
     hasLoggedToday,
     hasGratitudeToday,
+    hasTriedRealTalk,
     strategy,
     loveNote,
     partnerName,
