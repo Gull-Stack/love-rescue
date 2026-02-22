@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  LinearProgress,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -25,7 +26,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useAuth } from '../../contexts/AuthContext';
-import api, { calendarApi, therapistApi } from '../../services/api';
+import api, { calendarApi, therapistApi, progressRingsApi } from '../../services/api';
 import MyTherapistSection from './MyTherapistSection';
 
 const Settings = () => {
@@ -42,6 +43,7 @@ const Settings = () => {
   const [legalDialog, setLegalDialog] = useState(null); // 'privacy' or 'terms'
   const [gender, setGender] = useState(user?.gender || '');
   const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [systemStatus, setSystemStatus] = useState(null);
 
   useEffect(() => {
     document.title = 'Settings | Love Rescue';
@@ -89,13 +91,22 @@ const Settings = () => {
 
   const fetchSettings = async () => {
     try {
-      const [calRes, consentRes] = await Promise.all([
+      const [calRes, consentRes, ringsRes] = await Promise.all([
         calendarApi.getStatus().catch(() => ({ data: { connected: false } })),
         therapistApi.getConsent().catch(() => ({ data: { consent: false } })),
+        progressRingsApi.get().catch(() => ({ data: null })),
       ]);
 
       setCalendarStatus(calRes.data);
       setTherapistConsent(consentRes.data.consent);
+      if (ringsRes.data) {
+        const rings = ringsRes.data;
+        const connPct = rings.connection?.percent ?? 0;
+        const commPct = rings.communication?.percent ?? 0;
+        const conflictPct = rings.conflict_skill?.percent ?? 0;
+        const avg = Math.round((connPct + commPct + conflictPct) / 3);
+        setSystemStatus({ healthScore: avg, connection: connPct, communication: commPct, conflict: conflictPct });
+      }
     } catch {
       // Settings fetch failed — individual catches above provide fallback defaults
     }
@@ -199,6 +210,57 @@ const Settings = () => {
           {error}
         </Alert>
       )}
+
+      {/* Relationship OS Header */}
+      <Typography
+        variant="overline"
+        sx={{
+          display: 'block',
+          mb: 2,
+          fontFamily: 'monospace',
+          letterSpacing: 2,
+          color: 'text.secondary',
+          fontSize: '0.75rem',
+        }}
+      >
+        RELATIONSHIP OS v2.0
+      </Typography>
+
+      {/* System Status Card */}
+      <Card sx={{ mb: 3, border: '1px solid', borderColor: 'divider' }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom sx={{ fontFamily: 'monospace' }}>
+            System Status
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography variant="body2" color="text.secondary">Last sync</Typography>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                {user?.lastActiveAt
+                  ? (() => {
+                      const mins = Math.round((Date.now() - new Date(user.lastActiveAt).getTime()) / 60000);
+                      if (mins < 1) return 'just now';
+                      if (mins < 60) return `${mins}m ago`;
+                      const hrs = Math.round(mins / 60);
+                      if (hrs < 24) return `${hrs}h ago`;
+                      return `${Math.round(hrs / 24)}d ago`;
+                    })()
+                  : 'N/A'}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography variant="body2" color="text.secondary">Health score</Typography>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                {systemStatus ? `${systemStatus.healthScore}%` : '—'}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography variant="body2" color="text.secondary">Active processes</Typography>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>3</Typography>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
 
       {/* Account Info */}
       <Card sx={{ mb: 3 }}>

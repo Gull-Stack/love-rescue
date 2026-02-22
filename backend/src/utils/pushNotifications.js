@@ -123,11 +123,11 @@ async function sendDailyReminders() {
   });
 
   const reminders = [
-    "Time to check in! How's your relationship feeling today? 💕",
-    "Daily reflection time — your partner will thank you! 🌟",
-    "A few minutes of insight today = a stronger bond tomorrow 💪",
-    "Your daily Love Rescue check-in awaits! ❤️",
-    "Growth happens one day at a time — let's log today! 📝"
+    "Run today's relationship maintenance protocol",
+    "System check required — log today's data point",
+    "Daily sync pending — maintain your operational streak",
+    "Relationship OS requires input — run daily protocol",
+    "Maintenance window open — time to process today's data"
   ];
 
   let sent = 0;
@@ -158,7 +158,7 @@ async function sendDailyReminders() {
       const message = reminders[Math.floor(Math.random() * reminders.length)];
 
       const result = await sendToUser(pref.userId, {
-        title: '💕 Daily Check-In',
+        title: '⚙️ Daily Sync Required',
         body: message,
         tag: 'daily-reminder',
         data: { url: '/logs/new', type: 'daily-reminder' }
@@ -201,8 +201,8 @@ async function notifyPartner(userId, type, message) {
   }
 
   return await sendToUser(partnerId, {
-    title: '💕 Partner Activity',
-    body: message,
+    title: '🔄 Partner Sync Complete',
+    body: 'Both instances operational.',
     tag: `partner-${type}`,
     data: { url: '/dashboard', type: `partner-${type}` }
   });
