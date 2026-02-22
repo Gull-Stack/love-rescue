@@ -78,13 +78,21 @@ router.get('/check', authenticate, async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // Fetch user metadata to check which celebrations have been shown
+    const user = await req.prisma.user.findUnique({
+      where: { id: userId },
+      select: { metadata: true }
+    });
+    
+    const shownCelebrations = user?.metadata?.celebrationsShown || {};
+
     // Check for first-time activity completion
     const activityCount = await req.prisma.dailyLog.count({
       where: { userId }
     });
 
-    if (activityCount === 1) {
-      // Just completed first activity ever
+    if (activityCount === 1 && !shownCelebrations['first_time']) {
+      // Just completed first activity ever and haven't seen celebration yet
       return res.json({
         celebration: 'first_time',
         ...CELEBRATIONS.first_time
@@ -102,17 +110,18 @@ router.get('/check', authenticate, async (req, res) => {
 
     const streak = calculateStreak(recentLogs);
 
-    if (streak === 21) {
+    // Check streak milestones (only show if not already shown)
+    if (streak === 21 && !shownCelebrations['streak_21']) {
       return res.json({
         celebration: 'streak_21',
         ...CELEBRATIONS.streak_21
       });
-    } else if (streak === 7) {
+    } else if (streak === 7 && !shownCelebrations['streak_7']) {
       return res.json({
         celebration: 'streak_7',
         ...CELEBRATIONS.streak_7
       });
-    } else if (streak === 3) {
+    } else if (streak === 3 && !shownCelebrations['streak_3']) {
       return res.json({
         celebration: 'streak_3',
         ...CELEBRATIONS.streak_3
@@ -142,10 +151,16 @@ router.get('/check', authenticate, async (req, res) => {
       ]);
 
       if (userToday && partnerToday) {
-        return res.json({
-          celebration: 'partner_sync',
-          ...CELEBRATIONS.partner_sync
-        });
+        // Check if partner_sync was already shown today
+        const lastShown = shownCelebrations['partner_sync'];
+        const shownToday = lastShown && new Date(lastShown).toDateString() === today.toDateString();
+        
+        if (!shownToday) {
+          return res.json({
+            celebration: 'partner_sync',
+            ...CELEBRATIONS.partner_sync
+          });
+        }
       }
     }
 
@@ -171,18 +186,20 @@ router.post('/mark-shown', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Invalid celebration type' });
     }
 
-    // Store shown celebration in user metadata
+    // Build metadata object first (Prisma JSON field requirement)
+    const currentMetadata = req.user.metadata || {};
+    const currentCelebrations = currentMetadata.celebrationsShown || {};
+    const updatedMetadata = {
+      ...currentMetadata,
+      celebrationsShown: {
+        ...currentCelebrations,
+        [celebration]: new Date().toISOString()
+      }
+    };
+
     await req.prisma.user.update({
       where: { id: userId },
-      data: {
-        metadata: {
-          ...(req.user.metadata || {}),
-          celebrationsShown: {
-            ...((req.user.metadata?.celebrationsShown) || {}),
-            [celebration]: new Date().toISOString()
-          }
-        }
-      }
+      data: { metadata: updatedMetadata }
     });
 
     res.json({ success: true });
