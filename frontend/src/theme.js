@@ -124,6 +124,7 @@ export const sectionColors = {
   reports: { gradient: 'linear-gradient(180deg, #FFF3E0 0%, #ffffff 100%)', accent: '#ff9800' },
   course: { gradient: 'linear-gradient(180deg, #E3F2FD 0%, #ffffff 100%)', accent: '#1976d2' },
   matchup: { gradient: 'linear-gradient(180deg, #FCE4EC 0%, #ffffff 100%)', accent: '#e91e63' },
+  realTalk: { gradient: 'linear-gradient(180deg, #E0F7FA 0%, #ffffff 100%)', accent: '#00838f' },
 };
 
 export default responsiveFontSizes(theme);

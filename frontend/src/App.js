@@ -33,6 +33,8 @@ const TransformationMirror = React.lazy(() => import('./pages/Reports/Transforma
 const Settings = React.lazy(() => import('./pages/Settings/Settings'));
 const ScheduleMeeting = React.lazy(() => import('./pages/Meetings/ScheduleMeeting'));
 const Gratitude = React.lazy(() => import('./pages/Gratitude/Gratitude'));
+const RealTalk = React.lazy(() => import('./pages/RealTalk/RealTalk'));
+const RealTalkHistory = React.lazy(() => import('./pages/RealTalk/RealTalkHistory'));
 
 // Course pages (lazy loaded)
 // const Subscribe = React.lazy(() => import('./pages/Subscribe/Subscribe')); // FREE ERA: removed
@@ -203,6 +205,8 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="meetings" element={<ScheduleMeeting />} />
           <Route path="gratitude" element={<Gratitude />} />
+          <Route path="real-talk" element={<RealTalk />} />
+          <Route path="real-talk/history" element={<RealTalkHistory />} />
           {/* <Route path="subscribe" element={<Subscribe />} /> FREE ERA: removed */}
           {/* Course routes */}
           <Route path="course" element={<CourseJourney />} />

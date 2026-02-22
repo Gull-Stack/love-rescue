@@ -28,6 +28,7 @@ import {
   gratitudeApi,
   streaksApi,
   progressRingsApi,
+  realTalkApi,
 } from '../../services/api';
 import DailyInsight from '../../components/common/DailyInsight';
 import {
@@ -85,6 +86,7 @@ const Dashboard = () => {
     loveNote: null,
     streak: 0,
     progressRings: null,
+    realTalkCount: 0,
   });
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
@@ -105,6 +107,7 @@ const Dashboard = () => {
         loveNoteRes,
         streakRes,
         ringsRes,
+        realTalkRes,
       ] = await Promise.all([
         logsApi.getPrompt().catch(() => ({ data: { prompt: null, hasLoggedToday: false } })),
         logsApi.getStats('7d').catch(() => ({ data: { stats: null } })),
@@ -116,6 +119,7 @@ const Dashboard = () => {
         gratitudeApi.getLoveNote().catch(() => ({ data: { loveNote: null } })),
         streaksApi.getStreak().catch(() => ({ data: { currentStreak: 0 } })),
         progressRingsApi.get().catch(() => ({ data: null })),
+        realTalkApi.list({ limit: 1, offset: 0 }).catch(() => ({ data: { pagination: { total: 0 } } })),
       ]);
 
       let matchupData = null;
@@ -146,6 +150,7 @@ const Dashboard = () => {
         loveNote: loveNoteRes.data.loveNote,
         streak: streakRes.data.currentStreak || gratStreakRes.data.currentStreak || 0,
         progressRings: ringsRes.data,
+        realTalkCount: realTalkRes.data?.pagination?.total || 0,
       });
     } catch {
       // Errors handled via fallback data in individual .catch() blocks
@@ -301,6 +306,7 @@ const Dashboard = () => {
           totalAssessments={totalAssessments}
           hasLoggedToday={data.hasLoggedToday}
           hasGratitudeToday={!!data.gratitude}
+          hasTriedRealTalk={data.realTalkCount > 0}
           strategy={data.strategy}
           loveNote={data.loveNote}
           partnerName={partnerName}
