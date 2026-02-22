@@ -13,6 +13,7 @@ import {
   Tooltip,
   Snackbar,
   Collapse,
+  LinearProgress,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -279,6 +280,53 @@ const Dashboard = () => {
       <Box sx={{ mb: 2 }}>
         <ProgressRings data={data.progressRings} />
       </Box>
+
+      {/* System Health — Relationship OS mini status */}
+      {data.progressRings && (
+        <Card sx={{ mb: 2, border: '1px solid', borderColor: 'divider' }}>
+          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+            <Typography
+              variant="caption"
+              sx={{ fontFamily: 'monospace', letterSpacing: 1, color: 'text.secondary', display: 'block', mb: 1.5 }}
+            >
+              SYSTEM HEALTH
+            </Typography>
+            {[
+              { label: 'Connection Processing', key: 'connection' },
+              { label: 'Communication Buffer', key: 'communication' },
+              { label: 'Conflict Resolution', key: 'conflict_skill' },
+            ].map(({ label, key }) => {
+              const pct = data.progressRings[key]?.percent ?? 0;
+              const barColor = pct > 80 ? '#22c55e' : pct >= 60 ? '#eab308' : '#ef4444';
+              return (
+                <Box key={key} sx={{ mb: key !== 'conflict_skill' ? 1.5 : 0 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: '0.65rem' }}>
+                      {label}
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: '0.65rem' }}>
+                      {pct}%
+                    </Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={pct}
+                    sx={{
+                      height: 6,
+                      borderRadius: 3,
+                      bgcolor: 'rgba(0,0,0,0.06)',
+                      '& .MuiLinearProgress-bar': {
+                        borderRadius: 3,
+                        bgcolor: barColor,
+                      },
+                    }}
+                  />
+                </Box>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Love Note - Special highlight if present */}
       {data.loveNote && (
