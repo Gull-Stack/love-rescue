@@ -23,7 +23,9 @@ import DailyInsight from '../../components/common/DailyInsight';
 import DailyVideo from '../../components/common/DailyVideo';
 import StreakCounter from '../../components/gamification/StreakCounter';
 import CelebrationToast from '../../components/gamification/CelebrationToast';
+import CelebrationModal from '../../components/gamification/CelebrationModal';
 import { celebration } from '../../components/gamification/Confetti';
+import { useCelebrations } from '../../hooks/useCelebrations';
 import { PartnerStatusCard, MatchupScoreCard } from '../../components/gamification/PartnerActivity';
 import MoodEmojiSlider from '../../components/gamification/MoodEmojiSlider';
 import EmotionChips from '../../components/gamification/EmotionChips';
@@ -36,6 +38,7 @@ const DailyLog = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user } = useAuth();
+  const { celebration: celebrationData, isModalOpen, checkForCelebrations, closeCelebration } = useCelebrations();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [prompt, setPrompt] = useState(null);
@@ -164,7 +167,10 @@ const DailyLog = () => {
         const newStreak = streakRes.data;
         setStreakData(newStreak);
 
-        // Check for streak milestones
+        // Check for new celebration system (full-screen modal)
+        await checkForCelebrations();
+
+        // Legacy celebration toast (fallback)
         const milestone = checkStreakMilestones(newStreak.currentStreak);
         if (milestone) {
           setCelebrationType('streak');
@@ -223,7 +229,14 @@ const DailyLog = () => {
       {/* Save Checkmark Animation */}
       <SaveCheckmark show={showSaveCheck} onDone={() => { setShowSaveCheck(false); setSuccess('Daily log saved successfully!'); }} />
 
-      {/* 🎉 CELEBRATION TOAST */}
+      {/* 🎉 NEW CELEBRATION MODAL (Full-Screen) */}
+      <CelebrationModal
+        open={isModalOpen}
+        onClose={closeCelebration}
+        celebration={celebrationData}
+      />
+
+      {/* 🎉 CELEBRATION TOAST (Legacy) */}
       <CelebrationToast
         open={showCelebration}
         onClose={() => setShowCelebration(false)}
