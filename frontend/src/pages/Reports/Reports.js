@@ -156,29 +156,31 @@ const Reports = () => {
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h4" fontWeight="bold">
-          Reports
-        </Typography>
-        <Box display="flex" gap={1}>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<CompareArrowsIcon />}
-            onClick={() => navigate('/transformation')}
-            sx={{ borderRadius: 2, textTransform: 'none' }}
-          >
-            Mirror
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<AutoAwesomeIcon />}
-            onClick={() => navigate('/weekly-review')}
-            sx={{ borderRadius: 2, textTransform: 'none' }}
-          >
-            Weekly Review
-          </Button>
+      <Box sx={{ background: sectionColors.reports.gradient, mx: -3, mt: -3, px: 3, pt: 3, pb: 2, mb: 2 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Typography variant="h4" fontWeight="bold">
+            Reports
+          </Typography>
+          <Box display="flex" gap={1}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<CompareArrowsIcon />}
+              onClick={() => navigate('/transformation')}
+              sx={{ borderRadius: 2, textTransform: 'none' }}
+            >
+              Mirror
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AutoAwesomeIcon />}
+              onClick={() => navigate('/weekly-review')}
+              sx={{ borderRadius: 2, textTransform: 'none' }}
+            >
+              Weekly Review
+            </Button>
+          </Box>
         </Box>
       </Box>
 
