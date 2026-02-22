@@ -17,6 +17,8 @@ import WarningIcon from '@mui/icons-material/Warning';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAuth } from '../../contexts/AuthContext';
 import { matchupApi, strategiesApi } from '../../services/api';
+import { sectionColors } from '../../theme';
+import EmptyState from '../../components/common/EmptyState';
 
 const Matchup = () => {
   const navigate = useNavigate();
@@ -74,26 +76,21 @@ const Matchup = () => {
 
   if (!relationship?.hasPartner) {
     return (
-      <Box textAlign="center" py={8}>
-        <FavoriteIcon sx={{ fontSize: 64, color: 'grey.400', mb: 2 }} />
-        <Typography variant="h5" gutterBottom>
-          Partner Required
-        </Typography>
-        <Typography color="text.secondary" paragraph>
-          Invite your partner to see your matchup score and unlock personalized strategies.
-        </Typography>
-        <Button variant="contained" onClick={() => navigate('/settings')}>
-          Invite Partner
-        </Button>
-      </Box>
+      <EmptyState
+        emoji="💕"
+        title="Better together"
+        subtitle="Invite your partner to unlock compatibility insights"
+      />
     );
   }
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        Matchup Score
-      </Typography>
+      <Box sx={{ background: sectionColors.matchup.gradient, mx: -3, mt: -3, px: 3, pt: 3, pb: 2, mb: 2 }}>
+        <Typography variant="h4" fontWeight="bold">
+          Matchup Score
+        </Typography>
+      </Box>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>

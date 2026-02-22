@@ -40,6 +40,8 @@ import {
 } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
 import { reportsApi, logsApi } from '../../services/api';
+import { sectionColors } from '../../theme';
+import EmptyState from '../../components/common/EmptyState';
 
 ChartJS.register(
   CategoryScale,
@@ -154,29 +156,31 @@ const Reports = () => {
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h4" fontWeight="bold">
-          Reports
-        </Typography>
-        <Box display="flex" gap={1}>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<CompareArrowsIcon />}
-            onClick={() => navigate('/transformation')}
-            sx={{ borderRadius: 2, textTransform: 'none' }}
-          >
-            Mirror
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<AutoAwesomeIcon />}
-            onClick={() => navigate('/weekly-review')}
-            sx={{ borderRadius: 2, textTransform: 'none' }}
-          >
-            Weekly Review
-          </Button>
+      <Box sx={{ background: sectionColors.reports.gradient, mx: -3, mt: -3, px: 3, pt: 3, pb: 2, mb: 2 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Typography variant="h4" fontWeight="bold">
+            Reports
+          </Typography>
+          <Box display="flex" gap={1}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<CompareArrowsIcon />}
+              onClick={() => navigate('/transformation')}
+              sx={{ borderRadius: 2, textTransform: 'none' }}
+            >
+              Mirror
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AutoAwesomeIcon />}
+              onClick={() => navigate('/weekly-review')}
+              sx={{ borderRadius: 2, textTransform: 'none' }}
+            >
+              Weekly Review
+            </Button>
+          </Box>
         </Box>
       </Box>
 
@@ -186,6 +190,17 @@ const Reports = () => {
         </Alert>
       )}
 
+      {!report && !stats?.chartData?.length ? (
+        <EmptyState
+          emoji="📊"
+          title="Your story is just beginning"
+          subtitle="Start logging daily to see your progress unfold"
+          ctaText="Log Today"
+          onCta={() => navigate('/daily')}
+          gradient="linear-gradient(135deg, #f5576c 0%, #ff9a9e 100%)"
+        />
+      ) : (
+      <>
       {/* Period Selector */}
       <Box
         display="flex"
@@ -416,6 +431,8 @@ const Reports = () => {
           </Card>
         </Grid>
       </Grid>
+      </>
+      )}
     </Box>
   );
 };
