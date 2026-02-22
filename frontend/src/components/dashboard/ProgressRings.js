@@ -1,141 +1,66 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Box, Typography, keyframes } from '@mui/material';
 
-const fillAnimation = keyframes`
-  from { stroke-dashoffset: 283; }
+// Celebration burst when a ring hits 100%
+const celebratePulse = keyframes`
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
 `;
 
-const ProgressRing = ({ 
-  value, 
-  max, 
-  size = 80, 
-  strokeWidth = 8, 
-  color, 
-  label,
-  delay = 0,
-}) => {
+const RINGS = [
+  { key: 'connection', label: 'Connection', color: '#34D399' },       // green (outer)
+  { key: 'communication', label: 'Communication', color: '#60A5FA' }, // blue (middle)
+  { key: 'conflict_skill', label: 'Conflict Skill', color: '#FB923C' }, // orange (inner)
+];
+
+const SIZE = 180;
+const STROKE_WIDTH = 14;
+const GAP = 4; // gap between rings
+
+/**
+ * Apple Watch-style 3 concentric progress rings.
+ *
+ * Props:
+ *   data — { connection: {earned, total, percent}, communication: {...}, conflict_skill: {...} }
+ *          Falls back to zeroes when not provided.
+ */
+const ProgressRings = ({ data }) => {
   const [animated, setAnimated] = useState(false);
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const progress = Math.min(value / max, 1);
-  const strokeDashoffset = circumference * (1 - progress);
+  const [celebrated, setCelebrated] = useState({});
+  const prevPercents = useRef({});
 
   useEffect(() => {
-    const timer = setTimeout(() => setAnimated(true), delay);
-    return () => clearTimeout(timer);
-  }, [delay]);
+    // Trigger entry animation on mount
+    const t = setTimeout(() => setAnimated(true), 100);
+    return () => clearTimeout(t);
+  }, []);
 
-  return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 0.5,
-      }}
-    >
-      <Box sx={{ position: 'relative', width: size, height: size }}>
-        <svg width={size} height={size}>
-          {/* Background ring */}
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke="#e0e0e0"
-            strokeWidth={strokeWidth}
-          />
-          {/* Progress ring */}
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke={color}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={animated ? strokeDashoffset : circumference}
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-            style={{
-              transition: 'stroke-dashoffset 1s ease-out',
-            }}
-          />
-        </svg>
-        {/* Center text */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            textAlign: 'center',
-          }}
-        >
-          <Typography 
-            variant="h6" 
-            fontWeight="bold"
-            sx={{ lineHeight: 1, color: color }}
-          >
-            {value}
-          </Typography>
-          <Typography 
-            variant="caption" 
-            color="text.secondary"
-            sx={{ fontSize: '0.65rem' }}
-          >
-            /{max}
-          </Typography>
-        </Box>
-      </Box>
-      <Typography 
-        variant="caption" 
-        fontWeight="medium"
-        color="text.secondary"
-        sx={{ textAlign: 'center', maxWidth: 70 }}
-      >
-        {label}
-      </Typography>
-    </Box>
-  );
-};
+  // Detect ring closure (transition to 100%) for celebration
+  useEffect(() => {
+    if (!data) return;
+    const next = {};
+    RINGS.forEach(({ key }) => {
+      const pct = data[key]?.percent ?? 0;
+      const prev = prevPercents.current[key] ?? 0;
+      if (pct >= 100 && prev < 100) {
+        next[key] = true;
+      }
+      prevPercents.current[key] = pct;
+    });
+    if (Object.keys(next).length > 0) {
+      setCelebrated(prev => ({ ...prev, ...next }));
+      // Clear celebration after animation
+      const t = setTimeout(() => setCelebrated({}), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [data]);
 
-const ProgressRings = ({ 
-  logsThisWeek = 0, 
-  assessmentsDone = 0,
-  totalAssessments = 10,
-  gratitudeThisWeek = 0,
-}) => {
-  const rings = [
-    {
-      value: logsThisWeek,
-      max: 7,
-      color: '#e91e63',
-      label: 'Daily Logs',
-      delay: 0,
-    },
-    {
-      value: gratitudeThisWeek,
-      max: 7,
-      color: '#f59e0b',
-      label: 'Gratitude',
-      delay: 200,
-    },
-    {
-      value: assessmentsDone,
-      max: totalAssessments,
-      color: '#9c27b0',
-      label: 'Assessments',
-      delay: 400,
-    },
-  ];
+  const center = SIZE / 2;
 
-  // Calculate overall weekly score
-  const weeklyScore = Math.round(
-    ((logsThisWeek / 7) * 0.4 + 
-     (gratitudeThisWeek / 7) * 0.3 + 
-     (assessmentsDone / totalAssessments) * 0.3) * 100
-  );
+  // Find bottleneck (lowest percent) for center display
+  const percents = RINGS.map(({ key }) => data?.[key]?.percent ?? 0);
+  const bottleneck = Math.min(...percents);
 
   return (
     <Box
@@ -147,81 +72,137 @@ const ProgressRings = ({
       }}
     >
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="subtitle1" fontWeight="bold">
-          This Week
-        </Typography>
-        <Box
-          sx={{
-            px: 1.5,
-            py: 0.5,
-            borderRadius: 2,
-            bgcolor: weeklyScore >= 70 ? 'success.light' : weeklyScore >= 40 ? 'warning.light' : 'grey.200',
-          }}
-        >
-          <Typography 
-            variant="caption" 
-            fontWeight="bold"
-            sx={{ 
-              color: weeklyScore >= 70 ? 'success.dark' : weeklyScore >= 40 ? 'warning.dark' : 'text.secondary',
+      <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
+        This Week
+      </Typography>
+
+      {/* Concentric rings */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+        <Box sx={{ position: 'relative', width: SIZE, height: SIZE }}>
+          <svg width={SIZE} height={SIZE}>
+            {RINGS.map(({ key, color }, i) => {
+              const radius = (SIZE - STROKE_WIDTH) / 2 - i * (STROKE_WIDTH + GAP);
+              const circumference = 2 * Math.PI * radius;
+              const pct = data?.[key]?.percent ?? 0;
+              const progress = Math.min(pct / 100, 1);
+              const dashOffset = circumference * (1 - progress);
+              const isCelebrating = celebrated[key];
+
+              return (
+                <g key={key}>
+                  {/* Background track */}
+                  <circle
+                    cx={center}
+                    cy={center}
+                    r={radius}
+                    fill="none"
+                    stroke="rgba(0,0,0,0.06)"
+                    strokeWidth={STROKE_WIDTH}
+                  />
+                  {/* Progress arc */}
+                  <circle
+                    cx={center}
+                    cy={center}
+                    r={radius}
+                    fill="none"
+                    stroke={color}
+                    strokeWidth={STROKE_WIDTH}
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={animated ? dashOffset : circumference}
+                    transform={`rotate(-90 ${center} ${center})`}
+                    style={{
+                      transition: 'stroke-dashoffset 1s ease-out',
+                      ...(isCelebrating
+                        ? { animation: `${celebratePulse} 0.6s ease-in-out` }
+                        : {}),
+                    }}
+                  />
+                  {/* Round end-cap glow for completed rings */}
+                  {pct >= 100 && (
+                    <circle
+                      cx={center}
+                      cy={center}
+                      r={radius}
+                      fill="none"
+                      stroke={color}
+                      strokeWidth={STROKE_WIDTH}
+                      strokeLinecap="round"
+                      strokeDasharray={circumference}
+                      strokeDashoffset={0}
+                      transform={`rotate(-90 ${center} ${center})`}
+                      style={{ opacity: 0.3, filter: 'blur(3px)' }}
+                    />
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* Center bottleneck display */}
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              textAlign: 'center',
             }}
           >
-            {weeklyScore}% complete
-          </Typography>
+            <Typography
+              variant="h5"
+              fontWeight="bold"
+              sx={{ lineHeight: 1, color: 'text.primary' }}
+            >
+              {bottleneck}%
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ fontSize: '0.6rem' }}
+            >
+              lowest
+            </Typography>
+          </Box>
         </Box>
       </Box>
 
-      {/* Rings */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-around',
-          alignItems: 'flex-start',
-        }}
-      >
-        {rings.map((ring, index) => (
-          <ProgressRing
-            key={ring.label}
-            value={ring.value}
-            max={ring.max}
-            color={ring.color}
-            label={ring.label}
-            delay={ring.delay}
-          />
-        ))}
+      {/* Legend */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {RINGS.map(({ key, label, color }) => {
+          const earned = data?.[key]?.earned ?? 0;
+          const total = data?.[key]?.total ?? 0;
+          return (
+            <Box
+              key={key}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  bgcolor: color,
+                  flexShrink: 0,
+                }}
+              />
+              <Typography
+                variant="body2"
+                sx={{ flex: 1, fontWeight: 500 }}
+              >
+                {label}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {earned}/{total}
+              </Typography>
+            </Box>
+          );
+        })}
       </Box>
-
-      {/* Motivation message */}
-      {weeklyScore < 100 && (
-        <Typography 
-          variant="body2" 
-          color="text.secondary" 
-          textAlign="center" 
-          mt={2}
-          sx={{ fontSize: '0.85rem' }}
-        >
-          {weeklyScore < 30 
-            ? "Let's get started! Small steps lead to big changes 💪"
-            : weeklyScore < 70 
-              ? "Great progress! Keep the momentum going 🌟"
-              : "Almost there! You're doing amazing 🔥"
-          }
-        </Typography>
-      )}
-      {weeklyScore >= 100 && (
-        <Typography 
-          variant="body2" 
-          textAlign="center" 
-          mt={2}
-          sx={{ 
-            fontSize: '0.85rem',
-            fontWeight: 'bold',
-            color: 'success.main',
-          }}
-        >
-          Perfect week! You're a relationship champion 🏆
-        </Typography>
-      )}
     </Box>
   );
 };

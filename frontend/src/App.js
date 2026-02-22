@@ -26,13 +26,16 @@ const AssessmentQuiz = React.lazy(() => import('./pages/Assessments/AssessmentQu
 const Matchup = React.lazy(() => import('./pages/Matchup/Matchup'));
 const DailyLog = React.lazy(() => import('./pages/DailyLog/DailyLog'));
 const Strategies = React.lazy(() => import('./pages/Strategies/Strategies'));
+const SkillTree = React.lazy(() => import('./pages/Strategies/SkillTree'));
 const Reports = React.lazy(() => import('./pages/Reports/Reports'));
+const WeeklySummary = React.lazy(() => import('./pages/Reports/WeeklySummary'));
+const TransformationMirror = React.lazy(() => import('./pages/Reports/TransformationMirror'));
 const Settings = React.lazy(() => import('./pages/Settings/Settings'));
 const ScheduleMeeting = React.lazy(() => import('./pages/Meetings/ScheduleMeeting'));
 const Gratitude = React.lazy(() => import('./pages/Gratitude/Gratitude'));
 
 // Course pages (lazy loaded)
-const Subscribe = React.lazy(() => import('./pages/Subscribe/Subscribe'));
+// const Subscribe = React.lazy(() => import('./pages/Subscribe/Subscribe')); // FREE ERA: removed
 const CourseJourney = React.lazy(() => import('./pages/Course/Journey'));
 const CourseWeekDetail = React.lazy(() => import('./pages/Course/WeekDetail'));
 
@@ -193,11 +196,14 @@ function App() {
           <Route path="matchup" element={<Matchup />} />
           <Route path="daily" element={<DailyLog />} />
           <Route path="strategies" element={<Strategies />} />
+          <Route path="skills" element={<SkillTree />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="weekly-review" element={<WeeklySummary />} />
+          <Route path="transformation" element={<TransformationMirror />} />
           <Route path="settings" element={<Settings />} />
           <Route path="meetings" element={<ScheduleMeeting />} />
           <Route path="gratitude" element={<Gratitude />} />
-          <Route path="subscribe" element={<Subscribe />} />
+          {/* <Route path="subscribe" element={<Subscribe />} /> FREE ERA: removed */}
           {/* Course routes */}
           <Route path="course" element={<CourseJourney />} />
           <Route path="course/week" element={<CourseWeekDetail />} />

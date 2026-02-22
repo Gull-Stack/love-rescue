@@ -13,6 +13,7 @@ import {
   Tooltip,
   Snackbar,
   Collapse,
+  LinearProgress,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -20,16 +21,19 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  logsApi, 
-  matchupApi, 
-  strategiesApi, 
-  assessmentsApi, 
-  meetingsApi, 
-  paymentsApi, 
+import {
+  logsApi,
+  matchupApi,
+  strategiesApi,
+  assessmentsApi,
+  meetingsApi,
+  paymentsApi,
   gratitudeApi,
   streaksApi,
+  progressRingsApi,
 } from '../../services/api';
 import DailyInsight from '../../components/common/DailyInsight';
 import DailyVideo from '../../components/common/DailyVideo';
@@ -40,6 +44,8 @@ import {
   TodayCard,
   ProgressRings,
 } from '../../components/dashboard';
+import IdentityHint from '../../components/gamification/IdentityHint';
+import ExpertInsight from '../../components/gamification/ExpertInsight';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -58,6 +64,7 @@ const Dashboard = () => {
     gratitudeStreak: null,
     loveNote: null,
     streak: 0,
+    progressRings: null,
   });
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
@@ -75,15 +82,16 @@ const Dashboard = () => {
   const fetchDashboardData = useCallback(async () => {
     try {
       const [
-        promptRes, 
-        statsRes, 
-        assessRes, 
-        meetingsRes, 
-        subRes, 
-        gratTodayRes, 
-        gratStreakRes, 
+        promptRes,
+        statsRes,
+        assessRes,
+        meetingsRes,
+        subRes,
+        gratTodayRes,
+        gratStreakRes,
         loveNoteRes,
         streakRes,
+        ringsRes,
       ] = await Promise.all([
         logsApi.getPrompt().catch(() => ({ data: { prompt: null, hasLoggedToday: false } })),
         logsApi.getStats('7d').catch(() => ({ data: { stats: null } })),
@@ -94,6 +102,7 @@ const Dashboard = () => {
         gratitudeApi.getStreak().catch(() => ({ data: { currentStreak: 0, longestStreak: 0, totalEntries: 0 } })),
         gratitudeApi.getLoveNote().catch(() => ({ data: { loveNote: null } })),
         streaksApi.getStreak().catch(() => ({ data: { currentStreak: 0 } })),
+        progressRingsApi.get().catch(() => ({ data: null })),
       ]);
 
       let matchupData = null;
@@ -123,6 +132,7 @@ const Dashboard = () => {
         gratitudeStreak: gratStreakRes.data,
         loveNote: loveNoteRes.data.loveNote,
         streak: streakRes.data.currentStreak || gratStreakRes.data.currentStreak || 0,
+        progressRings: ringsRes.data,
       });
     } catch {
       // Errors handled via fallback data in individual .catch() blocks
@@ -173,10 +183,6 @@ const Dashboard = () => {
   // Calculate stats
   const totalAssessments = 10;
   const assessmentsDone = data.assessments?.completed?.length || 0;
-  const logsThisWeek = data.stats?.daysLogged || 0;
-  const gratitudeThisWeek = data.gratitudeStreak?.totalEntries 
-    ? Math.min(data.gratitudeStreak.totalEntries, 7) 
-    : 0;
 
   return (
     <Box
@@ -252,6 +258,12 @@ const Dashboard = () => {
         </Alert>
       </Collapse>
 
+      {/* Identity Hint - contextual identity insight */}
+      <IdentityHint />
+
+      {/* Expert Insight - contextual expert wisdom */}
+      <ExpertInsight />
+
       {/* Today Card - Single focus CTA */}
       <Box sx={{ mb: 2 }}>
         <TodayCard
@@ -264,15 +276,57 @@ const Dashboard = () => {
         />
       </Box>
 
-      {/* Progress Rings */}
+      {/* Progress Rings — 3-ring Apple Watch style */}
       <Box sx={{ mb: 2 }}>
-        <ProgressRings
-          logsThisWeek={logsThisWeek}
-          assessmentsDone={assessmentsDone}
-          totalAssessments={totalAssessments}
-          gratitudeThisWeek={gratitudeThisWeek}
-        />
+        <ProgressRings data={data.progressRings} />
       </Box>
+
+      {/* System Health — Relationship OS mini status */}
+      {data.progressRings && (
+        <Card sx={{ mb: 2, border: '1px solid', borderColor: 'divider' }}>
+          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+            <Typography
+              variant="caption"
+              sx={{ fontFamily: 'monospace', letterSpacing: 1, color: 'text.secondary', display: 'block', mb: 1.5 }}
+            >
+              SYSTEM HEALTH
+            </Typography>
+            {[
+              { label: 'Connection Processing', key: 'connection' },
+              { label: 'Communication Buffer', key: 'communication' },
+              { label: 'Conflict Resolution', key: 'conflict_skill' },
+            ].map(({ label, key }) => {
+              const pct = data.progressRings[key]?.percent ?? 0;
+              const barColor = pct > 80 ? '#22c55e' : pct >= 60 ? '#eab308' : '#ef4444';
+              return (
+                <Box key={key} sx={{ mb: key !== 'conflict_skill' ? 1.5 : 0 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: '0.65rem' }}>
+                      {label}
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: '0.65rem' }}>
+                      {pct}%
+                    </Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={pct}
+                    sx={{
+                      height: 6,
+                      borderRadius: 3,
+                      bgcolor: 'rgba(0,0,0,0.06)',
+                      '& .MuiLinearProgress-bar': {
+                        borderRadius: 3,
+                        bgcolor: barColor,
+                      },
+                    }}
+                  />
+                </Box>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Love Note - Special highlight if present */}
       {data.loveNote && (
@@ -448,6 +502,48 @@ const Dashboard = () => {
                     Schedule a guided conversation with a facilitator
                   </Typography>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Skill Tree */}
+            <Card
+              onClick={() => navigate('/skills')}
+              sx={{
+                cursor: 'pointer',
+                '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.12)' },
+              }}
+            >
+              <CardContent sx={{ p: 2.5 }}>
+                <Box display="flex" alignItems="center" gap={1} mb={1}>
+                  <AccountTreeIcon sx={{ color: '#1976d2' }} />
+                  <Typography variant="subtitle1" fontWeight="bold">
+                    Skill Tree
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  Master relationship techniques across 3 RPG-style paths
+                </Typography>
+              </CardContent>
+            </Card>
+
+            {/* Transformation Mirror */}
+            <Card
+              onClick={() => navigate('/transformation')}
+              sx={{
+                cursor: 'pointer',
+                '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.12)' },
+              }}
+            >
+              <CardContent sx={{ p: 2.5 }}>
+                <Box display="flex" alignItems="center" gap={1} mb={1}>
+                  <CompareArrowsIcon sx={{ color: '#e91e63' }} />
+                  <Typography variant="subtitle1" fontWeight="bold">
+                    Transformation Mirror
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  See your THEN vs NOW growth side by side
+                </Typography>
               </CardContent>
             </Card>
 
