@@ -30,6 +30,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SchoolIcon from '@mui/icons-material/School';
 import { assessmentsApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { sectionColors } from '../../theme';
 
 // ─── Assessment Type Definitions ──────────────────────────────────────────────
 const assessmentTypes = [
@@ -887,10 +888,12 @@ const Assessments = () => {
 
   return (
     <Box>
-      {/* Page Header */}
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        Self-Discovery Assessments
-      </Typography>
+      {/* Section Gradient Header */}
+      <Box sx={{ background: sectionColors.assessments.gradient, mx: -3, mt: -3, px: 3, pt: 3, pb: 2, mb: 2 }}>
+        <Typography variant="h4" fontWeight="bold" gutterBottom>
+          Self-Discovery Assessments
+        </Typography>
+      </Box>
 
       {/* Philosophy Banner */}
       <Paper
