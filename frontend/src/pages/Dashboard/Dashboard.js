@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Button,
   CircularProgress,
   Chip,
   Alert,
@@ -16,12 +15,7 @@ import {
   LinearProgress,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import VideocamIcon from '@mui/icons-material/Videocam';
-import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
-import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -36,7 +30,6 @@ import {
   progressRingsApi,
 } from '../../services/api';
 import DailyInsight from '../../components/common/DailyInsight';
-import DailyVideo from '../../components/common/DailyVideo';
 import {
   StreakHero,
   QuickLogFAB,
@@ -44,8 +37,35 @@ import {
   TodayCard,
   ProgressRings,
 } from '../../components/dashboard';
+import ActionCard from '../../components/dashboard/ActionCard';
 import IdentityHint from '../../components/gamification/IdentityHint';
 import ExpertInsight from '../../components/gamification/ExpertInsight';
+
+// User progress states
+const STATE = {
+  BLANK: 'BLANK',
+  DISCOVERING: 'DISCOVERING',
+  BUILDING: 'BUILDING',
+  PRACTICING: 'PRACTICING',
+  TRANSFORMED: 'TRANSFORMED',
+};
+
+function getUserState({ assessmentsDone, daysActive, streak, strategyCycle }) {
+  if (assessmentsDone === 0) return STATE.BLANK;
+  if (assessmentsDone < 3 && daysActive < 7) return STATE.DISCOVERING;
+  if (daysActive >= 42 || strategyCycle > 1) return STATE.TRANSFORMED;
+  if (daysActive >= 14 && streak > 0) return STATE.PRACTICING;
+  if (assessmentsDone >= 3) return STATE.BUILDING;
+  // Fallback for edge cases (e.g. 1-2 assessments, daysActive >= 7)
+  return STATE.DISCOVERING;
+}
+
+function getDaysActive(createdAt) {
+  if (!createdAt) return 0;
+  const created = new Date(createdAt);
+  const now = new Date();
+  return Math.floor((now - created) / (1000 * 60 * 60 * 24));
+}
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -68,16 +88,9 @@ const Dashboard = () => {
   });
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
-  const [showMoreCards, setShowMoreCards] = useState(false);
   const [bonusCelebration, setBonusCelebration] = useState(false);
 
-  // Get partner name from relationship
   const partnerName = relationship?.partner?.firstName || null;
-
-  useEffect(() => {
-    document.title = 'Dashboard | Love Rescue';
-    fetchDashboardData();
-  }, []); // Intentional: run once on mount
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -141,6 +154,11 @@ const Dashboard = () => {
     }
   }, [relationship?.hasPartner]);
 
+  useEffect(() => {
+    document.title = 'Dashboard | Love Rescue';
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
   const handleInvite = async () => {
     try {
       const response = await invitePartner();
@@ -157,7 +175,6 @@ const Dashboard = () => {
   };
 
   const handleQuickLogComplete = (isBonus) => {
-    // Refresh data after quick log
     fetchDashboardData();
     if (isBonus) {
       setBonusCelebration(true);
@@ -166,10 +183,10 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <Box 
-        display="flex" 
-        justifyContent="center" 
-        alignItems="center" 
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
         minHeight="60vh"
         flexDirection="column"
         gap={2}
@@ -180,67 +197,85 @@ const Dashboard = () => {
     );
   }
 
-  // Calculate stats
+  // Calculate derived state
   const totalAssessments = 10;
   const assessmentsDone = data.assessments?.completed?.length || 0;
+  const daysActive = getDaysActive(user?.createdAt);
+  const strategyCycle = data.strategy?.cycle || 0;
+
+  const userState = getUserState({
+    assessmentsDone,
+    daysActive,
+    streak: data.streak,
+    strategyCycle,
+  });
+
+  // Persist state for Layout's dynamic nav
+  try {
+    localStorage.setItem('lr_user_state', userState);
+  } catch {
+    // Storage not available
+  }
+
+  const showHeader = userState === STATE.PRACTICING || userState === STATE.TRANSFORMED;
+  const showProgressRings = userState === STATE.BUILDING || userState === STATE.PRACTICING || userState === STATE.TRANSFORMED;
+  const showStreakHero = userState === STATE.PRACTICING || userState === STATE.TRANSFORMED;
+  const showFeed = userState === STATE.PRACTICING || userState === STATE.TRANSFORMED;
+  const showQuickLogFAB = userState === STATE.BUILDING || userState === STATE.PRACTICING || userState === STATE.TRANSFORMED;
+  const showTransformationTeaser = userState === STATE.TRANSFORMED;
+  const showAssessmentResults = userState === STATE.DISCOVERING || userState === STATE.BUILDING || userState === STATE.PRACTICING || userState === STATE.TRANSFORMED;
+  const showStrategyTeaser = userState === STATE.BUILDING;
 
   return (
     <Box
       sx={{
-        pb: 10, // Space for FAB
+        pb: 10,
         maxWidth: 600,
         mx: 'auto',
-        overflowX: 'hidden', // Prevent horizontal scroll
+        overflowX: 'hidden',
       }}
     >
-      {/* Warm gradient header area */}
-      <Box
-        sx={{
-          background: 'linear-gradient(180deg, #FFF0EB 0%, #ffffff 100%)',
-          mx: -3,
-          mt: -3,
-          px: 3,
-          pt: 3,
-          pb: 2,
-          mb: 2,
-        }}
-      >
-        {/* Personalized greeting */}
-        <Typography 
-          variant="h5" 
-          fontWeight="bold" 
-          sx={{ mb: 0.5 }}
+      {/* Warm gradient header — PRACTICING+ states only */}
+      {showHeader && (
+        <Box
+          sx={{
+            background: 'linear-gradient(180deg, #FFF0EB 0%, #ffffff 100%)',
+            mx: -3,
+            mt: -3,
+            px: 3,
+            pt: 3,
+            pb: 2,
+            mb: 2,
+          }}
         >
-          Hey, {user?.firstName || 'there'} 👋
-        </Typography>
-        <Typography 
-          variant="body2" 
-          color="text.secondary"
-          sx={{ mb: 2 }}
-        >
-          {partnerName 
-            ? `Let's nurture your connection with ${partnerName}` 
-            : "Let's build something beautiful today"
-          }
-        </Typography>
+          <Typography variant="h5" fontWeight="bold" sx={{ mb: 0.5 }}>
+            Hey, {user?.firstName || 'there'} 👋
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {partnerName
+              ? `Let's nurture your connection with ${partnerName}`
+              : "Let's build something beautiful today"}
+          </Typography>
 
-        {/* Streak Hero - TOP priority placement */}
-        <StreakHero 
-          streak={data.streak} 
-          partnerName={partnerName}
-        />
-      </Box>
+          {/* Streak Hero — PRACTICING+ */}
+          {showStreakHero && (
+            <StreakHero streak={data.streak} partnerName={partnerName} />
+          )}
+        </Box>
+      )}
 
-      {/* Partner Pulse - Right below streak */}
-      <Box sx={{ mb: 2 }}>
-        <PartnerPulse
-          hasPartner={relationship?.hasPartner}
-          partnerName={partnerName}
-          partnerActive={relationship?.partnerLoggedToday}
-          partnerLastSeen={relationship?.partnerLastActive}
-          onInvite={handleInvite}
-        />
-      </Box>
+      {/* Partner Pulse — only in PRACTICING+ with partner */}
+      {showFeed && relationship?.hasPartner && (
+        <Box sx={{ mb: 2 }}>
+          <PartnerPulse
+            hasPartner={relationship?.hasPartner}
+            partnerName={partnerName}
+            partnerActive={relationship?.partnerLoggedToday}
+            partnerLastSeen={relationship?.partnerLastActive}
+            onInvite={handleInvite}
+          />
+        </Box>
+      )}
 
       {/* Invite link alert */}
       <Collapse in={!!inviteLink}>
@@ -258,31 +293,67 @@ const Dashboard = () => {
         </Alert>
       </Collapse>
 
-      {/* Identity Hint - contextual identity insight */}
-      <IdentityHint />
-
-      {/* Expert Insight - contextual expert wisdom */}
-      <ExpertInsight />
-
-      {/* Today Card - Single focus CTA */}
+      {/* ActionCard — THE hero card. Always present. */}
       <Box sx={{ mb: 2 }}>
-        <TodayCard
-          hasLoggedToday={data.hasLoggedToday}
-          hasGratitudeToday={!!data.gratitude}
+        <ActionCard
+          user={user}
           assessmentsDone={assessmentsDone}
           totalAssessments={totalAssessments}
-          prompt={data.prompt}
+          hasLoggedToday={data.hasLoggedToday}
+          hasGratitudeToday={!!data.gratitude}
+          strategy={data.strategy}
+          loveNote={data.loveNote}
           partnerName={partnerName}
+          streak={data.streak}
         />
       </Box>
 
-      {/* Progress Rings — 3-ring Apple Watch style */}
-      <Box sx={{ mb: 2 }}>
-        <ProgressRings data={data.progressRings} />
-      </Box>
+      {/* Assessment result cards — DISCOVERING+ */}
+      {showAssessmentResults && assessmentsDone > 0 && data.assessments?.completed && (
+        <Box sx={{ mb: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {data.assessments.completed.slice(0, 3).map((result) => (
+            <Card
+              key={result.type}
+              onClick={() => navigate(`/assessments/results/${result.type}`)}
+              sx={{
+                cursor: 'pointer',
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: 'divider',
+                '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.08)' },
+              }}
+            >
+              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                <Box display="flex" alignItems="center" justifyContent="space-between">
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight="bold">
+                      {result.name || result.type}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {result.summary || 'View your results'}
+                    </Typography>
+                  </Box>
+                  <Chip
+                    label={result.primaryStyle || result.score || 'Done'}
+                    size="small"
+                    sx={{ bgcolor: '#667eea15', color: '#667eea', fontWeight: 600 }}
+                  />
+                </Box>
+              </CardContent>
+            </Card>
+          ))}
+        </Box>
+      )}
 
-      {/* System Health — Relationship OS mini status */}
-      {data.progressRings && (
+      {/* Progress Rings — BUILDING+ */}
+      {showProgressRings && (
+        <Box sx={{ mb: 2 }}>
+          <ProgressRings data={data.progressRings} />
+        </Box>
+      )}
+
+      {/* System Health — BUILDING+ */}
+      {showProgressRings && data.progressRings && (
         <Card sx={{ mb: 2, border: '1px solid', borderColor: 'divider' }}>
           <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
             <Typography
@@ -328,265 +399,124 @@ const Dashboard = () => {
         </Card>
       )}
 
-      {/* Love Note - Special highlight if present */}
-      {data.loveNote && (
+      {/* Strategy teaser — BUILDING state only */}
+      {showStrategyTeaser && (
         <Card
-          onClick={() => navigate('/gratitude')}
+          onClick={() => navigate('/strategies')}
           sx={{
             mb: 2,
-            background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #fbcfe8 100%)',
-            border: '2px solid #f9a8d4',
             cursor: 'pointer',
-            transition: 'transform 0.2s, box-shadow 0.2s',
-            '&:hover': {
-              transform: 'translateY(-2px)',
-              boxShadow: '0 8px 25px rgba(244, 114, 182, 0.25)',
-            },
+            borderRadius: 3,
+            border: '1px solid',
+            borderColor: 'divider',
+            '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.08)' },
           }}
         >
-          <CardContent sx={{ p: 2.5 }}>
-            <Box display="flex" alignItems="center" gap={1} mb={1}>
-              <MailOutlineIcon sx={{ color: '#be185d' }} />
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#9d174d' }}>
-                💌 You have a Love Note!
-              </Typography>
-            </Box>
-            <Typography variant="body2" sx={{ color: '#9d174d' }}>
-              From {data.loveNote.fromName} · {data.loveNote.entryCount} appreciation{data.loveNote.entryCount !== 1 ? 's' : ''} this week
+          <CardContent sx={{ p: 2.5, textAlign: 'center' }}>
+            <EmojiObjectsIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
+            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+              {data.strategy
+                ? `Strategy: Week ${data.strategy.week}/6`
+                : 'Get Your Strategy Plan'}
             </Typography>
-            {data.loveNote.entries?.[0] && (
-              <Typography
-                variant="body2"
-                sx={{
-                  color: '#831843',
-                  fontStyle: 'italic',
-                  mt: 1,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                "{data.loveNote.entries[0].text}"
-              </Typography>
-            )}
+            <Typography variant="body2" color="text.secondary">
+              {data.strategy
+                ? `${data.strategy.progress || 0}% complete — ${data.strategy.weeklyGoals?.length || 0} goals this week`
+                : 'Personalized 6-week roadmap for your relationship'}
+            </Typography>
           </CardContent>
         </Card>
       )}
 
-      {/* Daily Insight - Compact */}
-      <Box sx={{ mb: 2 }}>
-        <DailyInsight />
-      </Box>
+      {/* Feed section — PRACTICING+ */}
+      {showFeed && (
+        <>
+          {/* Identity Hint */}
+          <IdentityHint />
 
-      {/* Expandable "More" section */}
-      <Box sx={{ mb: 2 }}>
-        <Button
-          fullWidth
-          variant="text"
-          onClick={() => setShowMoreCards(!showMoreCards)}
-          endIcon={showMoreCards ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          sx={{ 
-            color: 'text.secondary',
-            py: 1,
-            borderRadius: 2,
-            bgcolor: 'background.paper',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-          }}
-        >
-          {showMoreCards ? 'Show less' : 'More features'}
-        </Button>
+          {/* Expert Insight */}
+          <ExpertInsight />
 
-        <Collapse in={showMoreCards}>
-          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {/* Daily Video */}
-            <DailyVideo />
-
-            {/* Strategy Card */}
-            {data.strategy ? (
-              <Card 
-                onClick={() => navigate('/strategies')}
-                sx={{ 
-                  cursor: 'pointer',
-                  '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.12)' },
-                }}
-              >
-                <CardContent sx={{ p: 2.5 }}>
-                  <Box display="flex" alignItems="center" gap={1} mb={1}>
-                    <EmojiObjectsIcon sx={{ color: '#1976d2' }} />
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      Strategy Plan
-                    </Typography>
-                    <Chip 
-                      label={`Week ${data.strategy.week}/6`} 
-                      size="small" 
-                      sx={{ ml: 'auto' }}
-                    />
-                  </Box>
-                  <Box display="flex" alignItems="center" gap={2}>
-                    <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                      <CircularProgress
-                        variant="determinate"
-                        value={data.strategy.progress || 0}
-                        size={48}
-                        thickness={5}
-                      />
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          top: 0, left: 0, bottom: 0, right: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <Typography variant="caption" fontWeight="bold">
-                          {data.strategy.progress || 0}%
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <Typography variant="body2" color="text.secondary">
-                      {data.strategy.weeklyGoals?.length || 0} goals this week
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card 
-                onClick={() => navigate('/strategies')}
-                sx={{ 
-                  cursor: 'pointer',
-                  '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.12)' },
-                }}
-              >
-                <CardContent sx={{ p: 2.5, textAlign: 'center' }}>
-                  <EmojiObjectsIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
-                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                    Get Your Strategy Plan
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Personalized 6-week roadmap for your relationship
-                  </Typography>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Meetings Card - Simplified */}
-            <Card 
-              onClick={() => navigate('/meetings')}
-              sx={{ 
+          {/* Love Note highlight */}
+          {data.loveNote && (
+            <Card
+              onClick={() => navigate('/gratitude')}
+              sx={{
+                mb: 2,
+                background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #fbcfe8 100%)',
+                border: '2px solid #f9a8d4',
                 cursor: 'pointer',
-                '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.12)' },
+                borderRadius: 3,
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 8px 25px rgba(244, 114, 182, 0.25)',
+                },
               }}
             >
               <CardContent sx={{ p: 2.5 }}>
-                <Box display="flex" alignItems="center" gap={1} mb={1}>
-                  <VideocamIcon sx={{ color: '#9c27b0' }} />
-                  <Typography variant="subtitle1" fontWeight="bold">
-                    Mediated Meetings
-                  </Typography>
-                  {data.meetings.length > 0 && (
-                    <Chip 
-                      label={`${data.meetings.length} upcoming`} 
-                      size="small" 
-                      color="secondary"
-                      sx={{ ml: 'auto' }}
-                    />
-                  )}
-                </Box>
-                {data.meetings.length > 0 ? (
-                  <Typography variant="body2" color="text.secondary">
-                    Next: {new Date(data.meetings[0].scheduledAt).toLocaleDateString()} with {data.meetings[0].mediator?.name}
-                  </Typography>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    Schedule a guided conversation with a facilitator
+                <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#9d174d', mb: 0.5 }}>
+                  💌 Love Note from {data.loveNote.fromName}
+                </Typography>
+                {data.loveNote.entries?.[0] && (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: '#831843',
+                      fontStyle: 'italic',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    &ldquo;{data.loveNote.entries[0].text}&rdquo;
                   </Typography>
                 )}
               </CardContent>
             </Card>
+          )}
 
-            {/* Skill Tree */}
-            <Card
-              onClick={() => navigate('/skills')}
-              sx={{
-                cursor: 'pointer',
-                '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.12)' },
-              }}
-            >
-              <CardContent sx={{ p: 2.5 }}>
-                <Box display="flex" alignItems="center" gap={1} mb={1}>
-                  <AccountTreeIcon sx={{ color: '#1976d2' }} />
-                  <Typography variant="subtitle1" fontWeight="bold">
-                    Skill Tree
-                  </Typography>
-                </Box>
-                <Typography variant="body2" color="text.secondary">
-                  Master relationship techniques across 3 RPG-style paths
-                </Typography>
-              </CardContent>
-            </Card>
-
-            {/* Transformation Mirror */}
-            <Card
-              onClick={() => navigate('/transformation')}
-              sx={{
-                cursor: 'pointer',
-                '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.12)' },
-              }}
-            >
-              <CardContent sx={{ p: 2.5 }}>
-                <Box display="flex" alignItems="center" gap={1} mb={1}>
-                  <CompareArrowsIcon sx={{ color: '#e91e63' }} />
-                  <Typography variant="subtitle1" fontWeight="bold">
-                    Transformation Mirror
-                  </Typography>
-                </Box>
-                <Typography variant="body2" color="text.secondary">
-                  See your THEN vs NOW growth side by side
-                </Typography>
-              </CardContent>
-            </Card>
-
-            {/* Matchup Score - If available */}
-            {data.matchup && (
-              <Card 
-                onClick={() => navigate('/matchup')}
-                sx={{ 
-                  cursor: 'pointer',
-                  '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.12)' },
-                }}
-              >
-                <CardContent sx={{ p: 2.5 }}>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography variant="overline" color="text.secondary">
-                        Matchup Score
-                      </Typography>
-                      <Typography variant="h4" color="primary" fontWeight="bold">
-                        {data.matchup.score}%
-                      </Typography>
-                    </Box>
-                    <Box textAlign="right">
-                      <Typography variant="body2" color="success.main">
-                        {data.matchup.alignments?.length || 0} alignments
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {data.matchup.misses?.length || 0} growth areas
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            )}
+          {/* Daily Insight */}
+          <Box sx={{ mb: 2 }}>
+            <DailyInsight />
           </Box>
-        </Collapse>
-      </Box>
+        </>
+      )}
 
-      {/* Quick Log FAB - Always visible in thumb zone */}
-      <QuickLogFAB 
-        onLogComplete={handleQuickLogComplete}
-        partnerName={partnerName}
-      />
+      {/* Transformation Mirror teaser — TRANSFORMED only */}
+      {showTransformationTeaser && (
+        <Card
+          onClick={() => navigate('/transformation')}
+          sx={{
+            mb: 2,
+            cursor: 'pointer',
+            borderRadius: 3,
+            background: 'linear-gradient(135deg, #fdf2f8, #ede9fe)',
+            border: '1px solid #e9d5ff',
+            '&:hover': { boxShadow: '0 4px 20px rgba(139,92,246,0.15)' },
+          }}
+        >
+          <CardContent sx={{ p: 2.5 }}>
+            <Box display="flex" alignItems="center" gap={1} mb={1}>
+              <CompareArrowsIcon sx={{ color: '#7c3aed' }} />
+              <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#5b21b6' }}>
+                Transformation Mirror
+              </Typography>
+            </Box>
+            <Typography variant="body2" sx={{ color: '#6b21a8' }}>
+              See your THEN vs NOW growth side by side
+            </Typography>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Quick Log FAB — BUILDING+ */}
+      {showQuickLogFAB && (
+        <QuickLogFAB
+          onLogComplete={handleQuickLogComplete}
+          partnerName={partnerName}
+        />
+      )}
 
       {/* Bonus celebration snackbar */}
       <Snackbar

@@ -28,8 +28,10 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import StarIcon from '@mui/icons-material/Star';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SchoolIcon from '@mui/icons-material/School';
+import LockIcon from '@mui/icons-material/Lock';
 import { assessmentsApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { sectionColors } from '../../theme';
 
 // ─── Assessment Type Definitions ──────────────────────────────────────────────
 const assessmentTypes = [
@@ -184,6 +186,27 @@ const categories = [
     color: '#e91e63',
   },
 ];
+
+// ─── Progressive Unlock Tiers ─────────────────────────────────────────────────
+const UNLOCK_TIERS = [
+  { required: 0, types: ['attachment', 'love_language', 'personality'] },
+  { required: 1, types: ['human_needs'] },
+  { required: 2, types: ['gottman_checkup'] },
+  { required: 3, types: ['emotional_intelligence', 'conflict_style'] },
+  { required: 5, types: ['hormonal_health', 'physical_vitality'] },
+  { required: 7, types: ['differentiation'] },
+];
+
+const getUnlockInfo = (type, completedCount) => {
+  for (const tier of UNLOCK_TIERS) {
+    if (tier.types.includes(type)) {
+      const unlocked = completedCount >= tier.required;
+      const remaining = tier.required - completedCount;
+      return { unlocked, remaining: Math.max(0, remaining) };
+    }
+  }
+  return { unlocked: true, remaining: 0 };
+};
 
 // ─── Score Summary Renderers ──────────────────────────────────────────────────
 const renderScoreSummary = (type, score) => {
@@ -536,6 +559,7 @@ const CategorySection = ({
   category,
   assessments,
   completedTypes,
+  totalCompletedCount,
   getScore,
   navigate,
   expandedResults,
@@ -651,7 +675,63 @@ const CategorySection = ({
           const completed = completedTypes.has(assessment.type);
           const score = getScore(assessment.type);
           const isExpanded = expandedResults[assessment.type];
+          const { unlocked, remaining } = getUnlockInfo(assessment.type, totalCompletedCount);
 
+          if (!unlocked) {
+            return (
+              <Grid item xs={12} sm={6} key={assessment.type}>
+                <Fade in timeout={600}>
+                  <Card
+                    sx={{
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      borderRadius: 3,
+                      opacity: 0.5,
+                      border: '2px solid transparent',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <CardContent sx={{ flexGrow: 1, p: 3 }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1.5}>
+                        <Box
+                          sx={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '2rem',
+                            bgcolor: 'grey.100',
+                          }}
+                        >
+                          {assessment.icon}
+                        </Box>
+                        <Chip
+                          icon={<LockIcon />}
+                          label={`Complete ${remaining} more`}
+                          size="small"
+                          sx={{ fontWeight: 'bold', bgcolor: 'grey.100' }}
+                        />
+                      </Box>
+                      <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ lineHeight: 1.3 }}>
+                        {assessment.title}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.6 }}>
+                        {assessment.description}
+                      </Typography>
+                    </CardContent>
+                    <CardActions sx={{ p: 3, pt: 0 }}>
+                      <Button variant="outlined" disabled fullWidth sx={{ borderRadius: 2, py: 1.2 }}>
+                        Locked
+                      </Button>
+                    </CardActions>
+                  </Card>
+                </Fade>
+              </Grid>
+            );
+          }
 
           return (
             <Grid item xs={12} sm={6} key={assessment.type}>
@@ -877,6 +957,20 @@ const Assessments = () => {
   const overallProgress = (completedCount / totalAssessments) * 100;
   const allCompleted = completedCount === totalAssessments;
 
+  // Recommended next: first uncompleted, unlocked assessment
+  const recommendedNext = useMemo(() => {
+    for (const tier of UNLOCK_TIERS) {
+      if (completedCount >= tier.required) {
+        for (const type of tier.types) {
+          if (!completedTypes.has(type)) {
+            return assessmentTypes.find((a) => a.type === type);
+          }
+        }
+      }
+    }
+    return null;
+  }, [completedCount, completedTypes]);
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
@@ -887,10 +981,12 @@ const Assessments = () => {
 
   return (
     <Box>
-      {/* Page Header */}
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        Self-Discovery Assessments
-      </Typography>
+      {/* Section Gradient Header */}
+      <Box sx={{ background: sectionColors.assessments.gradient, mx: -3, mt: -3, px: 3, pt: 3, pb: 2, mb: 2 }}>
+        <Typography variant="h4" fontWeight="bold" gutterBottom>
+          Self-Discovery Assessments
+        </Typography>
+      </Box>
 
       {/* Philosophy Banner */}
       <Paper
@@ -989,6 +1085,73 @@ const Assessments = () => {
         />
       </Paper>
 
+      {/* Recommended Next */}
+      {recommendedNext && (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 3,
+            mb: 4,
+            borderRadius: 3,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            '&:hover': { transform: 'translateY(-2px)', boxShadow: theme.shadows[8] },
+          }}
+          onClick={() => navigate(`/assessments/${recommendedNext.type}`)}
+        >
+          <Box display="flex" alignItems="center" gap={0.5} mb={1}>
+            <AutoAwesomeIcon sx={{ fontSize: 18 }} />
+            <Typography variant="overline" fontWeight="bold" sx={{ letterSpacing: 1 }}>
+              Recommended Next
+            </Typography>
+          </Box>
+          <Box display="flex" alignItems="center" gap={2}>
+            <Box
+              sx={{
+                width: 56,
+                height: 56,
+                borderRadius: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '2rem',
+                bgcolor: 'rgba(255,255,255,0.15)',
+                flexShrink: 0,
+              }}
+            >
+              {recommendedNext.icon}
+            </Box>
+            <Box flex={1}>
+              <Typography variant="h6" fontWeight="bold">
+                {recommendedNext.title}
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                {recommendedNext.description}
+              </Typography>
+            </Box>
+            <Button
+              variant="contained"
+              startIcon={<PlayArrowIcon />}
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.2)',
+                color: 'white',
+                fontWeight: 'bold',
+                flexShrink: 0,
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/assessments/${recommendedNext.type}`);
+              }}
+            >
+              Start
+            </Button>
+          </Box>
+        </Paper>
+      )}
+
       {/* Category Sections — categories with untaken assessments first */}
       {[...categories].sort((a, b) => {
         const aAllDone = groupedAssessments[a.name]?.every(x => completedTypes.has(x.type)) ? 1 : 0;
@@ -1000,6 +1163,7 @@ const Assessments = () => {
           category={category}
           assessments={groupedAssessments[category.name]}
           completedTypes={completedTypes}
+          totalCompletedCount={completedCount}
           getScore={getScore}
           navigate={navigate}
           expandedResults={expandedResults}

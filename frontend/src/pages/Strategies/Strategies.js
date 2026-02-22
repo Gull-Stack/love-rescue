@@ -25,6 +25,8 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { useAuth } from '../../contexts/AuthContext';
 import { strategiesApi, calendarApi } from '../../services/api';
+import { sectionColors } from '../../theme';
+import EmptyState from '../../components/common/EmptyState';
 
 const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -150,18 +152,19 @@ const Strategies = () => {
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box>
-          <Typography variant="h4" fontWeight="bold">
-            {relationship?.hasPartner ? 'Your Relationship Strategy' : 'Your Personal Growth Strategy'}
-          </Typography>
-          {strategy && (
-            <Typography color="text.secondary">
-              Cycle {strategy.cycleNumber} - Week {strategy.week}
+      <Box sx={{ background: sectionColors.strategies.gradient, mx: -3, mt: -3, px: 3, pt: 3, pb: 2, mb: 2 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Box>
+            <Typography variant="h4" fontWeight="bold">
+              {relationship?.hasPartner ? 'Your Relationship Strategy' : 'Your Personal Growth Strategy'}
             </Typography>
-          )}
-        </Box>
-        <Box display="flex" gap={1} flexWrap="wrap">
+            {strategy && (
+              <Typography color="text.secondary">
+                Cycle {strategy.cycleNumber} - Week {strategy.week}
+              </Typography>
+            )}
+          </Box>
+          <Box display="flex" gap={1} flexWrap="wrap">
           <Button
             variant="outlined"
             size="small"
@@ -190,6 +193,7 @@ const Strategies = () => {
             {generating ? 'Generating...' : 'New Strategy'}
           </Button>
         </Box>
+      </Box>
       </Box>
 
       {success && (
@@ -339,47 +343,15 @@ const Strategies = () => {
             );
           })}
         </>
-      ) : error === 'NEEDS_ASSESSMENTS' ? (
-        <Card sx={{ textAlign: 'center', py: 6 }}>
-          <CardContent>
-            <Typography variant="h5" gutterBottom>
-              Complete Your Assessments First
-            </Typography>
-            <Typography color="text.secondary" paragraph>
-              To generate your personalized 6-week strategy, we need to understand your unique patterns and strengths. 
-              Complete at least one assessment to get started!
-            </Typography>
-            <Button
-              variant="contained"
-              size="large"
-              onClick={() => navigate('/assessments')}
-              sx={{ mt: 2 }}
-            >
-              Go to Assessments
-            </Button>
-          </CardContent>
-        </Card>
       ) : (
-        <Card sx={{ textAlign: 'center', py: 6 }}>
-          <CardContent>
-            <Typography variant="h5" gutterBottom>
-              No Active Strategy
-            </Typography>
-            <Typography color="text.secondary" paragraph>
-              {relationship?.hasPartner
-                ? 'Generate a personalized 6-week strategy based on your matchup results.'
-                : 'Generate a personalized 6-week strategy based on your assessment results.'}
-            </Typography>
-            <Button
-              variant="contained"
-              size="large"
-              onClick={handleGenerate}
-              disabled={generating}
-            >
-              {generating ? <CircularProgress size={24} /> : 'Generate Strategy'}
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState
+          emoji="🧭"
+          title="Your roadmap is waiting"
+          subtitle="Complete a few assessments and we'll build a plan just for you"
+          ctaText="Take Assessment"
+          onCta={() => navigate('/assessments')}
+          gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+        />
       )}
     </Box>
   );
