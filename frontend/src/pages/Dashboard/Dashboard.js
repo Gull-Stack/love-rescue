@@ -40,6 +40,8 @@ import {
   TodayCard,
   ProgressRings,
 } from '../../components/dashboard';
+import IdentityHint from '../../components/gamification/IdentityHint';
+import ExpertInsight from '../../components/gamification/ExpertInsight';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -251,6 +253,12 @@ const Dashboard = () => {
           </Box>
         </Alert>
       </Collapse>
+
+      {/* Identity Hint - contextual identity insight */}
+      <IdentityHint />
+
+      {/* Expert Insight - contextual expert wisdom */}
+      <ExpertInsight />
 
       {/* Today Card - Single focus CTA */}
       <Box sx={{ mb: 2 }}>
