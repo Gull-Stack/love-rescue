@@ -23,15 +23,16 @@ import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  logsApi, 
-  matchupApi, 
-  strategiesApi, 
-  assessmentsApi, 
-  meetingsApi, 
-  paymentsApi, 
+import {
+  logsApi,
+  matchupApi,
+  strategiesApi,
+  assessmentsApi,
+  meetingsApi,
+  paymentsApi,
   gratitudeApi,
   streaksApi,
+  progressRingsApi,
 } from '../../services/api';
 import DailyInsight from '../../components/common/DailyInsight';
 import DailyVideo from '../../components/common/DailyVideo';
@@ -62,6 +63,7 @@ const Dashboard = () => {
     gratitudeStreak: null,
     loveNote: null,
     streak: 0,
+    progressRings: null,
   });
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
@@ -79,15 +81,16 @@ const Dashboard = () => {
   const fetchDashboardData = useCallback(async () => {
     try {
       const [
-        promptRes, 
-        statsRes, 
-        assessRes, 
-        meetingsRes, 
-        subRes, 
-        gratTodayRes, 
-        gratStreakRes, 
+        promptRes,
+        statsRes,
+        assessRes,
+        meetingsRes,
+        subRes,
+        gratTodayRes,
+        gratStreakRes,
         loveNoteRes,
         streakRes,
+        ringsRes,
       ] = await Promise.all([
         logsApi.getPrompt().catch(() => ({ data: { prompt: null, hasLoggedToday: false } })),
         logsApi.getStats('7d').catch(() => ({ data: { stats: null } })),
@@ -98,6 +101,7 @@ const Dashboard = () => {
         gratitudeApi.getStreak().catch(() => ({ data: { currentStreak: 0, longestStreak: 0, totalEntries: 0 } })),
         gratitudeApi.getLoveNote().catch(() => ({ data: { loveNote: null } })),
         streaksApi.getStreak().catch(() => ({ data: { currentStreak: 0 } })),
+        progressRingsApi.get().catch(() => ({ data: null })),
       ]);
 
       let matchupData = null;
@@ -127,6 +131,7 @@ const Dashboard = () => {
         gratitudeStreak: gratStreakRes.data,
         loveNote: loveNoteRes.data.loveNote,
         streak: streakRes.data.currentStreak || gratStreakRes.data.currentStreak || 0,
+        progressRings: ringsRes.data,
       });
     } catch {
       // Errors handled via fallback data in individual .catch() blocks
@@ -177,10 +182,6 @@ const Dashboard = () => {
   // Calculate stats
   const totalAssessments = 10;
   const assessmentsDone = data.assessments?.completed?.length || 0;
-  const logsThisWeek = data.stats?.daysLogged || 0;
-  const gratitudeThisWeek = data.gratitudeStreak?.totalEntries 
-    ? Math.min(data.gratitudeStreak.totalEntries, 7) 
-    : 0;
 
   return (
     <Box
@@ -274,14 +275,9 @@ const Dashboard = () => {
         />
       </Box>
 
-      {/* Progress Rings */}
+      {/* Progress Rings — 3-ring Apple Watch style */}
       <Box sx={{ mb: 2 }}>
-        <ProgressRings
-          logsThisWeek={logsThisWeek}
-          assessmentsDone={assessmentsDone}
-          totalAssessments={totalAssessments}
-          gratitudeThisWeek={gratitudeThisWeek}
-        />
+        <ProgressRings data={data.progressRings} />
       </Box>
 
       {/* Love Note - Special highlight if present */}

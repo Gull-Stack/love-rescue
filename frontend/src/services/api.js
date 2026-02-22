@@ -309,6 +309,11 @@ export const transformationApi = {
   get: () => api.get('/transformation'),
 };
 
+// Progress Rings API (3-ring Apple Watch style)
+export const progressRingsApi = {
+  get: () => api.get('/progress-rings'),
+};
+
 export const courseApi = {
   // Get full curriculum overview
   getCurriculum: () => api.get('/course/curriculum'),
