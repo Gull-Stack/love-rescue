@@ -314,6 +314,16 @@ export const progressRingsApi = {
   get: () => api.get('/progress-rings'),
 };
 
+// Real Talk API
+export const realTalkApi = {
+  create: (data) => api.post('/real-talk', data),
+  list: (params) => api.get('/real-talk', { params }),
+  get: (id) => api.get(`/real-talk/${id}`),
+  rateEffectiveness: (id, effectiveness, notes) =>
+    api.patch(`/real-talk/${id}/effectiveness`, { effectiveness, notes }),
+  delete: (id) => api.delete(`/real-talk/${id}`),
+};
+
 export const courseApi = {
   // Get full curriculum overview
   getCurriculum: () => api.get('/course/curriculum'),
