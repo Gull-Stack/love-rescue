@@ -297,6 +297,18 @@ export const weeklySummaryApi = {
   get: () => api.get('/weekly-summary'),
 };
 
+// Skill Tree API
+export const skillTreeApi = {
+  getTree: () => api.get('/skill-tree'),
+  practice: (techniqueId, notes, effectivenessRating) =>
+    api.post('/skill-tree/practice', { techniqueId, notes, effectivenessRating }),
+};
+
+// Transformation Mirror API
+export const transformationApi = {
+  get: () => api.get('/transformation'),
+};
+
 export const courseApi = {
   // Get full curriculum overview
   getCurriculum: () => api.get('/course/curriculum'),

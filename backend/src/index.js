@@ -65,6 +65,8 @@ const integrationRoutes = require('./routes/integration');
 const identityHintsRoutes = require('./routes/identity-hints');
 const expertInsightsRoutes = require('./routes/expert-insights');
 const weeklySummaryRoutes = require('./routes/weekly-summary');
+const skillTreeRoutes = require('./routes/skill-tree');
+const transformationRoutes = require('./routes/transformation');
 
 const { auditLogger } = require('./middleware/auditLogger');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -184,6 +186,8 @@ app.use('/api/integration', integrationRoutes);
 app.use('/api/identity-hints', identityHintsRoutes);
 app.use('/api/expert-insights', expertInsightsRoutes);
 app.use('/api/weekly-summary', weeklySummaryRoutes);
+app.use('/api/skill-tree', skillTreeRoutes);
+app.use('/api/transformation', transformationRoutes);
 
 // Cron endpoint for daily reminders (called by external scheduler)
 app.post('/api/cron/daily-reminders', async (req, res) => {
