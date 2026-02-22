@@ -17,6 +17,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAuth } from '../../contexts/AuthContext';
 import { matchupApi, strategiesApi } from '../../services/api';
+import { sectionColors } from '../../theme';
 import EmptyState from '../../components/common/EmptyState';
 
 const Matchup = () => {
@@ -85,9 +86,11 @@ const Matchup = () => {
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        Matchup Score
-      </Typography>
+      <Box sx={{ background: sectionColors.matchup.gradient, mx: -3, mt: -3, px: 3, pt: 3, pb: 2, mb: 2 }}>
+        <Typography variant="h4" fontWeight="bold">
+          Matchup Score
+        </Typography>
+      </Box>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>

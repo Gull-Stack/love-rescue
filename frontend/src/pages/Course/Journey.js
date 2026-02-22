@@ -24,6 +24,7 @@ import {
   TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import { courseApi } from '../../services/api';
+import { sectionColors } from '../../theme';
 
 // Phase colors
 const PHASE_COLORS = {
@@ -116,15 +117,17 @@ const Journey = () => {
   return (
     <Container maxWidth="md" sx={{ py: 3 }}>
       {/* Header */}
-      <Box textAlign="center" mb={4}>
-        <SchoolIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
-          Your 16-Week Journey
-        </Typography>
-        <Typography color="text.secondary" sx={{ maxWidth: 500, mx: 'auto' }}>
-          Master the principles from 11 world-class relationship experts. 
-          Each week builds on the last.
-        </Typography>
+      <Box sx={{ background: sectionColors.course.gradient, mx: -3, mt: -3, px: 3, pt: 3, pb: 2, mb: 2 }}>
+        <Box textAlign="center">
+          <SchoolIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
+          <Typography variant="h4" fontWeight="bold" gutterBottom>
+            Your 16-Week Journey
+          </Typography>
+          <Typography color="text.secondary" sx={{ maxWidth: 500, mx: 'auto' }}>
+            Master the principles from 11 world-class relationship experts.
+            Each week builds on the last.
+          </Typography>
+        </Box>
       </Box>
 
       {/* Progress Overview */}
