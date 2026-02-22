@@ -38,6 +38,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { useAuth } from '../../contexts/AuthContext';
 import XPBar from '../gamification/XPBar';
@@ -91,8 +92,8 @@ function getBottomNavItems(userState, hasPartner) {
     case STATE.BUILDING:
       return [
         { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
-        { label: 'Journey', path: '/course', icon: <SchoolIcon /> },
         { label: 'Log', path: '/daily', icon: <EditNoteIcon /> },
+        { label: 'Real Talk', path: '/real-talk', icon: <ChatBubbleOutlineIcon /> },
         { label: 'More', path: null, icon: <MoreHorizIcon /> },
       ];
     case STATE.PRACTICING:
@@ -133,6 +134,7 @@ function getDrawerSections(isPlatformAdmin) {
       header: 'DAILY',
       items: [
         { label: 'Check-in', path: '/daily', icon: <EditNoteIcon /> },
+        { label: 'Real Talk', path: '/real-talk', icon: <ChatBubbleOutlineIcon /> },
         { label: 'Gratitude', path: '/gratitude', icon: <VolunteerActivismIcon /> },
       ],
     },
