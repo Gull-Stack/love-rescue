@@ -32,7 +32,7 @@ const ScheduleMeeting = React.lazy(() => import('./pages/Meetings/ScheduleMeetin
 const Gratitude = React.lazy(() => import('./pages/Gratitude/Gratitude'));
 
 // Course pages (lazy loaded)
-const Subscribe = React.lazy(() => import('./pages/Subscribe/Subscribe'));
+// const Subscribe = React.lazy(() => import('./pages/Subscribe/Subscribe')); // FREE ERA: removed
 const CourseJourney = React.lazy(() => import('./pages/Course/Journey'));
 const CourseWeekDetail = React.lazy(() => import('./pages/Course/WeekDetail'));
 
@@ -197,7 +197,7 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="meetings" element={<ScheduleMeeting />} />
           <Route path="gratitude" element={<Gratitude />} />
-          <Route path="subscribe" element={<Subscribe />} />
+          {/* <Route path="subscribe" element={<Subscribe />} /> FREE ERA: removed */}
           {/* Course routes */}
           <Route path="course" element={<CourseJourney />} />
           <Route path="course/week" element={<CourseWeekDetail />} />
