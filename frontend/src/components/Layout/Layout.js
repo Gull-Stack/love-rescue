@@ -12,6 +12,7 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  ListSubheader,
   BottomNavigation,
   BottomNavigationAction,
   Paper,
@@ -24,19 +25,20 @@ import {
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import FavoriteIcon from '@mui/icons-material/Favorite';
+import ExploreIcon from '@mui/icons-material/Explore';
+import SchoolIcon from '@mui/icons-material/School';
 import EditNoteIcon from '@mui/icons-material/EditNote';
-import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
-import AssessmentIcon from '@mui/icons-material/Assessment';
+import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
 import VideocamIcon from '@mui/icons-material/Videocam';
-import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import SchoolIcon from '@mui/icons-material/School';
 import { useAuth } from '../../contexts/AuthContext';
 import XPBar from '../gamification/XPBar';
 import useSwipeNavigation from '../../hooks/useSwipeNavigation';
@@ -44,44 +46,131 @@ import useSwipeNavigation from '../../hooks/useSwipeNavigation';
 // Platform admin emails (sync with backend)
 const PLATFORM_ADMIN_EMAILS = [
   'josh@gullstack.com',
-  'bryce@gullstack.com'
+  'bryce@gullstack.com',
 ];
 
-const getNavItems = (isPlatformAdmin) => {
-  const items = [
-    { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
-    { label: '16-Week Course', path: '/course', icon: <SchoolIcon /> },
-    { label: 'Strategies', path: '/strategies', icon: <TipsAndUpdatesIcon /> },
-    { label: 'Daily Log', path: '/daily', icon: <EditNoteIcon /> },
-    { label: 'Gratitude', path: '/gratitude', icon: <VolunteerActivismIcon /> },
-    { label: 'Matchup', path: '/matchup', icon: <FavoriteIcon /> },
-    { label: 'Assessments', path: '/assessments', icon: <AssignmentIcon /> },
-    { label: 'Reports', path: '/reports', icon: <AssessmentIcon /> },
-    { label: 'Meetings', path: '/meetings', icon: <VideocamIcon /> },
-    { label: 'Settings', path: '/settings', icon: <SettingsIcon /> },
-  ];
-  
-  if (isPlatformAdmin) {
-    items.push({ label: 'Admin', path: '/admin', icon: <AdminPanelSettingsIcon />, isAdmin: true });
-  }
-  
-  return items;
+// User progress states — must match Dashboard.js
+const STATE = {
+  BLANK: 'BLANK',
+  DISCOVERING: 'DISCOVERING',
+  BUILDING: 'BUILDING',
+  PRACTICING: 'PRACTICING',
+  TRANSFORMED: 'TRANSFORMED',
 };
 
-const bottomNavItems = [
-  { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
-  { label: 'Strategy', path: '/strategies', icon: <EmojiObjectsIcon /> },
-  { label: 'Log', path: '/daily', icon: <EditNoteIcon /> },
-  { label: 'Matchup', path: '/matchup', icon: <FavoriteIcon /> },
-  { label: 'More', path: null, icon: <MoreHorizIcon /> },
-];
+function getUserState(user) {
+  // Read cached state from Dashboard
+  try {
+    const cached = localStorage.getItem('lr_user_state');
+    if (cached && Object.values(STATE).includes(cached)) {
+      return cached;
+    }
+  } catch {
+    // Storage not available
+  }
+  // Fallback: derive from user object if possible
+  const assessments = user?.assessmentsCompleted || 0;
+  if (assessments === 0) return STATE.BLANK;
+  if (assessments < 3) return STATE.DISCOVERING;
+  return STATE.BUILDING;
+}
+
+function getBottomNavItems(userState, hasPartner) {
+  switch (userState) {
+    case STATE.BLANK:
+      return [
+        { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
+        { label: 'Settings', path: '/settings', icon: <SettingsIcon /> },
+      ];
+    case STATE.DISCOVERING:
+      return [
+        { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
+        { label: 'Discover', path: '/assessments', icon: <ExploreIcon /> },
+        { label: 'Settings', path: '/settings', icon: <SettingsIcon /> },
+      ];
+    case STATE.BUILDING:
+      return [
+        { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
+        { label: 'Journey', path: '/course', icon: <SchoolIcon /> },
+        { label: 'Log', path: '/daily', icon: <EditNoteIcon /> },
+        { label: 'More', path: null, icon: <MoreHorizIcon /> },
+      ];
+    case STATE.PRACTICING:
+    case STATE.TRANSFORMED:
+    default:
+      if (hasPartner) {
+        return [
+          { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
+          { label: 'Journey', path: '/course', icon: <SchoolIcon /> },
+          { label: 'Log', path: '/daily', icon: <EditNoteIcon /> },
+          { label: 'Together', path: '/matchup', icon: <FavoriteIcon /> },
+          { label: 'More', path: null, icon: <MoreHorizIcon /> },
+        ];
+      }
+      return [
+        { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
+        { label: 'Journey', path: '/course', icon: <SchoolIcon /> },
+        { label: 'Log', path: '/daily', icon: <EditNoteIcon /> },
+        { label: 'Gratitude', path: '/gratitude', icon: <VolunteerActivismIcon /> },
+        { label: 'More', path: null, icon: <MoreHorizIcon /> },
+      ];
+  }
+}
+
+// Side drawer grouped items
+function getDrawerSections(isPlatformAdmin) {
+  const sections = [
+    {
+      header: 'GROW',
+      items: [
+        { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
+        { label: '16-Week Journey', path: '/course', icon: <SchoolIcon /> },
+        { label: 'Strategies', path: '/strategies', icon: <TipsAndUpdatesIcon /> },
+        { label: 'Skill Tree', path: '/skills', icon: <AccountTreeIcon /> },
+      ],
+    },
+    {
+      header: 'DAILY',
+      items: [
+        { label: 'Check-in', path: '/daily', icon: <EditNoteIcon /> },
+        { label: 'Gratitude', path: '/gratitude', icon: <VolunteerActivismIcon /> },
+      ],
+    },
+    {
+      header: 'UNDERSTAND',
+      items: [
+        { label: 'Assessments', path: '/assessments', icon: <AssignmentIcon /> },
+        { label: 'Matchup', path: '/matchup', icon: <FavoriteIcon /> },
+        { label: 'Reports', path: '/reports', icon: <AssessmentIcon /> },
+      ],
+    },
+    {
+      header: 'YOU',
+      items: [
+        { label: 'Meetings', path: '/meetings', icon: <VideocamIcon /> },
+        { label: 'Settings', path: '/settings', icon: <SettingsIcon /> },
+      ],
+    },
+  ];
+
+  if (isPlatformAdmin) {
+    sections.push({
+      header: 'ADMIN',
+      items: [
+        { label: 'Admin', path: '/admin', icon: <AdminPanelSettingsIcon />, isAdmin: true },
+      ],
+    });
+  }
+
+  return sections;
+}
 
 const Layout = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, relationship, logout } = useAuth();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -90,11 +179,14 @@ const Layout = () => {
   useSwipeNavigation();
 
   // Check if user is platform admin
-  const isPlatformAdmin = user?.isPlatformAdmin || 
+  const isPlatformAdmin = user?.isPlatformAdmin ||
     (user?.email && PLATFORM_ADMIN_EMAILS.includes(user.email.toLowerCase()));
 
-  // Get nav items based on admin status
-  const navItems = getNavItems(isPlatformAdmin);
+  // Dynamic state
+  const userState = getUserState(user);
+  const hasPartner = relationship?.hasPartner || false;
+  const bottomNavItems = getBottomNavItems(userState, hasPartner);
+  const drawerSections = getDrawerSections(isPlatformAdmin);
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -108,7 +200,7 @@ const Layout = () => {
 
   const getCurrentNavIndex = () => {
     const index = bottomNavItems.findIndex(
-      item => item.path && location.pathname.startsWith(item.path)
+      (item) => item.path && location.pathname.startsWith(item.path)
     );
     return index >= 0 ? index : -1;
   };
@@ -175,7 +267,7 @@ const Layout = () => {
         </Toolbar>
       </AppBar>
 
-      {/* Side Drawer (desktop or mobile menu) */}
+      {/* Side Drawer (desktop permanent / mobile temporary) */}
       <Drawer
         variant={isMobile ? 'temporary' : 'permanent'}
         open={isMobile ? drawerOpen : true}
@@ -196,35 +288,48 @@ const Layout = () => {
         }}
       >
         <List>
-          {navItems.map((item, index) => (
-            <React.Fragment key={item.path}>
-              {item.isAdmin && <Divider sx={{ my: 1 }} />}
-              <ListItem disablePadding>
-                <ListItemButton
-                  selected={location.pathname.startsWith(item.path)}
-                  onClick={() => handleNavigation(item.path)}
-                  sx={{
-                    mx: 1,
-                    borderRadius: 2,
-                    ...(item.isAdmin && {
-                      bgcolor: 'warning.light',
-                      '&:hover': { bgcolor: 'warning.main', color: 'warning.contrastText' },
-                    }),
-                    '&.Mui-selected': {
-                      bgcolor: item.isAdmin ? 'warning.main' : 'primary.light',
-                      color: item.isAdmin ? 'warning.contrastText' : 'primary.contrastText',
-                      '& .MuiListItemIcon-root': {
+          {drawerSections.map((section) => (
+            <React.Fragment key={section.header}>
+              <ListSubheader
+                sx={{
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  letterSpacing: 1.5,
+                  color: 'text.disabled',
+                  lineHeight: '32px',
+                  mt: 1,
+                }}
+              >
+                {section.header}
+              </ListSubheader>
+              {section.items.map((item) => (
+                <ListItem key={item.path} disablePadding>
+                  <ListItemButton
+                    selected={location.pathname.startsWith(item.path)}
+                    onClick={() => handleNavigation(item.path)}
+                    sx={{
+                      mx: 1,
+                      borderRadius: 2,
+                      ...(item.isAdmin && {
+                        bgcolor: 'warning.light',
+                        '&:hover': { bgcolor: 'warning.main', color: 'warning.contrastText' },
+                      }),
+                      '&.Mui-selected': {
+                        bgcolor: item.isAdmin ? 'warning.main' : 'primary.light',
                         color: item.isAdmin ? 'warning.contrastText' : 'primary.contrastText',
+                        '& .MuiListItemIcon-root': {
+                          color: item.isAdmin ? 'warning.contrastText' : 'primary.contrastText',
+                        },
                       },
-                    },
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 40, color: item.isAdmin ? 'warning.main' : undefined }}>
-                    {item.icon}
-                  </ListItemIcon>
-                  <ListItemText primary={item.label} />
-                </ListItemButton>
-              </ListItem>
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 40, color: item.isAdmin ? 'warning.main' : undefined }}>
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText primary={item.label} />
+                  </ListItemButton>
+                </ListItem>
+              ))}
             </React.Fragment>
           ))}
         </List>
@@ -241,7 +346,7 @@ const Layout = () => {
           ml: isMobile ? 0 : '240px',
           bgcolor: 'background.default',
           minHeight: { xs: 'calc(100vh - 48px - env(safe-area-inset-top))', md: 'calc(100vh - 64px)' },
-          overflowX: 'hidden', // Prevent horizontal scroll on mobile
+          overflowX: 'hidden',
         }}
       >
         <Outlet />
@@ -265,9 +370,9 @@ const Layout = () => {
             }}
             showLabels
           >
-            {bottomNavItems.map((item) => (
+            {bottomNavItems.map((item, index) => (
               <BottomNavigationAction
-                key={item.path}
+                key={item.label + index}
                 label={item.label}
                 icon={item.icon}
               />
