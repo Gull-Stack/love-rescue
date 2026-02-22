@@ -5,11 +5,11 @@
  */
 
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
-const prisma = new PrismaClient();
+
 
 /**
  * GET /api/progress-rings
@@ -31,14 +31,14 @@ router.get('/', authenticate, async (req, res) => {
 
     // Fetch last 7 days of daily logs and gratitude entries in parallel
     const [dailyLogs, gratitudeEntries] = await Promise.all([
-      prisma.dailyLog.findMany({
+      req.prisma.dailyLog.findMany({
         where: {
           userId,
           date: { gte: sevenDaysAgo },
         },
         orderBy: { date: 'desc' },
       }),
-      prisma.gratitudeEntry.findMany({
+      req.prisma.gratitudeEntry.findMany({
         where: {
           userId,
           date: { gte: sevenDaysAgo },
