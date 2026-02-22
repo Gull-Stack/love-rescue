@@ -24,6 +24,7 @@ import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import ShareIcon from '@mui/icons-material/Share';
 import { gratitudeApi } from '../../services/api';
+import { sectionColors } from '../../theme';
 
 const CATEGORIES = [
   { label: 'Kindness', value: 'kindness', emoji: '💛' },
@@ -150,16 +151,18 @@ const Gratitude = () => {
 
   return (
     <Box sx={{ pb: isMobile ? '80px' : 0 }}>
-      {/* Header */}
-      <Box display="flex" alignItems="center" gap={1} mb={1}>
-        <VolunteerActivismIcon sx={{ fontSize: 32, color: '#f59e0b' }} />
-        <Typography variant="h4" fontWeight="bold">
-          Daily Gratitude
+      {/* Section Gradient Header */}
+      <Box sx={{ background: sectionColors.gratitude.gradient, mx: -3, mt: -3, px: 3, pt: 3, pb: 2, mb: 2 }}>
+        <Box display="flex" alignItems="center" gap={1} mb={1}>
+          <VolunteerActivismIcon sx={{ fontSize: 32, color: '#f59e0b' }} />
+          <Typography variant="h4" fontWeight="bold">
+            Daily Gratitude
+          </Typography>
+        </Box>
+        <Typography color="text.secondary">
+          Strengthen your bond by appreciating the little things.
         </Typography>
       </Box>
-      <Typography color="text.secondary" paragraph>
-        Strengthen your bond by appreciating the little things.
-      </Typography>
 
       {success && (
         <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>

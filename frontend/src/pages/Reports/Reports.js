@@ -40,6 +40,8 @@ import {
 } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
 import { reportsApi, logsApi } from '../../services/api';
+import { sectionColors } from '../../theme';
+import EmptyState from '../../components/common/EmptyState';
 
 ChartJS.register(
   CategoryScale,
@@ -186,6 +188,17 @@ const Reports = () => {
         </Alert>
       )}
 
+      {!report && !stats?.chartData?.length ? (
+        <EmptyState
+          emoji="📊"
+          title="Your story is just beginning"
+          subtitle="Start logging daily to see your progress unfold"
+          ctaText="Log Today"
+          onCta={() => navigate('/daily')}
+          gradient="linear-gradient(135deg, #f5576c 0%, #ff9a9e 100%)"
+        />
+      ) : (
+      <>
       {/* Period Selector */}
       <Box
         display="flex"
@@ -416,6 +429,8 @@ const Reports = () => {
           </Card>
         </Grid>
       </Grid>
+      </>
+      )}
     </Box>
   );
 };

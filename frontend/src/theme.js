@@ -114,4 +114,15 @@ const theme = createTheme({
   },
 });
 
+export const sectionColors = {
+  dashboard: { gradient: 'linear-gradient(180deg, #FFF0EB 0%, #ffffff 100%)', accent: '#e91e63' },
+  assessments: { gradient: 'linear-gradient(180deg, #E8EAF6 0%, #ffffff 100%)', accent: '#3f51b5' },
+  daily: { gradient: 'linear-gradient(180deg, #E0F2F1 0%, #ffffff 100%)', accent: '#009688' },
+  strategies: { gradient: 'linear-gradient(180deg, #EDE7F6 0%, #ffffff 100%)', accent: '#673ab7' },
+  gratitude: { gradient: 'linear-gradient(180deg, #E8F5E9 0%, #ffffff 100%)', accent: '#4caf50' },
+  together: { gradient: 'linear-gradient(180deg, #FCE4EC 0%, #ffffff 100%)', accent: '#e91e63' },
+  reports: { gradient: 'linear-gradient(180deg, #FFF3E0 0%, #ffffff 100%)', accent: '#ff9800' },
+  course: { gradient: 'linear-gradient(180deg, #E3F2FD 0%, #ffffff 100%)', accent: '#1976d2' },
+};
+
 export default responsiveFontSizes(theme);
