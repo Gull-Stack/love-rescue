@@ -92,11 +92,6 @@ const Dashboard = () => {
 
   const partnerName = relationship?.partner?.firstName || null;
 
-  useEffect(() => {
-    document.title = 'Dashboard | Love Rescue';
-    fetchDashboardData();
-  }, []); // Intentional: run once on mount
-
   const fetchDashboardData = useCallback(async () => {
     try {
       const [
@@ -158,6 +153,11 @@ const Dashboard = () => {
       setLoading(false);
     }
   }, [relationship?.hasPartner]);
+
+  useEffect(() => {
+    document.title = 'Dashboard | Love Rescue';
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const handleInvite = async () => {
     try {
