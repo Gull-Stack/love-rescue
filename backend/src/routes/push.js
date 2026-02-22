@@ -112,8 +112,8 @@ router.post('/test-apns', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     const result = await apns.sendToUser(prisma, userId, {
-      title: '💝 Love Rescue',
-      body: 'Test notification — push is working!',
+      title: '⚙️ Relationship OS',
+      body: 'System check — push notifications operational.',
       sound: 'default',
       data: { url: '/dashboard' },
     });
@@ -155,8 +155,8 @@ router.post('/test', authenticate, async (req, res) => {
     }
 
     const payload = JSON.stringify({
-      title: '💝 Love Rescue',
-      body: 'Test notification - push is working!',
+      title: '⚙️ Relationship OS',
+      body: 'System check — push notifications operational.',
       icon: '/logo192.png',
       badge: '/logo192.png',
       data: { url: '/dashboard' },
@@ -212,19 +212,17 @@ router.post('/send-daily-reminder', async (req, res) => {
     );
 
     const messages = [
-      "Time to reflect on your relationship 💭",
-      "Your daily log is waiting! Keep your streak alive 🔥",
-      "A moment of reflection = a stronger connection ❤️",
-      "Check in with yourself tonight 🌙",
-      "Small daily actions create big relationship wins 🏆",
-      "How was your connection today? Log it! 📝",
-      "Don't break the streak! 3 mins to reflect 💪",
+      "Run today's relationship maintenance protocol",
+      "System check required — log today's data point",
+      "Daily sync pending — maintain your operational streak",
+      "Relationship OS requires input — run daily protocol",
+      "Maintenance window open — time to process today's data",
     ];
 
     const randomMessage = messages[Math.floor(Math.random() * messages.length)];
 
     const payload = JSON.stringify({
-      title: '💝 Love Rescue',
+      title: '⚙️ Daily Sync Required',
       body: randomMessage,
       icon: '/logo192.png',
       badge: '/logo192.png',

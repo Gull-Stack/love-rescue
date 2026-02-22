@@ -22,6 +22,7 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { useAuth } from '../../contexts/AuthContext';
 import { strategiesApi, calendarApi } from '../../services/api';
 
@@ -160,9 +161,19 @@ const Strategies = () => {
             </Typography>
           )}
         </Box>
-        <Box display="flex" gap={2}>
+        <Box display="flex" gap={1} flexWrap="wrap">
           <Button
             variant="outlined"
+            size="small"
+            startIcon={<AccountTreeIcon />}
+            onClick={() => navigate('/skills')}
+            sx={{ borderRadius: 2, textTransform: 'none' }}
+          >
+            Skill Tree
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
             startIcon={<CalendarTodayIcon />}
             onClick={handleSyncCalendar}
             disabled={syncing || !strategy}
@@ -171,6 +182,7 @@ const Strategies = () => {
           </Button>
           <Button
             variant="outlined"
+            size="small"
             startIcon={<RefreshIcon />}
             onClick={handleGenerate}
             disabled={generating}

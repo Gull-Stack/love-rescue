@@ -280,6 +280,40 @@ export const upgradeApi = {
   checkout: (plan) => api.post('/upgrade/checkout', { plan }),
 };
 
+// Identity Hints API
+export const identityHintsApi = {
+  check: () => api.get('/identity-hints/check'),
+  markShown: (trigger) => api.post('/identity-hints/shown', { trigger }),
+};
+
+// Expert Insights API
+export const expertInsightsApi = {
+  check: () => api.get('/expert-insights/check'),
+  markShown: (key) => api.post('/expert-insights/shown', { key }),
+};
+
+// Weekly Summary API
+export const weeklySummaryApi = {
+  get: () => api.get('/weekly-summary'),
+};
+
+// Skill Tree API
+export const skillTreeApi = {
+  getTree: () => api.get('/skill-tree'),
+  practice: (techniqueId, notes, effectivenessRating) =>
+    api.post('/skill-tree/practice', { techniqueId, notes, effectivenessRating }),
+};
+
+// Transformation Mirror API
+export const transformationApi = {
+  get: () => api.get('/transformation'),
+};
+
+// Progress Rings API (3-ring Apple Watch style)
+export const progressRingsApi = {
+  get: () => api.get('/progress-rings'),
+};
+
 export const courseApi = {
   // Get full curriculum overview
   getCurriculum: () => api.get('/course/curriculum'),
