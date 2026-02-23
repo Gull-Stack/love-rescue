@@ -1,63 +1,63 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth');
 
-const prisma = new PrismaClient();
+// Helper: find active relationship for user
+async function findRelationship(prisma, userId) {
+  return prisma.relationship.findFirst({
+    where: {
+      OR: [{ user1Id: userId }, { user2Id: userId }],
+      status: 'active'
+    }
+  });
+}
 
 // Check if partner completed today's log
 router.get('/partner-status', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    
-    // Get user's couple
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { couple: true }
-    });
-    
-    if (!user?.coupleId) {
+    const relationship = await findRelationship(req.prisma, userId);
+
+    if (!relationship) {
       return res.json({ hasPartner: false });
     }
-    
-    // Get partner
-    const partner = await prisma.user.findFirst({
-      where: {
-        coupleId: user.coupleId,
-        id: { not: userId }
-      }
+
+    // Determine partner id
+    const partnerId = relationship.user1Id === userId ? relationship.user2Id : relationship.user1Id;
+
+    if (!partnerId) {
+      return res.json({ hasPartner: false });
+    }
+
+    const partner = await req.prisma.user.findUnique({
+      where: { id: partnerId },
+      select: { id: true, firstName: true }
     });
-    
+
     if (!partner) {
       return res.json({ hasPartner: false });
     }
-    
+
     // Check if partner logged today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    const partnerLog = await prisma.dailyLog.findFirst({
-      where: {
-        userId: partner.id,
-        createdAt: { gte: today }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-    
-    // Check user's log
-    const userLog = await prisma.dailyLog.findFirst({
-      where: {
-        userId,
-        createdAt: { gte: today }
-      }
-    });
-    
+
+    const [partnerLog, userLog] = await Promise.all([
+      req.prisma.dailyLog.findFirst({
+        where: { userId: partner.id, createdAt: { gte: today } },
+        orderBy: { createdAt: 'desc' }
+      }),
+      req.prisma.dailyLog.findFirst({
+        where: { userId, createdAt: { gte: today } }
+      })
+    ]);
+
     // Get partner's streak
-    const partnerStreak = await getStreak(partner.id);
-    
+    const partnerStreak = await getStreak(req.prisma, partner.id);
+
     res.json({
       hasPartner: true,
-      partnerName: partner.firstName || partner.name?.split(' ')[0] || 'Your partner',
+      partnerName: partner.firstName || 'Your partner',
       partnerLoggedToday: !!partnerLog,
       partnerLogTime: partnerLog?.createdAt || null,
       userLoggedToday: !!userLog,
@@ -74,64 +74,64 @@ router.get('/partner-status', authenticate, async (req, res) => {
 router.get('/matchup-score', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { couple: true }
-    });
-    
-    if (!user?.coupleId) {
+    const relationship = await findRelationship(req.prisma, userId);
+
+    if (!relationship) {
       return res.json({ hasMatchup: false });
     }
-    
-    const partner = await prisma.user.findFirst({
-      where: {
-        coupleId: user.coupleId,
-        id: { not: userId }
-      }
+
+    const partnerId = relationship.user1Id === userId ? relationship.user2Id : relationship.user1Id;
+
+    if (!partnerId) {
+      return res.json({ hasMatchup: false });
+    }
+
+    const partner = await req.prisma.user.findUnique({
+      where: { id: partnerId },
+      select: { id: true, firstName: true }
     });
-    
+
     if (!partner) {
       return res.json({ hasMatchup: false });
     }
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     // Get both logs from today
     const [userLog, partnerLog] = await Promise.all([
-      prisma.dailyLog.findFirst({
+      req.prisma.dailyLog.findFirst({
         where: { userId, createdAt: { gte: today } }
       }),
-      prisma.dailyLog.findFirst({
+      req.prisma.dailyLog.findFirst({
         where: { userId: partner.id, createdAt: { gte: today } }
       })
     ]);
-    
+
     if (!userLog || !partnerLog) {
       return res.json({
         hasMatchup: false,
         bothLogged: false,
         userLogged: !!userLog,
         partnerLogged: !!partnerLog,
-        message: !userLog && !partnerLog 
+        message: !userLog && !partnerLog
           ? "Neither of you has logged today. Be the first! 💪"
-          : !userLog 
+          : !userLog
             ? `${partner.firstName || 'Your partner'} is waiting for you!`
             : "Waiting for your partner to complete their log..."
       });
     }
-    
+
     // Calculate matchup score based on mood alignment
     const moodDiff = Math.abs((userLog.moodScore || 5) - (partnerLog.moodScore || 5));
     const connectionDiff = Math.abs((userLog.connectionScore || 5) - (partnerLog.connectionScore || 5));
-    
+
     // Higher score = more aligned (10 - differences)
     const alignmentScore = Math.max(0, 100 - (moodDiff * 10) - (connectionDiff * 10));
-    
+
     // Generate insight
     const insight = getMatchupInsight(userLog, partnerLog, alignmentScore);
-    
+
     res.json({
       hasMatchup: true,
       bothLogged: true,
@@ -153,16 +153,16 @@ router.get('/matchup-score', authenticate, async (req, res) => {
 router.post('/viewed-partner', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     // Log this as engagement
-    await prisma.engagementLog.create({
+    await req.prisma.engagementLog.create({
       data: {
         userId,
         action: 'VIEWED_PARTNER_ACTIVITY',
         metadata: { timestamp: new Date().toISOString() }
       }
     }).catch(() => {}); // Ignore if table doesn't exist yet
-    
+
     res.json({ success: true });
   } catch (error) {
     res.json({ success: true }); // Non-critical, always succeed
@@ -173,61 +173,58 @@ router.post('/viewed-partner', authenticate, async (req, res) => {
 router.post('/nudge-partner', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { couple: true }
-    });
-    
-    if (!user?.coupleId) {
+    const relationship = await findRelationship(req.prisma, userId);
+
+    if (!relationship) {
       return res.status(400).json({ error: 'No partner linked' });
     }
-    
-    const partner = await prisma.user.findFirst({
-      where: {
-        coupleId: user.coupleId,
-        id: { not: userId }
-      }
+
+    const partnerId = relationship.user1Id === userId ? relationship.user2Id : relationship.user1Id;
+
+    if (!partnerId) {
+      return res.status(400).json({ error: 'No partner linked' });
+    }
+
+    const partner = await req.prisma.user.findUnique({
+      where: { id: partnerId },
+      select: { id: true, firstName: true }
     });
-    
+
     if (!partner) {
       return res.status(400).json({ error: 'Partner not found' });
     }
-    
+
     // Check if already nudged today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    const existingNudge = await prisma.notification.findFirst({
+
+    const existingNudge = await req.prisma.notification.findFirst({
       where: {
         userId: partner.id,
         type: 'PARTNER_NUDGE',
         createdAt: { gte: today }
       }
     }).catch(() => null);
-    
+
     if (existingNudge) {
-      return res.status(429).json({ 
+      return res.status(429).json({
         error: 'Already nudged today',
         message: "You've already sent a gentle reminder today. Give them some time! 💕"
       });
     }
-    
+
     // Create notification for partner
-    await prisma.notification.create({
+    await req.prisma.notification.create({
       data: {
         userId: partner.id,
         type: 'PARTNER_NUDGE',
-        title: '🔄 Partner Sync Complete',
-        body: 'Both instances operational.',
+        title: '💕 Partner Check-in',
+        body: `${req.user.firstName || 'Your partner'} is thinking of you! Time to log today?`,
         read: false
       }
     }).catch(() => {});
-    
-    // TODO: Send push notification when VAPID keys are configured
-    // TODO: Send email notification as backup
-    
-    res.json({ 
+
+    res.json({
       success: true,
       message: `Sent a gentle reminder to ${partner.firstName || 'your partner'}! 💕`
     });
@@ -238,7 +235,7 @@ router.post('/nudge-partner', authenticate, async (req, res) => {
 });
 
 // Helper: Get user's current streak
-async function getStreak(userId) {
+async function getStreak(prisma, userId) {
   try {
     const streak = await prisma.streak.findUnique({
       where: { odUserId: userId }
@@ -252,7 +249,7 @@ async function getStreak(userId) {
 // Helper: Generate appropriate nudge message based on status
 function getNudgeMessage(partnerLogged, userLogged, partnerName) {
   const name = partnerName || 'Your partner';
-  
+
   if (partnerLogged && !userLogged) {
     return `🔥 ${name} already logged today! Don't let them down.`;
   }
