@@ -340,7 +340,7 @@ const Dashboard = () => {
                     </Typography>
                   </Box>
                   <Chip
-                    label={result.primaryStyle || result.score || 'Done'}
+                    label={result.primaryStyle || (typeof result.score === 'object' ? (result.score?.topTwoLabels?.[0] || result.score?.profile || 'Done') : result.score) || 'Done'}
                     size="small"
                     sx={{ bgcolor: '#667eea15', color: '#667eea', fontWeight: 600 }}
                   />
