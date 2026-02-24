@@ -503,17 +503,17 @@ const DailyLog = () => {
 
   const GratitudeCard = () => (
     <CardShell gradient={cardGradients[3]} showBack showSkip>
-      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 2, textAlign: 'center' }}>
-        One thing you appreciate today
+      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 2, textAlign: 'center', textShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
+        One thing you appreciate about {partnerName}
       </Typography>
-      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)', mb: 3, textAlign: 'center' }}>
-        Optional — but gratitude rewires the brain
+      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.85)', mb: 3, textAlign: 'center', textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}>
+        Optional — but noticing the good rewires everything
       </Typography>
       <TextField
         multiline
         maxRows={2}
         fullWidth
-        placeholder="Something small or big..."
+        placeholder={`What did ${partnerName} do that mattered?`}
         value={gratitudeText}
         onChange={(e) => setGratitudeText(e.target.value)}
         sx={{ ...whiteTextFieldSx, maxWidth: 400 }}
