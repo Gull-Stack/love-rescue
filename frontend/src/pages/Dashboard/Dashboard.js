@@ -336,13 +336,32 @@ const Dashboard = () => {
                       {result.name || result.type}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {result.summary || 'View your results'}
+                      {result.summary || (result.score?.profileDescription) || (result.score?.topTwoDescriptions?.[0]) || (result.completedAt ? `Completed ${new Date(result.completedAt).toLocaleDateString()}` : 'Tap to view results')}
                     </Typography>
                   </Box>
                   <Chip
-                    label={result.primaryStyle || (typeof result.score === 'object' ? (result.score?.topTwoLabels?.[0] || result.score?.profile || 'Done') : result.score) || 'Done'}
+                    label={(() => {
+                      const s = result.score;
+                      if (!s || typeof s !== 'object') return s || 'Done';
+                      // Attachment: style (e.g. "Secure", "Anxious")
+                      if (s.style) return s.style.replace(/_/g, ' ');
+                      // Personality: type
+                      if (s.type) return s.type;
+                      // Love Language: primary
+                      if (s.primary) return String(s.primary).replace(/_/g, ' ');
+                      // Human Needs: profile or topTwoLabels
+                      if (s.topTwoLabels?.[0]) return String(s.topTwoLabels[0]);
+                      if (s.profile) return String(s.profile);
+                      // Gottman: overallHealth or healthLevel
+                      if (s.overallHealth != null) return `${s.overallHealth}/100`;
+                      if (s.healthLevel) return s.healthLevel.replace(/[-_]/g, ' ');
+                      // EQ / generic score
+                      if (s.score != null) return `${s.score}/100`;
+                      if (s.overall != null) return `${s.overall}/100`;
+                      return 'Complete';
+                    })()}
                     size="small"
-                    sx={{ bgcolor: '#667eea15', color: '#667eea', fontWeight: 600 }}
+                    sx={{ bgcolor: '#667eea15', color: '#667eea', fontWeight: 600, textTransform: 'capitalize' }}
                   />
                 </Box>
               </CardContent>
