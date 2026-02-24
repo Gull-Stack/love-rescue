@@ -318,7 +318,8 @@ const DailyLog = () => {
   const CardShell = ({ children, gradient, showBack, showSkip, onSkip }) => (
     <Box
       sx={{
-        minHeight: 'calc(100vh - 120px)',
+        height: 'calc(100vh - 120px)',
+        height: 'calc(100dvh - 120px)',
         background: gradient,
         borderRadius: 4,
         display: 'flex',
