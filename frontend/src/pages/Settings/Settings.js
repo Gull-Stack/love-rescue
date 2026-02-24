@@ -31,7 +31,7 @@ import MyTherapistSection from './MyTherapistSection';
 
 const Settings = () => {
   const [searchParams] = useSearchParams();
-  const { user, relationship, invitePartner, refreshUser, biometricEnabled, checkBiometricAvailability, registerBiometric } = useAuth();
+  const { user, relationship, invitePartner, refreshUser, biometricEnabled, checkBiometricAvailability, registerBiometric, logout } = useAuth();
   const [loading, setLoading] = useState({});
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -44,6 +44,8 @@ const Settings = () => {
   const [gender, setGender] = useState(user?.gender || '');
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [systemStatus, setSystemStatus] = useState(null);
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   useEffect(() => {
     document.title = 'Settings | Love Rescue';
@@ -190,6 +192,23 @@ const Settings = () => {
       setError('Failed to update consent');
     } finally {
       setLoading({ ...loading, consent: false });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setLoading({ ...loading, deleteAccount: true });
+    try {
+      await api.delete('/auth/delete-account', {
+        data: { confirmDelete: true },
+      });
+      // Account deleted — log out
+      logout();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete account. Please try again.');
+      setDeleteDialog(false);
+      setDeleteConfirmText('');
+    } finally {
+      setLoading({ ...loading, deleteAccount: false });
     }
   };
 
@@ -520,6 +539,67 @@ const Settings = () => {
         </CardContent>
       </Card>
 
+
+      {/* Delete Account */}
+      <Card sx={{ mb: 3, borderColor: 'error.main', borderWidth: 1, borderStyle: 'solid' }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom color="error">
+            Danger Zone
+          </Typography>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Permanently delete your account and all associated data. This action cannot be undone.
+          </Typography>
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={() => setDeleteDialog(true)}
+          >
+            Delete My Account
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog
+        open={deleteDialog}
+        onClose={() => { setDeleteDialog(false); setDeleteConfirmText(''); }}
+      >
+        <DialogTitle sx={{ color: 'error.main' }}>Delete Account</DialogTitle>
+        <DialogContent>
+          <Typography paragraph>
+            This will <strong>permanently delete</strong> your account and all your data, including:
+          </Typography>
+          <Typography component="ul" variant="body2" sx={{ pl: 2, mb: 2 }}>
+            <li>Your profile and settings</li>
+            <li>All assessment results and progress</li>
+            <li>Journal entries and daily logs</li>
+            <li>Partner connection and shared data</li>
+          </Typography>
+          <Typography paragraph color="error" fontWeight="bold">
+            This cannot be undone.
+          </Typography>
+          <TextField
+            fullWidth
+            label='Type "DELETE" to confirm'
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            size="small"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setDeleteDialog(false); setDeleteConfirmText(''); }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={deleteConfirmText !== 'DELETE' || loading.deleteAccount}
+            onClick={handleDeleteAccount}
+          >
+            {loading.deleteAccount ? <CircularProgress size={20} /> : 'Permanently Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Privacy Policy Dialog */}
       <Dialog
