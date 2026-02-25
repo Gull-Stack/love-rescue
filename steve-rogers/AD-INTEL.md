@@ -16,6 +16,11 @@
 | MoodMe | Free + premium, mood tracking | Widget-first retention strategy | 🟢 LOW |
 | SYMBIS | B2B2C via church facilitators | Distribution network, pre-marriage niche | 🟢 LOW (different model) |
 | Evergreen | Subscription | Minimal marketing presence | 🟢 LOW |
+| Relatio | Quiz funnel → app | Male-focused "get ex back", psychological triggers | 🔴 CRITICAL (new) |
+| CoupleWork AI | Freemium, AI coach | "No judgment" positioning, 7-month ad runner | 🟡 MEDIUM |
+| Work With Shadow | Quiz funnel, shadow work | Adjacent market (healing/self-help) | 🟢 LOW |
+| Headway App | Book summaries | Expanding into relationship content | 🟢 LOW |
+| Maia | AI + relationship science | YC-backed, "proactive insights" | 🟡 MEDIUM (watch) |
 
 ### LoveRescue Competitive Advantages
 1. **10 assessment types** — more than any competitor
@@ -114,6 +119,7 @@ Coral rebranded from "Intimacy for Couples" → "Couples & Relationship" — exp
 ## Report Log
 | Date | Key Findings |
 |------|-------------|
+| 2026-02-15 | 🔴 NEW COMPETITOR: Relatio — quiz-funnel, male-focused, "get your ex back" positioning, aggressive spend. CoupleWork AI "no judgment" ad running 7+ months (steal this angle). Paired at ~1,900 active ads, dominating with "4M couples" social proof. Evergreen oldest runner (8.5 months). Post-V-Day golden window NOW (Feb 16-28). |
 | 2026-02-12 | Coral rebrand expanding TAM. Post-V-Day golden window (Feb 16-28) identified. Quiz funnel blueprint created. Lasting at $30/mo proves premium pricing works. Paired rebrand push active. Meta Andromeda = creative velocity > audience targeting. |
 | 2026-02-11 | Initial report. LoveFix identified as new competitor. UGC testimonials dead — skit-style Reels dominate. Assessment quiz funnels = high-intent CTA. Flamme's "gym for relationships" framing worth adopting. |
 

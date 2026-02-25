@@ -461,3 +461,111 @@ Build `loverescue.app/quiz` — a standalone web-based Attachment Style Quiz tha
 - **SEO + Paid synergy:** Organic quiz traffic + paid retargeting = compounding acquisition
 
 ### Priority: 🔴 CRITICAL — This should be built BEFORE spending any paid ad budget
+
+---
+
+## Improvement 10: "No Judgment" AI Positioning — Added 2026-02-15
+*Source: Ad spy report — CoupleWork AI has run the same "no judgment" ad for 7+ months (longest-running competitor ad)*
+
+### The Problem
+Couples hesitate to use relationship apps because they fear judgment — the same reason many avoid therapy. LoveRescue's AI therapist feature is undersold as a feature rather than a positioning statement.
+
+### What CoupleWork AI Does
+Their 7-month running ad copy (word for word):
+> "Getting relationship help shouldn't feel like a debate. You don't need someone taking sides. You don't need assumptions about your situation. You need real, unbiased support. That's exactly what CoupleWork.AI provides: ✅ AI-driven coaching that stays fair and balanced. ✅ Science-backed techniques that actually work. ✅ No judgment, just clear strategies for growth."
+
+This ad has run since **June 30, 2025** — indicating strong conversion performance.
+
+### The Fix
+1. **Onboarding copy:** Add to welcome flow: "Your AI guide never takes sides. It focuses on solutions, not blame."
+2. **Marketing positioning:** "The only couples app that doesn't pick favorites"
+3. **App Store description:** Lead with "Judgment-free relationship support"
+4. **Ad creative:** Steal the pattern: "Getting help shouldn't feel like [negative]. You need [positive]."
+
+### Why This Wins
+- Addresses the #1 objection to any relationship intervention: fear of blame
+- AI as "neutral arbiter" is a unique advantage over human therapists
+- Proven by 7+ months of continuous ad spend by competitor
+
+### Priority: 🟡 HIGH — Easy copy change, high impact on conversion
+
+---
+
+## Improvement 11: Male-Specific Onboarding & Marketing — Added 2026-02-15
+*Source: Ad spy report — Relatio is crushing it with male-focused "get your ex back" ads*
+
+### The Problem
+The relationship app market is 70%+ female. Most apps speak to female pain points. Relatio has found a massive arbitrage opportunity by targeting men specifically.
+
+### What Relatio Does
+- Long-form story ads written from male POV ("I was sitting in my car at 3 AM...")
+- Hooks: "If you want her to come back and never leave again, THIS is what you need to do"
+- Framing: "psychological triggers", "day-by-day plan", "she responded in 9 minutes"
+- Their entire positioning is male-first
+
+### The Fix
+1. **Male-specific assessment questions:** Frame questions with male-resonant language
+2. **Marketing copy for male audiences:**
+   - "Finally, relationship help that gets where you're coming from"
+   - "Practical strategies. No fluff. Just what works."
+   - "Your partner isn't the only one who gets to have tools."
+3. **Feature framing:** Position assessments as "diagnostic tools" not "emotional work"
+4. **Separate ad creative:** Create male-specific video ads with male voiceover/protagonist
+5. **Landing page:** /for-men with male-specific testimonials and copy
+
+### Why This Wins
+- Untapped audience with lower CAC (less competition for male relationship keywords)
+- Men who engage with relationship content are HIGHLY committed (survived social stigma)
+- Relatio proving the market exists with aggressive ad spend
+
+### Priority: 🟡 HIGH — Market expansion opportunity
+
+---
+
+## Improvement 12: Post-Valentine's Timing Strategy — Added 2026-02-15
+*Source: Ad spy report timing analysis*
+
+### The Insight
+Valentine's Day (Feb 14) creates a unique window:
+- **Feb 12-15:** CPMs spike 20-40%, everyone competing
+- **Feb 16-28:** CPMs DROP, but relationship intent stays HIGH (post-V-Day reflection)
+
+### The Fix
+- **Feb 12-15:** Organic content only (social posts, no paid ads)
+- **Feb 16-28:** Launch paid ads with post-Valentine's messaging:
+  - "Flowers die in a week. Your communication patterns last forever."
+  - "Valentine's Day is over. The real work starts now."
+  - "Valentine's Day revealed the cracks. We help you fill them."
+- **Calendar in app:** Add annual "Post-Valentine's Week" push notification campaign
+
+### Why This Wins
+- Lower CPMs = better unit economics
+- Counter-cyclical messaging stands out ("everyone else is done talking about V-Day")
+- Captures the reflection/regret audience ("that dinner was awkward...")
+
+### Priority: 🔴 TIME-SENSITIVE — Deploy Feb 16-17
+
+---
+
+## NEW COMPETITOR ALERT: Relatio — Added 2026-02-15
+
+| App | Model | Positioning | Threat Level |
+|-----|-------|-------------|--------------|
+| Relatio | Quiz funnel → app download | "Get your ex back" via psychological triggers, male-focused | 🔴 CRITICAL |
+
+### What They Do
+- 3,000+ word long-form Facebook ads (story format)
+- Quiz funnel at quiz.getrelatio.com
+- Male-focused messaging
+- "Psychological triggers" framing (borderline manipulative)
+- Running since Feb 13, 2026 with aggressive spend
+
+### Why They're Dangerous
+- They're positioning in the "rescue" space — directly overlapping LoveRescue's name
+- They have a WORKING quiz funnel that we don't
+- They target an audience (men) that most competitors ignore
+
+### Counter-Strategy
+- Accelerate our own quiz funnel (Improvement 9)
+- Create male-specific messaging (Improvement 11)
+- Monitor their ad creative weekly for new angles
