@@ -340,7 +340,21 @@ const Dashboard = () => {
                     </Typography>
                   </Box>
                   <Chip
-                    label={result.primaryStyle || result.score || 'Done'}
+                    label={(() => {
+                      if (result.primaryStyle) return result.primaryStyle;
+                      const s = result.score;
+                      if (!s || typeof s !== 'object') return s || 'Done';
+                      if (s.style) return s.style.replace(/_/g, ' ');
+                      if (s.type) return s.type;
+                      if (s.primary) return String(s.primary).replace(/_/g, ' ');
+                      if (s.topTwoLabels?.[0]) return String(s.topTwoLabels[0]);
+                      if (s.profile) return String(s.profile);
+                      if (s.overallHealth != null) return `${s.overallHealth}/100`;
+                      if (s.healthLevel) return s.healthLevel.replace(/[-_]/g, ' ');
+                      if (s.score != null) return `${s.score}/100`;
+                      if (s.overall != null) return `${s.overall}/100`;
+                      return 'Complete';
+                    })()}
                     size="small"
                     sx={{ bgcolor: '#667eea15', color: '#667eea', fontWeight: 600 }}
                   />
