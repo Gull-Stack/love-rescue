@@ -45,6 +45,7 @@ describe('Insights Routes', () => {
     firstName: 'Insight',
     lastName: 'User',
     subscriptionStatus: 'paid',
+    isPlatformAdmin: false,
     stripeCustomerId: 'cus_ins',
     createdAt: new Date('2025-01-01')
   };
@@ -177,8 +178,9 @@ describe('Insights Routes', () => {
       expect(res.body.insight.text).toContain('introvert');
     });
 
-    test('requires subscription - returns 403 for expired', async () => {
+    test.skip('OBSOLETE (app fully free): requires subscription - returns 403 for expired', async () => {
       const expiredUser = { ...mockUser, subscriptionStatus: 'expired' };
+    isPlatformAdmin: false,
       mockPrisma.user.findUnique.mockResolvedValue(expiredUser);
 
       const res = await request(app)

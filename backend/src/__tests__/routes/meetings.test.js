@@ -78,6 +78,7 @@ const TEST_USER_PREMIUM = {
   firstName: 'Test',
   lastName: 'User',
   subscriptionStatus: 'premium',
+    isPlatformAdmin: false,
   stripeCustomerId: null,
   createdAt: new Date()
 };
@@ -178,8 +179,9 @@ describe('Meetings Routes', () => {
       expect(res.body.message).toBe('Mediator is not available on this day');
     });
 
-    test('requires premium subscription', async () => {
+    test.skip('OBSOLETE (app fully free): requires premium subscription', async () => {
       const nonPremiumUser = { ...TEST_USER_PREMIUM, subscriptionStatus: 'paid' };
+    isPlatformAdmin: false,
       mockPrisma.user.findUnique.mockResolvedValue(nonPremiumUser);
 
       const res = await request(app)
@@ -313,8 +315,9 @@ describe('Meetings Routes', () => {
       expect(res.body.error).toBe('Mediator not found or inactive');
     });
 
-    test('requires premium subscription', async () => {
+    test.skip('OBSOLETE (app fully free): requires premium subscription', async () => {
       const nonPremiumUser = { ...TEST_USER_PREMIUM, subscriptionStatus: 'trial' };
+    isPlatformAdmin: false,
       mockPrisma.user.findUnique.mockResolvedValue(nonPremiumUser);
 
       const res = await request(app)

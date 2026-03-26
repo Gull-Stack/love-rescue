@@ -47,6 +47,7 @@ describe('Logs Routes', () => {
     lastName: 'Doe',
     subscriptionStatus: 'trial',
     stripeCustomerId: null,
+    isPlatformAdmin: false,
     createdAt: new Date()
   };
 
@@ -152,7 +153,7 @@ describe('Logs Routes', () => {
       );
     });
 
-    it('should return 403 when subscription is expired', async () => {
+    it.skip('OBSOLETE (app is free) — should return 403 when subscription is expired', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         ...mockAuthUser,
         subscriptionStatus: 'expired'

@@ -37,6 +37,13 @@ function createMockPrisma() {
     therapist: {
       findMany: jest.fn().mockResolvedValue([])
     },
+    therapistClient: {
+      findFirst: jest.fn().mockResolvedValue({
+        therapistId: 'therapist-123',
+        clientId: 'user-test-123',
+        consentStatus: 'GRANTED'
+      })
+    },
     consentLog: {
       create: jest.fn().mockResolvedValue({})
     },
@@ -65,6 +72,7 @@ const TEST_USER = {
   firstName: 'Test',
   lastName: 'User',
   subscriptionStatus: 'paid',
+    isPlatformAdmin: false,
   stripeCustomerId: null,
   createdAt: new Date()
 };
@@ -84,6 +92,20 @@ describe('Therapist Routes', () => {
   let app;
   let token;
 
+  // Helper to mock therapist authentication
+  async function mockTherapistAuth() {
+    const bcrypt = require('bcryptjs');
+    const hashedApiKey = await bcrypt.hash(THERAPIST_API_KEY, 10);
+    mockPrisma.therapist.findMany.mockResolvedValue([{
+      id: 'therapist-123',
+      email: 'therapist@example.com',
+      firstName: 'Dr.',
+      lastName: 'Therapist',
+      apiKeyHash: hashedApiKey,
+      isActive: true
+    }]);
+  }
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockPrisma = createMockPrisma();
@@ -99,6 +121,7 @@ describe('Therapist Routes', () => {
   // -------------------------------------------------------------------------
   describe('POST /tasks/add', () => {
     test('creates a task with valid API key (201)', async () => {
+      await mockTherapistAuth();
       mockPrisma.relationship.findUnique.mockResolvedValue(TEST_RELATIONSHIP);
       mockPrisma.therapistTask.create.mockResolvedValue({
         id: 'task-1',
@@ -150,6 +173,7 @@ describe('Therapist Routes', () => {
     });
 
     test('returns 400 without taskDescription', async () => {
+      await mockTherapistAuth();
       const res = await request(app)
         .post('/api/therapist/tasks/add')
         .set('x-therapist-api-key', THERAPIST_API_KEY)
@@ -162,6 +186,7 @@ describe('Therapist Routes', () => {
     });
 
     test('returns 404 when relationship not found', async () => {
+      await mockTherapistAuth();
       mockPrisma.relationship.findUnique.mockResolvedValue(null);
 
       const res = await request(app)
@@ -177,6 +202,8 @@ describe('Therapist Routes', () => {
     });
 
     test('returns 403 when no consent (user1TherapistConsent=false)', async () => {
+      await mockTherapistAuth();
+      mockPrisma.therapistClient.findFirst.mockResolvedValue(null); // No active link, fall back to legacy consent
       mockPrisma.relationship.findUnique.mockResolvedValue({
         ...TEST_RELATIONSHIP,
         user1TherapistConsent: false,
@@ -197,6 +224,7 @@ describe('Therapist Routes', () => {
     });
 
     test('finds relationship by userEmail', async () => {
+      await mockTherapistAuth();
       const emailUser = {
         id: 'user-email-789',
         email: 'partner@example.com'

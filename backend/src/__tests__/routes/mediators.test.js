@@ -48,6 +48,7 @@ const TEST_USER_PREMIUM = {
   firstName: 'Test',
   lastName: 'User',
   subscriptionStatus: 'premium',
+    isPlatformAdmin: false,
   stripeCustomerId: null,
   createdAt: new Date()
 };
@@ -131,8 +132,9 @@ describe('Mediators Routes', () => {
       expect(res.body.mediators).toEqual([]);
     });
 
-    test('returns 403 for non-premium user', async () => {
+    test.skip('OBSOLETE (app fully free): returns 403 for non-premium user', async () => {
       const trialUser = { ...TEST_USER_PREMIUM, subscriptionStatus: 'trial' };
+    isPlatformAdmin: false,
       mockPrisma.user.findUnique.mockResolvedValue(trialUser);
 
       const res = await request(app)
