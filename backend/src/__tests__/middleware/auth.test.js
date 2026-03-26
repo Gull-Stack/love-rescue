@@ -123,6 +123,7 @@ describe('authenticate', () => {
         role: true,
         subscriptionStatus: true,
         stripeCustomerId: true,
+        isPlatformAdmin: true,
         createdAt: true
       }
     });
@@ -138,7 +139,9 @@ describe('authenticate', () => {
       firstName: 'John',
       lastName: 'Doe',
       subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
       stripeCustomerId: 'cus_test',
+      isPlatformAdmin: true,
       createdAt: new Date('2025-01-01')
     };
 
@@ -148,7 +151,8 @@ describe('authenticate', () => {
 
     await authenticate(req, res, next);
 
-    expect(req.user).toEqual(mockUser);
+    // App is free — all users get upgraded to premium regardless of DB status
+    expect(req.user).toEqual({ ...mockUser, subscriptionStatus: 'premium' });
     expect(next).toHaveBeenCalledTimes(1);
     expect(res.status).not.toHaveBeenCalled();
     expect(res.json).not.toHaveBeenCalled();
@@ -167,42 +171,27 @@ describe('requireSubscription', () => {
     next = jest.fn();
   });
 
-  test('returns 401 when no user on request', async () => {
-    // req.user is undefined by default
+  test('always calls next — app is fully free (no subscription enforcement)', async () => {
+    // No user, expired, trial, paid — all should pass through
     await requireSubscription(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Authentication required' });
-    expect(next).not.toHaveBeenCalled();
-  });
-
-  test('returns 403 when subscription is expired', async () => {
-    req.user = { id: 'user-1', subscriptionStatus: 'expired' };
-
-    await requireSubscription(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith({
-      error: 'Subscription expired',
-      code: 'SUBSCRIPTION_EXPIRED'
-    });
-    expect(next).not.toHaveBeenCalled();
-  });
-
-  test('calls next for trial subscription status', async () => {
-    req.user = { id: 'user-1', subscriptionStatus: 'trial' };
-
-    await requireSubscription(req, res, next);
-
     expect(next).toHaveBeenCalledTimes(1);
     expect(res.status).not.toHaveBeenCalled();
-  });
 
-  test('calls next for paid subscription status', async () => {
-    req.user = { id: 'user-1', subscriptionStatus: 'paid' };
-
+    next.mockClear();
+    req.user = { id: 'user-1', subscriptionStatus: 'expired' };
     await requireSubscription(req, res, next);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).not.toHaveBeenCalled();
 
+    next.mockClear();
+    req.user = { id: 'user-2', subscriptionStatus: 'trial' };
+    await requireSubscription(req, res, next);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).not.toHaveBeenCalled();
+
+    next.mockClear();
+    req.user = { id: 'user-3', subscriptionStatus: 'premium' };
+    await requireSubscription(req, res, next);
     expect(next).toHaveBeenCalledTimes(1);
     expect(res.status).not.toHaveBeenCalled();
   });
@@ -220,32 +209,21 @@ describe('requirePremium', () => {
     next = jest.fn();
   });
 
-  test('returns 401 when no user on request', async () => {
+  test('always calls next — app is fully free (no premium enforcement)', async () => {
+    // No user, trial, premium — all should pass through
     await requirePremium(req, res, next);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).not.toHaveBeenCalled();
 
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Authentication required' });
-    expect(next).not.toHaveBeenCalled();
-  });
-
-  test('returns 403 for non-premium user (trial)', async () => {
+    next.mockClear();
     req.user = { id: 'user-1', subscriptionStatus: 'trial' };
-
     await requirePremium(req, res, next);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).not.toHaveBeenCalled();
 
-    expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith({
-      error: 'Premium subscription required',
-      code: 'PREMIUM_REQUIRED'
-    });
-    expect(next).not.toHaveBeenCalled();
-  });
-
-  test('calls next for premium user', async () => {
-    req.user = { id: 'user-1', subscriptionStatus: 'premium' };
-
+    next.mockClear();
+    req.user = { id: 'user-2', subscriptionStatus: 'premium' };
     await requirePremium(req, res, next);
-
     expect(next).toHaveBeenCalledTimes(1);
     expect(res.status).not.toHaveBeenCalled();
   });

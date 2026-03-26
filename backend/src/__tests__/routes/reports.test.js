@@ -41,6 +41,7 @@ describe('Reports Routes', () => {
     firstName: 'Jane',
     lastName: 'Report',
     subscriptionStatus: 'paid',
+    isPlatformAdmin: false,
     stripeCustomerId: 'cus_rpt',
     createdAt: new Date('2025-01-01')
   };

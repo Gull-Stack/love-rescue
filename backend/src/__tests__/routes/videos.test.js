@@ -45,6 +45,7 @@ describe('Videos Routes', () => {
     firstName: 'Video',
     lastName: 'Viewer',
     subscriptionStatus: 'paid',
+    isPlatformAdmin: false,
     stripeCustomerId: 'cus_vid',
     createdAt: new Date('2025-01-01')
   };
@@ -202,8 +203,9 @@ describe('Videos Routes', () => {
       expect(res.body.error).toBe('Video not found');
     });
 
-    test('requires subscription - returns 403 for expired', async () => {
+    test.skip('OBSOLETE (app fully free): requires subscription - returns 403 for expired', async () => {
       const expiredUser = { ...mockUser, subscriptionStatus: 'expired' };
+    isPlatformAdmin: false,
       mockPrisma.user.findUnique.mockResolvedValue(expiredUser);
 
       const res = await request(app)

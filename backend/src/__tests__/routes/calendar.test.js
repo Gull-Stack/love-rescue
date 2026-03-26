@@ -44,6 +44,7 @@ function createMockPrisma() {
     token: {
       create: jest.fn(),
       findFirst: jest.fn(),
+      delete: jest.fn(),
       deleteMany: jest.fn()
     },
     relationship: {
@@ -74,6 +75,7 @@ const TEST_USER = {
   firstName: 'Test',
   lastName: 'User',
   subscriptionStatus: 'paid',
+    isPlatformAdmin: false,
   stripeCustomerId: null,
   createdAt: new Date()
 };
@@ -148,6 +150,18 @@ describe('Calendar Routes', () => {
         expiry_date: Date.now() + 3600000
       };
       mockOAuth2.getToken.mockResolvedValue({ tokens: mockTokens });
+      
+      // Mock CSRF token verification
+      mockPrisma.token.findFirst.mockResolvedValue({
+        id: 'csrf-token-1',
+        email: TEST_USER_ID,
+        token: TEST_USER_ID,
+        type: 'calendar_oauth_csrf',
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 600000)
+      });
+      
+      mockPrisma.token.delete = jest.fn().mockResolvedValue({ id: 'csrf-token-1' });
       mockPrisma.token.create.mockResolvedValue({ id: 'token-1' });
 
       const res = await request(app)
@@ -272,8 +286,9 @@ describe('Calendar Routes', () => {
       expect(res.body.error).toBe('No active strategy to sync');
     });
 
-    test('requires subscription (rejects expired)', async () => {
+    test.skip('OBSOLETE (app fully free): requires subscription (rejects expired)', async () => {
       const expiredUser = { ...TEST_USER, subscriptionStatus: 'expired' };
+    isPlatformAdmin: false,
       mockPrisma.user.findUnique.mockResolvedValue(expiredUser);
 
       const res = await request(app)

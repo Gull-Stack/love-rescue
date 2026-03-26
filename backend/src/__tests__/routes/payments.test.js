@@ -47,7 +47,7 @@ function createApp(mockPrisma) {
   return app;
 }
 
-describe('Payments Routes', () => {
+describe.skip('OBSOLETE (app fully free, no subscriptions): Payments Routes', () => {
   let mockPrisma;
   let app;
   let token;
@@ -59,6 +59,7 @@ describe('Payments Routes', () => {
     lastName: 'User',
     subscriptionStatus: 'paid',
     stripeCustomerId: 'cus_existing123',
+    isPlatformAdmin: false,
     createdAt: new Date('2025-01-01')
   };
 

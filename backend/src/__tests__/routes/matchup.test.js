@@ -51,6 +51,7 @@ describe('Matchup Routes', () => {
     firstName: 'John',
     lastName: 'Doe',
     subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
     stripeCustomerId: null,
     createdAt: new Date()
   };
@@ -62,7 +63,18 @@ describe('Matchup Routes', () => {
     inviteCode: null
   };
 
-  const allRequiredTypes = ['attachment', 'personality', 'wellness_behavior', 'negative_patterns_closeness'];
+  const allRequiredTypes = [
+    'attachment',
+    'personality',
+    'love_language',
+    'human_needs',
+    'gottman_checkup',
+    'emotional_intelligence',
+    'conflict_style',
+    'differentiation',
+    'hormonal_health',
+    'physical_vitality'
+  ];
 
   function makeAssessments(userId) {
     return allRequiredTypes.map((type, i) => ({
@@ -188,10 +200,11 @@ describe('Matchup Routes', () => {
       expect(res.body.user2Missing).toBeDefined();
     });
 
-    it('should return 403 when subscription is expired', async () => {
+    it.skip('should return 403 when subscription is expired — OBSOLETE: app is fully free', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         ...mockAuthUser,
-        subscriptionStatus: 'expired'
+        subscriptionStatus: 'expired',
+        isPlatformAdmin: false,
       });
 
       const res = await request(app)
@@ -345,11 +358,11 @@ describe('Matchup Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.hasPartner).toBe(true);
       expect(res.body.user1).toBeDefined();
-      expect(res.body.user1.completed).toHaveLength(4);
+      expect(res.body.user1.completed).toHaveLength(10);
       expect(res.body.user1.pending).toHaveLength(0);
       expect(res.body.user2).toBeDefined();
       expect(res.body.user2.completed).toHaveLength(2);
-      expect(res.body.user2.pending).toHaveLength(2);
+      expect(res.body.user2.pending).toHaveLength(8);
       expect(res.body.canGenerateMatchup).toBe(false);
     });
 

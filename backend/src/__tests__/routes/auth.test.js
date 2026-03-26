@@ -72,8 +72,10 @@ describe('Auth Routes', () => {
     firstName: 'John',
     lastName: 'Doe',
     subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
     passwordHash: '$2a$12$hashedpassword',
     trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+    isPlatformAdmin: false,
     createdAt: new Date()
   };
 
@@ -236,14 +238,14 @@ describe('Auth Routes', () => {
       expect(res.body.error).toBe('Email and password are required');
     });
 
-    it('should update subscription status when trial is expired', async () => {
+    it('should NOT update subscription status — app is fully free', async () => {
       const expiredUser = {
         ...mockUser,
         subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
         trialEndsAt: new Date(Date.now() - 24 * 60 * 60 * 1000) // expired yesterday
       };
       mockPrisma.user.findUnique.mockResolvedValue(expiredUser);
-      mockPrisma.user.update.mockResolvedValue({ ...expiredUser, subscriptionStatus: 'expired' });
       bcrypt.compare.mockResolvedValue(true);
 
       const res = await request(app)
@@ -251,13 +253,9 @@ describe('Auth Routes', () => {
         .send({ email: 'test@example.com', password: 'password123' });
 
       expect(res.status).toBe(200);
-      expect(res.body.user.subscriptionStatus).toBe('expired');
-      expect(mockPrisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: expiredUser.id },
-          data: { subscriptionStatus: 'expired' }
-        })
-      );
+      // App is free — DB status is irrelevant, user stays as-is
+      expect(res.body.user.subscriptionStatus).toBe('trial');
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
     });
   });
 
@@ -277,7 +275,9 @@ describe('Auth Routes', () => {
           firstName: 'John',
           lastName: 'Doe',
           subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
           stripeCustomerId: null,
+          isPlatformAdmin: false,
           createdAt: new Date()
         })
         .mockResolvedValueOnce({
@@ -286,9 +286,13 @@ describe('Auth Routes', () => {
           firstName: 'John',
           lastName: 'Doe',
           subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
           trialEndsAt: new Date(),
+          isPlatformAdmin: false,
           createdAt: new Date()
         });
+
+      mockPrisma.user.update.mockResolvedValue({ id: 'user-1' }); // lastActiveAt update
 
       const relationshipWithUsers = {
         ...mockRelationship,
@@ -332,6 +336,7 @@ describe('Auth Routes', () => {
         firstName: 'John',
         lastName: 'Doe',
         subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
         stripeCustomerId: null,
         createdAt: new Date()
       });
@@ -361,6 +366,7 @@ describe('Auth Routes', () => {
         firstName: 'John',
         lastName: 'Doe',
         subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
         stripeCustomerId: null,
         createdAt: new Date()
       });
@@ -389,6 +395,7 @@ describe('Auth Routes', () => {
         firstName: 'John',
         lastName: 'Doe',
         subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
         stripeCustomerId: null,
         createdAt: new Date()
       });
@@ -418,6 +425,7 @@ describe('Auth Routes', () => {
         firstName: 'Jane',
         lastName: 'Doe',
         subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
         stripeCustomerId: null,
         createdAt: new Date()
       });
@@ -457,6 +465,7 @@ describe('Auth Routes', () => {
         firstName: 'Jane',
         lastName: 'Doe',
         subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
         stripeCustomerId: null,
         createdAt: new Date()
       });
@@ -479,6 +488,7 @@ describe('Auth Routes', () => {
         firstName: 'Alice',
         lastName: 'Smith',
         subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
         stripeCustomerId: null,
         createdAt: new Date()
       });
@@ -504,6 +514,7 @@ describe('Auth Routes', () => {
         firstName: 'John',
         lastName: 'Doe',
         subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
         stripeCustomerId: null,
         createdAt: new Date()
       });
@@ -532,6 +543,7 @@ describe('Auth Routes', () => {
         firstName: 'John',
         lastName: 'Doe',
         subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
         stripeCustomerId: null,
         createdAt: new Date()
       });
@@ -565,6 +577,7 @@ describe('Auth Routes', () => {
         firstName: 'John',
         lastName: 'Doe',
         subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
         stripeCustomerId: null,
         createdAt: new Date()
       });
@@ -606,6 +619,7 @@ describe('Auth Routes', () => {
         firstName: 'John',
         lastName: 'Doe',
         subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
         stripeCustomerId: null,
         createdAt: new Date()
       });
@@ -664,7 +678,8 @@ describe('Auth Routes', () => {
       const biometricUser = {
         ...mockUser,
         biometricKey: Buffer.from('public-key').toString('base64'),
-        biometricKeyId: Buffer.from('key-id').toString('base64')
+        biometricKeyId: Buffer.from('key-id').toString('base64'),
+        isPlatformAdmin: false
       };
       mockPrisma.user.findUnique.mockResolvedValue(biometricUser);
 
@@ -675,7 +690,11 @@ describe('Auth Routes', () => {
         type: 'webauthn_auth_challenge'
       });
 
-      verifyAuthenticationResponse.mockResolvedValue({ verified: true });
+      verifyAuthenticationResponse.mockResolvedValue({ 
+        verified: true,
+        authenticationInfo: { newCounter: 1 }
+      });
+      mockPrisma.user.update.mockResolvedValue({ ...biometricUser, biometricCounter: 1 });
       mockPrisma.token.update.mockResolvedValue({ id: 'token-1' });
 
       const res = await request(app)
@@ -764,6 +783,7 @@ describe('Auth Routes', () => {
         firstName: 'Google',
         lastName: 'User',
         subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
         googleId: 'google-123456',
         authProvider: 'google'
       });
@@ -798,6 +818,7 @@ describe('Auth Routes', () => {
         firstName: 'Google',
         lastName: 'User',
         subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
         googleId: 'google-123456'
       });
 
@@ -824,6 +845,7 @@ describe('Auth Routes', () => {
           firstName: 'Existing',
           lastName: 'User',
           subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
           passwordHash: '$2a$12$hashedpassword'
         });
       mockPrisma.user.update.mockResolvedValue({
@@ -832,6 +854,7 @@ describe('Auth Routes', () => {
         firstName: 'Existing',
         lastName: 'User',
         subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
         googleId: 'google-123456'
       });
 
@@ -906,7 +929,8 @@ describe('Auth Routes', () => {
         .send({ email: 'test@example.com', password: 'password123' });
 
       expect(res.status).toBe(401);
-      expect(res.body.error).toContain('Google Sign-In');
+      // Security: Don't reveal auth provider (would leak account info)
+      expect(res.body.error).toBe('Invalid credentials');
     });
   });
 
@@ -926,6 +950,7 @@ describe('Auth Routes', () => {
           firstName: 'John',
           lastName: 'Doe',
           subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
           stripeCustomerId: null,
           createdAt: new Date()
         })
@@ -962,6 +987,7 @@ describe('Auth Routes', () => {
           firstName: 'John',
           lastName: 'Doe',
           subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
           stripeCustomerId: null,
           createdAt: new Date()
         })
@@ -998,6 +1024,7 @@ describe('Auth Routes', () => {
           firstName: 'John',
           lastName: 'Doe',
           subscriptionStatus: 'trial',
+    isPlatformAdmin: false,
           stripeCustomerId: null,
           createdAt: new Date()
         })
