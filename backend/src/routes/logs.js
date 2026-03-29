@@ -86,7 +86,7 @@ router.post('/daily', authenticate, requireSubscription, async (req, res, next) 
 
     logger.info('Daily log saved', { userId: req.user.id, date: logDate });
 
-    res.json({
+    res.status(201).json({
       message: 'Daily log saved',
       log: {
         id: dailyLog.id,
