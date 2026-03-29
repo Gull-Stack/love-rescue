@@ -109,18 +109,19 @@ describe('Strategies Routes', () => {
       expect(res.body.strategy.weeklyGoals).toEqual(['Goal 1']);
     });
 
-    test('returns 404 when no relationship found', async () => {
+    test('returns 200 with null strategy when no relationship found', async () => {
       mockPrisma.relationship.findFirst.mockResolvedValue(null);
 
       const res = await request(app)
         .get('/api/strategies/current')
         .set('Authorization', `Bearer ${token}`);
 
-      expect(res.status).toBe(404);
-      expect(res.body.error).toBe('Relationship not found');
+      expect(res.status).toBe(200);
+      expect(res.body.strategy).toBeNull();
+      expect(res.body.message).toContain('Complete assessments and create a relationship');
     });
 
-    test('returns 404 with NO_STRATEGY code when no active strategy', async () => {
+    test('returns 200 with NO_STRATEGY code when no active strategy', async () => {
       mockPrisma.relationship.findFirst.mockResolvedValue({ id: relationshipId, user1Id: userId, user2Id: 'user-2' });
       mockPrisma.strategy.findFirst.mockResolvedValue(null);
 
@@ -128,9 +129,10 @@ describe('Strategies Routes', () => {
         .get('/api/strategies/current')
         .set('Authorization', `Bearer ${token}`);
 
-      expect(res.status).toBe(404);
-      expect(res.body.error).toBe('No active strategy');
+      expect(res.status).toBe(200);
+      expect(res.body.strategy).toBeNull();
       expect(res.body.code).toBe('NO_STRATEGY');
+      expect(res.body.message).toContain('Complete your assessments');
     });
 
     test('returns strategy for solo user (no partner)', async () => {
