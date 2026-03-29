@@ -29,6 +29,7 @@ const VALID_TYPES = [
   'attachment', 'personality', 'love_language', 'human_needs',
   'gottman_checkup', 'emotional_intelligence', 'conflict_style', 'differentiation',
   'hormonal_health', 'physical_vitality',
+  'shame_vulnerability', 'desire_aliveness', 'tactical_empathy',
   // Legacy types
   'wellness_behavior', 'negative_patterns_closeness'
 ];

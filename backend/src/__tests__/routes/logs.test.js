@@ -108,7 +108,7 @@ describe('Logs Routes', () => {
           mood: 7
         });
 
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(201);
       expect(res.body.message).toBe('Daily log saved');
       expect(res.body.log).toBeDefined();
       expect(res.body.log.positiveCount).toBe(5);
@@ -140,7 +140,7 @@ describe('Logs Routes', () => {
           mood: 8
         });
 
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(201);
       expect(res.body.log.positiveCount).toBe(7);
       expect(mockPrisma.dailyLog.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -184,7 +184,7 @@ describe('Logs Routes', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({ positiveCount: 5, negativeCount: 0 });
 
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(201);
       expect(res.body.log.ratio).toBe(999);
       expect(mockPrisma.dailyLog.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -215,7 +215,7 @@ describe('Logs Routes', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({});
 
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(201);
       expect(calculateRatio).toHaveBeenCalledWith(0, 0);
     });
   });

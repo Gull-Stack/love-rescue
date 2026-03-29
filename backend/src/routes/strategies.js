@@ -1162,7 +1162,10 @@ router.get('/current', authenticate, async (req, res, next) => {
     });
 
     if (!relationship) {
-      return res.status(404).json({ error: 'Relationship not found' });
+      return res.json({
+        strategy: null,
+        message: 'Complete assessments and create a relationship to unlock your personalized strategy'
+      });
     }
 
     const strategy = await req.prisma.strategy.findFirst({
@@ -1174,9 +1177,10 @@ router.get('/current', authenticate, async (req, res, next) => {
     });
 
     if (!strategy) {
-      return res.status(404).json({
-        error: 'No active strategy',
-        code: 'NO_STRATEGY'
+      return res.json({
+        strategy: null,
+        code: 'NO_STRATEGY',
+        message: 'Complete your assessments to unlock personalized weekly strategies'
       });
     }
 
