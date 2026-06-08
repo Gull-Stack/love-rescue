@@ -50,3 +50,7 @@ frontend/ios/
 *.pem
 .cache/
 .vercel
+
+# Secrets / signing keys
+credentials/
+*.p8
