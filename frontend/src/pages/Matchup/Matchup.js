@@ -79,7 +79,9 @@ const Matchup = () => {
       <EmptyState
         emoji="💕"
         title="Better together"
-        subtitle="Invite your partner to unlock compatibility insights"
+        subtitle="When your partner joins and takes their assessments, you'll unlock your compatibility insights and a plan you can work on together."
+        ctaText="Invite your partner"
+        onCta={() => navigate('/settings')}
       />
     );
   }

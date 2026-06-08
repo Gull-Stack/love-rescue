@@ -41,6 +41,7 @@ import {
 import ActionCard from '../../components/dashboard/ActionCard';
 import IdentityHint from '../../components/gamification/IdentityHint';
 import ExpertInsight from '../../components/gamification/ExpertInsight';
+import { assessmentLabel } from '../../utils/assessmentLabels';
 
 // User progress states
 const STATE = {
@@ -314,13 +315,48 @@ const Dashboard = () => {
         />
       </Box>
 
+      {/* First-run roadmap — orient brand-new / early users (before plan unlocks) */}
+      {assessmentsDone < 3 && (
+        <Card sx={{ mb: 2, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+          <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 0.25 }}>
+              How Love Rescue works
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+              Three steps to a marriage that's actually getting better.
+            </Typography>
+            {[
+              { n: 1, title: 'Take a few quick assessments', desc: 'So your plan fits your real situation.', done: assessmentsDone > 0, active: assessmentsDone === 0 },
+              { n: 2, title: 'Get your personalized weekly plan', desc: `${Math.max(0, 3 - assessmentsDone)} assessment${3 - assessmentsDone === 1 ? '' : 's'} away.`, done: false, active: assessmentsDone >= 3 },
+              { n: 3, title: 'Work the plan — a little each day', desc: 'Specific steps, and you can see it working.', done: false, active: false },
+            ].map((step) => (
+              <Box key={step.n} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: step.n !== 3 ? 1.25 : 0, opacity: step.done || step.active ? 1 : 0.6 }}>
+                <Box sx={{
+                  flexShrink: 0, width: 24, height: 24, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.75rem', fontWeight: 700,
+                  bgcolor: step.done ? '#22c55e' : step.active ? 'primary.main' : 'rgba(0,0,0,0.08)',
+                  color: step.done || step.active ? '#fff' : 'text.secondary',
+                }}>
+                  {step.done ? '✓' : step.n}
+                </Box>
+                <Box>
+                  <Typography variant="body2" fontWeight={step.active ? 700 : 500}>{step.title}</Typography>
+                  <Typography variant="caption" color="text.secondary">{step.desc}</Typography>
+                </Box>
+              </Box>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Assessment result cards — DISCOVERING+ */}
       {showAssessmentResults && assessmentsDone > 0 && data.assessments?.completed && (
         <Box sx={{ mb: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           {data.assessments.completed.slice(0, 3).map((result) => (
             <Card
               key={result.type}
-              onClick={() => navigate(`/assessments/results/${result.type}`)}
+              onClick={() => navigate('/assessments')}
               sx={{
                 cursor: 'pointer',
                 borderRadius: 3,
@@ -333,7 +369,7 @@ const Dashboard = () => {
                 <Box display="flex" alignItems="center" justifyContent="space-between">
                   <Box>
                     <Typography variant="subtitle2" fontWeight="bold">
-                      {result.name || result.type}
+                      {result.name || assessmentLabel(result.type)}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {result.summary || (result.score?.profileDescription) || (result.score?.topTwoDescriptions?.[0]) || (result.completedAt ? `Completed ${new Date(result.completedAt).toLocaleDateString()}` : 'Tap to view results')}
@@ -382,25 +418,29 @@ const Dashboard = () => {
         <Card sx={{ mb: 2, border: '1px solid', borderColor: 'divider' }}>
           <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
             <Typography
-              variant="caption"
-              sx={{ fontFamily: 'monospace', letterSpacing: 1, color: 'text.secondary', display: 'block', mb: 1.5 }}
+              variant="subtitle2"
+              fontWeight="bold"
+              sx={{ color: 'text.primary', display: 'block', mb: 0.25 }}
             >
-              SYSTEM HEALTH
+              Where you're growing
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+              Your strengths across the three things that make or break a marriage.
             </Typography>
             {[
-              { label: 'Connection Processing', key: 'connection' },
-              { label: 'Communication Buffer', key: 'communication' },
-              { label: 'Conflict Resolution', key: 'conflict_skill' },
+              { label: 'Connection', key: 'connection' },
+              { label: 'Communication', key: 'communication' },
+              { label: 'Conflict skills', key: 'conflict_skill' },
             ].map(({ label, key }) => {
               const pct = data.progressRings[key]?.percent ?? 0;
               const barColor = pct > 80 ? '#22c55e' : pct >= 60 ? '#eab308' : '#ef4444';
               return (
                 <Box key={key} sx={{ mb: key !== 'conflict_skill' ? 1.5 : 0 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                    <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: '0.65rem' }}>
+                    <Typography variant="caption" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
                       {label}
                     </Typography>
-                    <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: '0.65rem' }}>
+                    <Typography variant="caption" sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'text.secondary' }}>
                       {pct}%
                     </Typography>
                   </Box>

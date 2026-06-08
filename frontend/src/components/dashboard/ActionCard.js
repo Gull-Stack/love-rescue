@@ -14,19 +14,8 @@ const fadeInUp = keyframes`
   }
 `;
 
-// Assessment order for the priority waterfall
-const ASSESSMENT_ORDER = [
-  { type: 'attachment', name: 'Attachment Style' },
-  { type: 'love-language', name: 'Love Languages' },
-  { type: 'conflict', name: 'Conflict Style' },
-  { type: 'communication', name: 'Communication' },
-  { type: 'emotional-intelligence', name: 'Emotional Intelligence' },
-  { type: 'trust', name: 'Trust' },
-  { type: 'intimacy', name: 'Intimacy' },
-  { type: 'values', name: 'Values Alignment' },
-  { type: 'boundaries', name: 'Boundaries' },
-  { type: 'growth', name: 'Growth Mindset' },
-];
+// Number of assessments required before a personalized plan unlocks.
+const ASSESSMENTS_TO_UNLOCK_PLAN = 3;
 
 const GRADIENTS = {
   assessment: 'linear-gradient(135deg, #667eea, #764ba2)',
@@ -48,29 +37,26 @@ function getAction({
   loveNote,
   partnerName,
 }) {
-  // Determine which assessments are completed (by count, map to order)
-  const nextAssessmentIndex = assessmentsDone;
-
   // 1. No assessments completed
   if (assessmentsDone === 0) {
     return {
       gradient: GRADIENTS.assessment,
-      message: 'Every great relationship starts with understanding yourself',
-      subtitle: '~5 min',
-      cta: 'Begin',
-      path: '/assessments/attachment',
+      message: 'Your plan starts with a few quick questions about you',
+      subtitle: 'First assessment · ~5 min',
+      cta: 'Start',
+      path: '/assessments',
     };
   }
 
-  // 2. Less than 3 assessments
-  if (assessmentsDone < 3 && nextAssessmentIndex < totalAssessments) {
-    const next = ASSESSMENT_ORDER[nextAssessmentIndex] || ASSESSMENT_ORDER[0];
+  // 2. Fewer than the number needed to unlock a plan
+  if (assessmentsDone < ASSESSMENTS_TO_UNLOCK_PLAN) {
+    const remaining = ASSESSMENTS_TO_UNLOCK_PLAN - assessmentsDone;
     return {
       gradient: GRADIENTS.assessment,
-      message: `Keep discovering — ${next.name} is next`,
-      subtitle: '~5 min',
+      message: `${remaining} more assessment${remaining === 1 ? '' : 's'} and your personalized plan unlocks`,
+      subtitle: '~5 min each',
       cta: 'Continue',
-      path: `/assessments/${next.type}`,
+      path: '/assessments',
     };
   }
 
