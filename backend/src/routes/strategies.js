@@ -84,6 +84,8 @@ function generateRelationshipProfile(assessments) {
     communicationScore: null,     // 0-100
     mbtiType: null,               // e.g. "INFJ"
     personalityDimensions: null,  // { extraversion, agreeableness, etc. }
+    conflictStyle: null,          // competing | collaborating | compromising | avoiding | accommodating
+    eqScore: null,                // 0-100 emotional intelligence overall
     focusAreas: [],               // ordered by priority
     strengths: [],                // areas scoring well
   };
@@ -147,30 +149,71 @@ function generateRelationshipProfile(assessments) {
     }
   }
 
-  // === GOTTMAN (Friendship, Conflict, Meaning, Horsemen) ===
-  if (byType.gottman) {
-    const score = safeParse(byType.gottman.score);
+  // === GOTTMAN CHECKUP (Friendship, Conflict, Meaning, Horsemen) ===
+  // NOTE: the assessment type is `gottman_checkup` (legacy code looked for
+  // `gottman`, so this entire section silently no-op'd — the Gottman data,
+  // including the Four Horsemen, was never used in plan generation).
+  const gottman = byType.gottman_checkup || byType.gottman;
+  if (gottman) {
+    const score = safeParse(gottman.score);
     if (score) {
-      profile.friendshipScore = safeGet(score, 'friendship', 'friendshipAndIntimacy', 'friendship_score');
-      profile.conflictScore = safeGet(score, 'conflict', 'conflictManagement', 'conflict_score');
-      profile.meaningScore = safeGet(score, 'meaning', 'sharedMeaning', 'meaning_score');
+      // Strengths live under strengths.byType.<category>.percentage
+      const sByType = safeGet(score, 'strengths.byType') || {};
+      const pct = (cat) => {
+        const v = safeGet(sByType, `${cat}.percentage`);
+        return v != null ? Number(v) : null;
+      };
+      const avgPct = (...cats) => {
+        const vals = cats.map(pct).filter(v => v != null);
+        return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+      };
+      // Friendship system = fondness/admiration + love maps + turning toward
+      profile.friendshipScore = avgPct('fondness_admiration', 'love_maps', 'turning_toward') ??
+                                safeGet(score, 'friendship', 'friendship_score');
+      // Conflict management ~ repair attempts
+      profile.conflictScore = pct('repair_attempts') ?? safeGet(score, 'conflict', 'conflict_score');
+      // Shared meaning
+      profile.meaningScore = pct('shared_meaning') ?? safeGet(score, 'meaning', 'meaning_score');
 
-      // Horsemen extraction
-      const horsemen = safeGet(score, 'horsemen', 'fourHorsemen');
-      if (horsemen && typeof horsemen === 'object') {
-        profile.horsemenScores = {
-          criticism: safeGet(horsemen, 'criticism') ?? null,
-          contempt: safeGet(horsemen, 'contempt') ?? null,
-          defensiveness: safeGet(horsemen, 'defensiveness') ?? null,
-          stonewalling: safeGet(horsemen, 'stonewalling') ?? null,
-        };
-        // Lower score = worse (more of the horseman present)
-        const entries = Object.entries(profile.horsemenScores).filter(([, v]) => v !== null);
-        if (entries.length > 0) {
-          const worst = entries.sort(([, a], [, b]) => a - b)[0];
-          if (worst[1] < 60) profile.dominantHorseman = worst[0];
-        }
+      // Horsemen: higher percentage = MORE problematic. byType.<name>.percentage.
+      const hByType = safeGet(score, 'horsemen.byType') || safeGet(score, 'horsemen') || {};
+      const hpct = (name) => {
+        const v = safeGet(hByType, `${name}.percentage`) ?? safeGet(hByType, name);
+        return typeof v === 'number' ? v : null;
+      };
+      profile.horsemenScores = {
+        criticism: hpct('criticism'),
+        contempt: hpct('contempt'),
+        defensiveness: hpct('defensiveness'),
+        stonewalling: hpct('stonewalling'),
+      };
+      // Dominant horseman = the most present one (prefer the scorer's own pick).
+      const mostConcerning = safeGet(score, 'horsemen.mostConcerning');
+      const entries = Object.entries(profile.horsemenScores).filter(([, v]) => v !== null);
+      if (mostConcerning && profile.horsemenScores[mostConcerning] != null &&
+          profile.horsemenScores[mostConcerning] >= 40) {
+        profile.dominantHorseman = mostConcerning;
+      } else if (entries.length > 0) {
+        const worst = entries.sort(([, a], [, b]) => b - a)[0]; // highest = worst
+        if (worst[1] >= 40) profile.dominantHorseman = worst[0];
       }
+    }
+  }
+
+  // === CONFLICT STYLE (Thomas-Kilmann) ===
+  if (byType.conflict_style) {
+    const score = safeParse(byType.conflict_style.score);
+    profile.conflictStyle = safeGet(score, 'primary', 'style'); // competing | collaborating | compromising | avoiding | accommodating
+  }
+
+  // === EMOTIONAL INTELLIGENCE (proxy for communication capacity) ===
+  if (byType.emotional_intelligence) {
+    const score = safeParse(byType.emotional_intelligence.score);
+    profile.eqScore = safeGet(score, 'overall', 'overallScore');
+    // EQ strongly underpins communication; use it as the communication signal
+    // when no dedicated communication assessment is present.
+    if (profile.communicationScore == null && profile.eqScore != null) {
+      profile.communicationScore = Number(profile.eqScore);
     }
   }
 
@@ -233,6 +276,18 @@ function generateRelationshipProfile(assessments) {
     if (!profile.focusAreas.includes('attachment')) {
       profile.focusAreas.unshift('attachment');
     }
+  }
+
+  // A maladaptive conflict style is a growth area even if repair scores are okay.
+  if (['competing', 'avoiding', 'accommodating'].includes(profile.conflictStyle) &&
+      !profile.focusAreas.includes('conflict')) {
+    profile.focusAreas.push('conflict');
+  }
+
+  // Low EQ → communication is a growth area.
+  if (profile.eqScore != null && Number(profile.eqScore) < 70 &&
+      !profile.focusAreas.includes('communication')) {
+    profile.focusAreas.push('communication');
   }
 
   // Build strengths
