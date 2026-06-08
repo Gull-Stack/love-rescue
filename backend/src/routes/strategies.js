@@ -45,6 +45,27 @@ function safeGet(obj, ...paths) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// INTRODUCTION STORAGE (migration-free)
+// The `Strategy` table has no `introduction` column, so we ride the weekly
+// introduction along inside the existing `dailyActivities` JSONB under a
+// reserved `__introduction` key, and strip it back out on read. This keeps the
+// personalized expert intro without requiring a DB migration.
+// ═══════════════════════════════════════════════════════════════════════════
+
+function packDailyActivities(dailyActivities, introduction) {
+  const base = dailyActivities && typeof dailyActivities === 'object' ? dailyActivities : {};
+  return introduction ? { ...base, __introduction: introduction } : { ...base };
+}
+
+// Returns { dailyActivities (without __introduction), introduction }
+function unpackDailyActivities(stored) {
+  const obj = safeParse(stored);
+  if (!obj || typeof obj !== 'object') return { dailyActivities: obj || {}, introduction: null };
+  const { __introduction = null, ...dailyActivities } = obj;
+  return { dailyActivities, introduction: __introduction };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ENHANCED PROFILE BUILDER
 // Extracts EVERYTHING from assessments into a unified relationship profile
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1184,14 +1205,15 @@ router.get('/current', authenticate, async (req, res, next) => {
       });
     }
 
+    const { dailyActivities, introduction } = unpackDailyActivities(strategy.dailyActivities);
     res.json({
       strategy: {
         id: strategy.id,
         cycleNumber: strategy.cycleNumber,
         week: strategy.week,
-        dailyActivities: strategy.dailyActivities,
+        dailyActivities,
         weeklyGoals: strategy.weeklyGoals,
-        introduction: strategy.introduction || null,
+        introduction,
         progress: strategy.progress,
         startDate: strategy.startDate,
         endDate: strategy.endDate
@@ -1277,9 +1299,8 @@ router.post('/generate', authenticate, requireSubscription, async (req, res, nex
           relationshipId: relationship.id,
           cycleNumber,
           week,
-          dailyActivities: weekPlan.dailyActivities,
+          dailyActivities: packDailyActivities(weekPlan.dailyActivities, weekPlan.introduction),
           weeklyGoals: weekPlan.weeklyGoals,
-          introduction: weekPlan.introduction || null,
           progress: 0,
           isActive: true,
           startDate: weekStart,
@@ -1300,18 +1321,23 @@ router.post('/generate', authenticate, requireSubscription, async (req, res, nex
     res.json({
       message: '6-week strategy plan generated',
       cycleNumber,
-      strategies: strategies.map(s => ({
-        id: s.id,
-        week: s.week,
-        startDate: s.startDate,
-        endDate: s.endDate,
-        dailyActivities: s.dailyActivities,
-        weeklyGoals: s.weeklyGoals,
-        introduction: s.introduction,
-      }))
+      strategies: strategies.map(s => {
+        const { dailyActivities, introduction } = unpackDailyActivities(s.dailyActivities);
+        return {
+          id: s.id,
+          week: s.week,
+          startDate: s.startDate,
+          endDate: s.endDate,
+          dailyActivities,
+          weeklyGoals: s.weeklyGoals,
+          introduction,
+        };
+      })
     });
   } catch (error) {
-    next(error);
+    logger.error('Strategy generation failed', { userId: req.user?.id, message: error.message, code: error.code, name: error.name });
+    // TEMP-DIAG: surface error detail to confirm root cause; remove after verification.
+    return res.status(500).json({ error: 'Failed to generate strategy', _diag: { message: error.message, code: error.code, name: error.name } });
   }
 });
 

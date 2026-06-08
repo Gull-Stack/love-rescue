@@ -404,7 +404,6 @@ model Strategy {
   week            Int      @db.SmallInt
   dailyActivities Json     @map("daily_activities") @db.JsonB
   weeklyGoals     Json     @map("weekly_goals") @db.JsonB
-  introduction    String?  @db.Text
   progress        Float    @default(0) // 0-100
   isActive        Boolean  @default(true) @map("is_active")
   startDate       DateTime @map("start_date") @db.Date
