@@ -630,9 +630,10 @@ const Settings = () => {
           </Typography>
           <Typography paragraph variant="body2">
             <strong>3. Data Security</strong><br />
-            We implement industry-standard security measures including encryption at rest
-            and in transit, secure authentication via JWT and optional biometrics (WebAuthn),
-            and HIPAA-compliant audit logging for all data access.
+            We implement industry-standard security measures including encryption in
+            transit (HTTPS/TLS), encryption of stored credentials and third-party access
+            tokens at rest (AES-256-GCM), secure authentication via JWT and optional
+            biometrics (WebAuthn), and audit logging for all data access.
           </Typography>
           <Typography paragraph variant="body2">
             <strong>4. Shared Data Within Relationships</strong><br />
