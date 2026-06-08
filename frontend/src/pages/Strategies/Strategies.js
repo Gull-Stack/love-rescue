@@ -235,6 +235,35 @@ const Strategies = () => {
             </CardContent>
           </Card>
 
+          {/* Personalized weekly introduction (expert-cited, profile-driven) */}
+          {(() => {
+            const intro = strategy.introduction;
+            const message = typeof intro === 'string' ? intro : intro?.personalizedMessage;
+            const heading = typeof intro === 'object' ? intro?.weekName : null;
+            if (!message) return null;
+            return (
+              <Card sx={{ mb: 3, borderLeft: '4px solid', borderColor: 'primary.main' }}>
+                <CardContent>
+                  {heading && (
+                    <Typography variant="subtitle2" color="primary" fontWeight={700} gutterBottom>
+                      {heading}
+                    </Typography>
+                  )}
+                  {String(message).split('\n\n').map((para, i) => (
+                    <Typography
+                      key={i}
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: i < String(message).split('\n\n').length - 1 ? 1.5 : 0, lineHeight: 1.7 }}
+                    >
+                      {para}
+                    </Typography>
+                  ))}
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {/* Weekly Goals */}
           <Card sx={{ mb: 3 }}>
             <CardContent>

@@ -2,6 +2,22 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
+// Guard: never let a production build silently talk to localhost. If the env
+// var was missing at build time, the app would point every real user at their
+// own machine and every request would fail with no obvious cause.
+if (
+  typeof window !== 'undefined' &&
+  !/^(localhost|127\.0\.0\.1)/.test(window.location.hostname) &&
+  /localhost|127\.0\.0\.1/.test(API_URL)
+) {
+  // eslint-disable-next-line no-console
+  console.error(
+    `[config] REACT_APP_API_URL is unset/localhost ("${API_URL}") but the app ` +
+      `is running on "${window.location.hostname}". API calls will fail. ` +
+      `Set REACT_APP_API_URL at build time.`
+  );
+}
+
 const api = axios.create({
   baseURL: API_URL,
   headers: {

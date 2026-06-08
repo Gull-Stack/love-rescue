@@ -4,8 +4,26 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 
 /**
  * LOW-03: React Error Boundary to catch rendering errors
- * and display a user-friendly fallback UI
+ * and display a user-friendly fallback UI.
+ *
+ * Also handles stale-chunk recovery: after a new deploy the old lazy-loaded
+ * JS chunks 404, React throws a ChunkLoadError, and the app white-screens.
+ * We detect that and hard-reload ONCE so the user transparently lands on the
+ * new build instead of a blank page.
  */
+const CHUNK_RELOAD_KEY = 'lr_chunk_reload_attempted';
+
+function isChunkLoadError(error) {
+  if (!error) return false;
+  const msg = `${error.name || ''} ${error.message || ''}`;
+  return (
+    error.name === 'ChunkLoadError' ||
+    /Loading chunk [\d]+ failed/i.test(msg) ||
+    /Loading CSS chunk/i.test(msg) ||
+    /dynamically imported module/i.test(msg)
+  );
+}
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -14,16 +32,20 @@ class ErrorBoundary extends React.Component {
 
   static getDerivedStateFromError(error) {
     // Update state so the next render will show the fallback UI
-    return { hasError: true };
+    return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
-    // Log error to console (in production, send to error tracking service)
+    // Stale chunk after a deploy → reload once to pick up the new build.
+    if (isChunkLoadError(error) && !sessionStorage.getItem(CHUNK_RELOAD_KEY)) {
+      sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
+      window.location.reload();
+      return;
+    }
+
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    // TEMP: Alert to show error on mobile
-    alert('ERROR: ' + error.toString());
     this.setState({ error, errorInfo });
-    
+
     // TODO: Send to error tracking service like Sentry
     // if (process.env.REACT_APP_SENTRY_DSN) {
     //   Sentry.captureException(error, { extra: errorInfo });
@@ -40,6 +62,10 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      // Chunk error: we're reloading — render nothing rather than flash the fallback.
+      if (isChunkLoadError(this.state.error)) {
+        return null;
+      }
       return (
         <Box
           display="flex"
