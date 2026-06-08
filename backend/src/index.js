@@ -74,8 +74,12 @@ const { auditLogger } = require('./middleware/auditLogger');
 const { errorHandler } = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 
+const { withContentEncryption } = require('./lib/contentEncryption');
+
 const app = express();
-const prisma = new PrismaClient();
+// withContentEncryption returns the base client unchanged unless
+// CONTENT_ENCRYPTION=true (+ ENCRYPTION_KEY) is set — see lib/contentEncryption.js.
+const prisma = withContentEncryption(new PrismaClient());
 const PORT = process.env.PORT || 3001;
 
 // Trust proxy for Railway/production reverse proxy

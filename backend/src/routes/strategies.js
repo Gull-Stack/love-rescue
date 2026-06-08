@@ -825,9 +825,15 @@ function generateMatchupWeekPlan(week, matchup) {
   const misses = alignments.misses || [];
   const missAreas = misses.map(m => m.area || m);
 
-  // Build profiles for both users from matchup data
-  const profile1 = buildProfileFromMatchup(matchup, 'user1');
-  const profile2 = buildProfileFromMatchup(matchup, 'user2');
+  // Build profiles for both users. Prefer their actual assessments (full depth,
+  // same as the solo engine); fall back to the sparse matchup record only if
+  // assessments weren't attached.
+  const profile1 = (matchup._user1Assessments && matchup._user1Assessments.length)
+    ? generateRelationshipProfile(matchup._user1Assessments)
+    : buildProfileFromMatchup(matchup, 'user1');
+  const profile2 = (matchup._user2Assessments && matchup._user2Assessments.length)
+    ? generateRelationshipProfile(matchup._user2Assessments)
+    : buildProfileFromMatchup(matchup, 'user2');
   // Use combined profile for technique selection
   const combinedProfile = mergeProfiles(profile1, profile2);
 
@@ -1317,6 +1323,20 @@ router.post('/generate', authenticate, requireSubscription, async (req, res, nex
           code: 'NO_ASSESSMENTS'
         });
       }
+    } else {
+      // Couples plan: the matchup record only stores score + alignments, not the
+      // per-partner profiles. Attach both partners' actual assessments so the
+      // plan engine can build full profiles (same depth as the solo engine).
+      const [u1, u2] = await Promise.all([
+        relationship.user1Id
+          ? req.prisma.assessment.findMany({ where: { userId: relationship.user1Id }, orderBy: { completedAt: 'desc' } })
+          : Promise.resolve([]),
+        relationship.user2Id
+          ? req.prisma.assessment.findMany({ where: { userId: relationship.user2Id }, orderBy: { completedAt: 'desc' } })
+          : Promise.resolve([]),
+      ]);
+      matchup._user1Assessments = u1;
+      matchup._user2Assessments = u2;
     }
 
     // Deactivate old strategies
