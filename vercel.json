@@ -101,6 +101,46 @@
     {
       "source": "/course/:path*",
       "destination": "/app.html"
+    },
+    {
+      "source": "/daily",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/strategies",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/skills",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/matchup",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/real-talk/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/transformation",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/weekly-review",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/meetings",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/therapist/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/therapist",
+      "destination": "/app.html"
     }
   ],
   "headers": [
