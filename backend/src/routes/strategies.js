@@ -1336,8 +1336,7 @@ router.post('/generate', authenticate, requireSubscription, async (req, res, nex
     });
   } catch (error) {
     logger.error('Strategy generation failed', { userId: req.user?.id, message: error.message, code: error.code, name: error.name });
-    // TEMP-DIAG: surface error detail to confirm root cause; remove after verification.
-    return res.status(500).json({ error: 'Failed to generate strategy', _diag: { message: error.message, code: error.code, name: error.name } });
+    next(error);
   }
 });
 

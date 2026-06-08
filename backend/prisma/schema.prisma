@@ -147,6 +147,7 @@ model User {
   pushPlatform       String?            @map("push_platform") @db.VarChar(10) // ios, android, web
   subscriptionSource SubscriptionSource @default(NONE) @map("subscription_source")
   appleReceiptData   String?            @map("apple_receipt_data") @db.Text
+  metadata           Json?              @db.JsonB
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
