@@ -3,6 +3,7 @@ import api, { setTokens, getToken, clearTokens, biometricApi } from '../services
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import { Capacitor } from '@capacitor/core';
 import { registerNativePush, setupPushListeners } from '../utils/capacitor-init';
+import { trackEvent } from '../utils/analytics';
 
 // TODO: HIGH-01 — Move JWT storage from localStorage to httpOnly cookies.
 // This requires backend changes (set-cookie headers, cookie-parser middleware,
@@ -138,6 +139,7 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/auth/signup', data);
       setTokens(response.data.token, response.data.refreshToken, rememberMe);
       setUser(response.data.user);
+      trackEvent('sign_up', { method: 'email' });
       await fetchUser();
       return response.data;
     } catch (err) {

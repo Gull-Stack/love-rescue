@@ -27,6 +27,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { strategiesApi, calendarApi } from '../../services/api';
 import { sectionColors } from '../../theme';
 import EmptyState from '../../components/common/EmptyState';
+import { trackEvent } from '../../utils/analytics';
 
 const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -79,6 +80,7 @@ const Strategies = () => {
     try {
       const response = await strategiesApi.generate();
       setStrategy(response.data.strategies[0]);
+      trackEvent('plan_generated', { weeks: response.data.strategies?.length || 0 });
       setSuccess('New 6-week strategy generated!');
     } catch (err) {
       // If no assessments completed, redirect to assessments page

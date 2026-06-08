@@ -37,6 +37,7 @@ import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
 import StarIcon from '@mui/icons-material/Star';
 import { assessmentsApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { trackEvent } from '../../utils/analytics';
 
 // ─── Assessment Metadata ──────────────────────────────────────────────────────
 const assessmentMeta = {
@@ -1205,7 +1206,8 @@ const AssessmentQuiz = () => {
     try {
       const response = await assessmentsApi.submit(type, responses);
       setResult(response.data);
-      
+      trackEvent('assessment_completed', { assessment_type: type });
+
       // 🎉 Confetti explosion + haptic on completion
       hapticSuccess();
       confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
