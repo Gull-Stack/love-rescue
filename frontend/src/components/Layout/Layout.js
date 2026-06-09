@@ -391,6 +391,19 @@ const Layout = () => {
                 key={item.label + index}
                 label={item.label}
                 icon={item.icon}
+                sx={{
+                  transition: 'transform 0.18s cubic-bezier(0.34,1.56,0.64,1)',
+                  '&:active': { transform: 'scale(0.9)' },
+                  // active tab: pop the icon + a soft brand pill behind it
+                  '&.Mui-selected .MuiSvgIcon-root': {
+                    transform: 'scale(1.22) translateY(-1px)',
+                    transition: 'transform 0.22s cubic-bezier(0.34,1.56,0.64,1)',
+                    filter: 'drop-shadow(0 3px 6px rgba(233,30,99,0.45))',
+                  },
+                  '&.Mui-selected': {
+                    '& .MuiBottomNavigationAction-label': { fontWeight: 700 },
+                  },
+                }}
               />
             ))}
           </BottomNavigation>
