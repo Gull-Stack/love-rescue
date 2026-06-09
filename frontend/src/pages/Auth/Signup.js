@@ -225,6 +225,10 @@ const Signup = () => {
             </Button>
           </form>
 
+          {/* Google sign-up needs REACT_APP_GOOGLE_CLIENT_ID; hidden until set so
+              there's no dead button. Returns automatically when the key is added. */}
+          {!!process.env.REACT_APP_GOOGLE_CLIENT_ID && (
+          <>
           <Divider sx={{ my: 3 }}>
             <Typography variant="body2" color="text.secondary">
               or
@@ -251,9 +255,11 @@ const Signup = () => {
               }}
             />
           </Box>
+          </>
+          )}
 
           <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mb: 2 }}>
-            14-day free trial, then $9.99/month per couple
+            Free to start — no credit card required.
           </Typography>
 
           <Box textAlign="center">

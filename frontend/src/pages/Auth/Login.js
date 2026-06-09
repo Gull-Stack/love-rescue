@@ -246,6 +246,11 @@ const Login = () => {
             </Box>
           </form>
 
+          {/* Third-party SSO uses native Capacitor plugins (iOS app). On the
+              web launch we show only the verified email/password flow so there
+              are no dead buttons; these return automatically in the native app. */}
+          {isNative() && (
+          <>
           <Divider sx={{ my: 3 }}>
             <Typography variant="body2" color="text.secondary">
               or
@@ -365,6 +370,8 @@ const Login = () => {
               Sign in with Apple
             </button>
           </div>
+          </>
+          )}
 
           {/* Show biometric button if available but no saved email */}
           {biometricAvailable && !savedEmail && (
