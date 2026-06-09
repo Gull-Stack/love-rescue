@@ -250,15 +250,18 @@ const LikertScale = ({ value, onChange, labels, color }) => {
                 key={option.value}
                 variant={isSelected ? 'contained' : 'outlined'}
                 onClick={() => onChange(option.value)}
+                aria-label={`${option.value} — ${option.label}`}
                 sx={{
-                  minWidth: 40,
-                  width: 40,
-                  height: 48,
-                  borderRadius: 2,
-                  fontSize: '1rem',
+                  flex: 1,
+                  minWidth: 0,
+                  height: 54,
+                  borderRadius: 2.5,
+                  fontSize: '1.2rem',
                   fontWeight: 'bold',
                   p: 0,
                   transition: 'all 0.15s ease',
+                  // crisper press feedback
+                  '&:active': { transform: 'scale(0.94)' },
                   ...(isSelected
                     ? {
                         bgcolor: color,

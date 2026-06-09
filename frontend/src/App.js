@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Box, CircularProgress } from '@mui/material';
 import { useAuth } from './contexts/AuthContext';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -8,6 +7,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 // Layout (static - needed immediately)
 import Layout from './components/Layout/Layout';
 import Disclaimer from './components/common/Disclaimer';
+import LoadingScreen from './components/common/LoadingScreen';
 
 // Landing page (lazy loaded)
 const Landing = React.lazy(() => import('./pages/Landing/Landing'));
@@ -64,9 +64,7 @@ const ProtectedRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Box>
+      <LoadingScreen />
     );
   }
 
@@ -83,9 +81,7 @@ const PublicRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Box>
+      <LoadingScreen />
     );
   }
 
@@ -102,9 +98,7 @@ const TherapistRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Box>
+      <LoadingScreen />
     );
   }
 
@@ -128,9 +122,7 @@ function App() {
       <Disclaimer />
       <React.Suspense
         fallback={
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-            <CircularProgress />
-          </Box>
+          <LoadingScreen />
         }
       >
       <Routes>
@@ -243,9 +235,7 @@ const CatchAll = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Box>
+      <LoadingScreen />
     );
   }
 
