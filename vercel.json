@@ -141,6 +141,10 @@
     {
       "source": "/therapist",
       "destination": "/app.html"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/app.html"
     }
   ],
   "headers": [
