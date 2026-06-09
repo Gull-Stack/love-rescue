@@ -35,7 +35,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const { PrismaClient } = require('@prisma/client');
 
 const authRoutes = require('./routes/auth');
 const assessmentRoutes = require('./routes/assessments');
@@ -74,12 +73,9 @@ const { auditLogger } = require('./middleware/auditLogger');
 const { errorHandler } = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 
-const { withContentEncryption } = require('./lib/contentEncryption');
-
 const app = express();
-// withContentEncryption returns the base client unchanged unless
-// CONTENT_ENCRYPTION=true (+ ENCRYPTION_KEY) is set — see lib/contentEncryption.js.
-const prisma = withContentEncryption(new PrismaClient());
+// Single shared client (one connection pool). See lib/prisma.js.
+const prisma = require('./lib/prisma');
 const PORT = process.env.PORT || 3001;
 
 // Trust proxy for Railway/production reverse proxy
@@ -114,18 +110,26 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting (general)
+// Rate limiting (general). The SPA fires ~10 API calls per page load, and many
+// mobile users share carrier-grade NAT IPs, so 100/15min blocked legit users
+// mid-onboarding. Generous per-IP cap that still stops scraping/DoS; tune via env.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: Number(process.env.RATE_LIMIT_MAX) || 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' }
 });
 app.use('/api/', limiter);
 
-// HIGH-04: Stricter rate limiting for auth endpoints
+// HIGH-04: Stricter rate limiting for auth endpoints (brute-force protection).
+// Account-level lockout handles per-account brute force separately; this is the
+// coarse per-IP net, kept lenient enough for shared/NAT IPs.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10,
+  max: Number(process.env.AUTH_RATE_LIMIT_MAX) || 30,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { error: 'Too many login attempts, please try again later.' }
 });
 app.use('/api/auth/login', authLimiter);
@@ -138,7 +142,7 @@ app.use((req, res, next) => {
   if (req.originalUrl === '/api/payments/webhook' || req.originalUrl.startsWith('/api/stripe/webhook')) {
     next(); // skip json parsing for stripe webhook — route uses express.raw()
   } else {
-    express.json({ limit: '10kb' })(req, res, next);
+    express.json({ limit: '100kb' })(req, res, next);
   }
 });
 app.use(express.urlencoded({ extended: true }));
@@ -246,6 +250,20 @@ const gracefulShutdown = async () => {
 
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
+
+// Crash resilience: log instead of dying silently. An unhandled rejection
+// should never take the whole server down mid-traffic.
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled promise rejection', {
+    reason: reason instanceof Error ? reason.message : String(reason),
+    stack: reason instanceof Error ? reason.stack : undefined,
+  });
+});
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception', { message: err.message, stack: err.stack });
+  // Let the platform restart us cleanly rather than running in a corrupt state.
+  gracefulShutdown();
+});
 
 // Database schema health check - verify critical tables exist
 async function verifyDatabaseSchema() {

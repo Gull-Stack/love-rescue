@@ -1,11 +1,10 @@
 const express = require('express');
 const webpush = require('web-push');
-const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth');
 const apns = require('../utils/apns');
 
 const router = express.Router();
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // VAPID keys - in production, use environment variables
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BMm9QUx-G1gYCF9nkzVy5ctEmcFlCsYumIYEOuoZwUJOPQeRvAFHPQnC22bBulKcyINOVj4NqdMn4_oKUQAXZ5M';

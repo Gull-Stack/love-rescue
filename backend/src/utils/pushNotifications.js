@@ -4,11 +4,10 @@
  */
 
 const webpush = require('web-push');
-const { PrismaClient } = require('@prisma/client');
 const logger = require('./logger');
 const apns = require('./apns');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // Configure VAPID (idempotent - safe to call multiple times)
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
