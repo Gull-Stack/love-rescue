@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   Box,
   AppBar,
@@ -234,8 +235,12 @@ const Layout = () => {
             onClick={(e) => { e.preventDefault(); navigate('/dashboard'); }}
             sx={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'inherit', flexGrow: 1, cursor: 'pointer' }}
           >
-            <FavoriteIcon color="primary" sx={{ mr: 1 }} />
-            <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+            <FavoriteIcon color="primary" sx={{ mr: 1, flexShrink: 0 }} />
+            <Typography
+              variant="h6"
+              component="div"
+              sx={{ fontWeight: 600, whiteSpace: 'nowrap', fontSize: { xs: '1.05rem', sm: '1.25rem' } }}
+            >
               Love Rescue
             </Typography>
           </Box>
@@ -346,12 +351,21 @@ const Layout = () => {
           mt: { xs: 'calc(48px + env(safe-area-inset-top))', md: '64px' },
           mb: isMobile ? '56px' : 0,
           ml: isMobile ? 0 : '240px',
-          bgcolor: 'background.default',
+          // subtle warm on-brand wash instead of flat grey — adds depth/life behind the white cards
+          background: 'linear-gradient(180deg, #fff3f6 0%, #fafafa 30%)',
+          backgroundAttachment: 'fixed',
           minHeight: { xs: 'calc(100vh - 48px - env(safe-area-inset-top))', md: 'calc(100vh - 64px)' },
           overflowX: 'hidden',
         }}
       >
-        <Outlet />
+        <motion.div
+          key={location.pathname}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <Outlet />
+        </motion.div>
       </Box>
 
       {/* Bottom Navigation (mobile only) */}
