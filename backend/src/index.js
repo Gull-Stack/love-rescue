@@ -68,6 +68,7 @@ const skillTreeRoutes = require('./routes/skill-tree');
 const transformationRoutes = require('./routes/transformation');
 const progressRingsRoutes = require('./routes/progress-rings');
 const realTalkRoutes = require('./routes/real-talk');
+const clientRoutes = require('./routes/client');
 
 const { auditLogger } = require('./middleware/auditLogger');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -200,6 +201,7 @@ app.use('/api/skill-tree', skillTreeRoutes);
 app.use('/api/transformation', transformationRoutes);
 app.use('/api/progress-rings', progressRingsRoutes);
 app.use('/api/real-talk', realTalkRoutes);
+app.use('/api/client', clientRoutes);
 
 // Cron endpoint for daily reminders (called by external scheduler)
 app.post('/api/cron/daily-reminders', async (req, res) => {

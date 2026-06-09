@@ -54,3 +54,4 @@ frontend/ios/
 # Secrets / signing keys
 credentials/
 *.p8
+PROMOTION-PLAN.md

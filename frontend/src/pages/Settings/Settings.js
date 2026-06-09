@@ -522,6 +522,31 @@ const Settings = () => {
       {/* Therapist Access — Full Consent Management */}
       <MyTherapistSection />
 
+      {/* Feedback */}
+      <Card>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Help shape Love Rescue
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Hit a bug or have an idea? Tell us — we read every note and it directly
+            shapes what we build next.
+          </Typography>
+          <Button
+            variant="outlined"
+            href={`mailto:josh@gullstack.com?subject=${encodeURIComponent(
+              'Love Rescue feedback'
+            )}&body=${encodeURIComponent(
+              "What happened, or what would make this better for you?\n\n\n\n———\n(Sent from Love Rescue" +
+                (user?.email ? ` · ${user.email}` : '') +
+                ')'
+            )}`}
+          >
+            Share Feedback
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Legal */}
       <Card>
         <CardContent>
