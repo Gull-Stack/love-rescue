@@ -218,156 +218,83 @@ const progressEncouragements = [
 ];
 
 // ─── Likert Scale Component (1-7) ────────────────────────────────────────────
+// Single responsive layout (no useMediaQuery) so there's no layout flash on
+// load. Buttons flex to fill the row on mobile (comfortable tap targets) and
+// cap + center on larger screens.
 const LikertScale = ({ value, onChange, labels, color }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
   const options = Object.entries(labels).map(([val, label]) => ({
     value: parseInt(val),
     label,
   }));
 
-  if (isMobile) {
-    // MOBILE: Compact horizontal buttons in thumb zone
-    return (
-      <Box>
-        {/* Scale endpoints */}
-        <Box display="flex" justifyContent="space-between" mb={1} px={0.5}>
-          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', maxWidth: '40%' }}>
-            {options[0]?.label}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', maxWidth: '40%', textAlign: 'right' }}>
-            {options[options.length - 1]?.label}
-          </Typography>
-        </Box>
-
-        {/* Compact horizontal button row */}
-        <Box display="flex" justifyContent="space-between" gap={0.5} px={0.5}>
-          {options.map((option) => {
-            const isSelected = value === option.value;
-            return (
-              <Button
-                key={option.value}
-                variant={isSelected ? 'contained' : 'outlined'}
-                onClick={() => onChange(option.value)}
-                aria-label={`${option.value} — ${option.label}`}
-                sx={{
-                  flex: 1,
-                  minWidth: 0,
-                  height: 54,
-                  borderRadius: 2.5,
-                  fontSize: '1.2rem',
-                  fontWeight: 'bold',
-                  p: 0,
-                  transition: 'all 0.15s ease',
-                  // crisper press feedback
-                  '&:active': { transform: 'scale(0.94)' },
-                  ...(isSelected
-                    ? {
-                        bgcolor: color,
-                        color: 'white',
-                        boxShadow: `0 4px 12px ${alpha(color, 0.4)}`,
-                        transform: 'scale(1.1)',
-                        '&:hover': { bgcolor: color },
-                      }
-                    : {
-                        borderColor: alpha(color, 0.3),
-                        color: 'text.secondary',
-                        bgcolor: 'background.paper',
-                        '&:hover': {
-                          borderColor: color,
-                          bgcolor: alpha(color, 0.06),
-                        },
-                      }),
-                }}
-              >
-                {option.value}
-              </Button>
-            );
-          })}
-        </Box>
-
-        {/* Selected label feedback */}
-        {value && (
-          <Fade in>
-            <Typography
-              variant="body2"
-              textAlign="center"
-              mt={1.5}
-              fontWeight="bold"
-              color={color}
-              sx={{ fontSize: '0.85rem' }}
-            >
-              {labels[value]}
-            </Typography>
-          </Fade>
-        )}
-      </Box>
-    );
-  }
-
-  // Desktop: horizontal button strip
   return (
     <Box>
       {/* Scale endpoints */}
-      <Box display="flex" justifyContent="space-between" mb={1}>
-        <Typography variant="caption" color="text.secondary">
+      <Box display="flex" justifyContent="space-between" mb={1} px={0.5}>
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.72rem', maxWidth: '42%' }}>
           {options[0]?.label}
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.72rem', maxWidth: '42%', textAlign: 'right' }}>
           {options[options.length - 1]?.label}
         </Typography>
       </Box>
 
-      {/* Buttons */}
-      <Box display="flex" justifyContent="center" gap={1.5}>
+      {/* Responsive button row: fills width on mobile, caps + centers on desktop */}
+      <Box display="flex" justifyContent="center" gap={{ xs: 0.75, sm: 1.25 }} px={0.5}>
         {options.map((option) => {
           const isSelected = value === option.value;
           return (
-            <Tooltip key={option.value} title={option.label} arrow placement="bottom">
-              <Button
-                variant={isSelected ? 'contained' : 'outlined'}
-                onClick={() => onChange(option.value)}
-                sx={{
-                  minWidth: 52,
-                  height: 52,
-                  borderRadius: '50%',
-                  fontSize: '1.1rem',
-                  fontWeight: 'bold',
-                  transition: 'all 0.2s ease',
-                  ...(isSelected
-                    ? {
-                        bgcolor: color,
-                        color: 'white',
-                        boxShadow: `0 4px 14px ${alpha(color, 0.4)}`,
-                        '&:hover': { bgcolor: color, opacity: 0.9 },
-                      }
-                    : {
-                        borderColor: alpha(color, 0.3),
-                        color: 'text.secondary',
-                        '&:hover': {
-                          borderColor: color,
-                          bgcolor: alpha(color, 0.06),
-                        },
-                      }),
-                }}
-              >
-                {option.value}
-              </Button>
-            </Tooltip>
+            <Button
+              key={option.value}
+              variant={isSelected ? 'contained' : 'outlined'}
+              onClick={() => onChange(option.value)}
+              aria-label={`${option.value} — ${option.label}`}
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                maxWidth: 56,
+                height: 56,
+                borderRadius: 2.5,
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                p: 0,
+                transition: 'all 0.15s ease',
+                '&:active': { transform: 'scale(0.93)' },
+                ...(isSelected
+                  ? {
+                      bgcolor: color,
+                      color: 'white',
+                      boxShadow: `0 6px 16px ${alpha(color, 0.45)}`,
+                      transform: 'scale(1.06)',
+                      '&:hover': { bgcolor: color },
+                    }
+                  : {
+                      borderColor: alpha(color, 0.35),
+                      color: 'text.secondary',
+                      bgcolor: 'background.paper',
+                      '&:hover': {
+                        borderColor: color,
+                        bgcolor: alpha(color, 0.06),
+                      },
+                    }),
+              }}
+            >
+              {option.value}
+            </Button>
           );
         })}
       </Box>
 
-      {/* Selected label */}
+      {/* Selected label feedback */}
       {value && (
         <Fade in>
           <Typography
             variant="body2"
             textAlign="center"
-            mt={1.5}
+            mt={1.75}
             fontWeight="bold"
             color={color}
+            sx={{ fontSize: '0.9rem' }}
           >
             {labels[value]}
           </Typography>
