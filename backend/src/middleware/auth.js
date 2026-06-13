@@ -158,33 +158,74 @@ const requirePlatformAdmin = (req, res, next) => {
 };
 
 /**
- * Authenticate therapist via API key (hashed, DB-backed)
- * Sets req.therapist with the therapist record
+ * Authenticate therapist.
+ * Accepts two auth paths (tried in order):
+ *   1. Authorization: Bearer <jwt>  — regular user JWT with role === 'therapist'.
+ *      Auto-provisions a Therapist record from the User if none exists.
+ *   2. x-therapist-api-key header   — legacy hashed API key.
+ *
+ * Sets req.therapist with the matched Therapist record.
  */
 const authenticateTherapist = async (req, res, next) => {
   try {
-    const apiKey = req.headers['x-therapist-api-key'];
+    // ── Path 1: Bearer JWT (regular user with therapist role) ─────────────
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.slice(7);
+      let payload;
+      try {
+        payload = jwt.verify(token, process.env.JWT_SECRET);
+      } catch {
+        return res.status(401).json({ error: 'Invalid token' });
+      }
 
-    if (!apiKey) {
-      return res.status(401).json({ error: 'Therapist API key required' });
+      const user = await req.prisma.user.findUnique({ where: { id: payload.userId } });
+      if (!user || user.role !== 'therapist') {
+        return res.status(403).json({ error: 'Therapist access required' });
+      }
+
+      // Find or auto-provision the Therapist record keyed by email.
+      let therapist = await req.prisma.therapist.findUnique({ where: { email: user.email } });
+      if (!therapist) {
+        therapist = await req.prisma.therapist.create({
+          data: {
+            email: user.email,
+            firstName: user.firstName || user.email.split('@')[0],
+            lastName: user.lastName || '',
+            // Placeholder hash — this record is authenticated via User JWT, not its own password.
+            passwordHash: await bcrypt.hash(require('crypto').randomBytes(32).toString('hex'), 10),
+            isActive: true,
+          },
+        });
+      }
+
+      if (!therapist.isActive) {
+        return res.status(403).json({ error: 'Therapist account is inactive' });
+      }
+
+      req.therapist = therapist;
+      return next();
     }
 
-    // Find all active therapists and check key against hashes
+    // ── Path 2: x-therapist-api-key header ────────────────────────────────
+    const apiKey = req.headers['x-therapist-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'Therapist authentication required' });
+    }
+
     const therapists = await req.prisma.therapist.findMany({
-      where: { isActive: true, apiKeyHash: { not: null } }
+      where: { isActive: true, apiKeyHash: { not: null } },
     });
 
     let matchedTherapist = null;
-    for (const therapist of therapists) {
-      const isMatch = await bcrypt.compare(apiKey, therapist.apiKeyHash);
-      if (isMatch) {
-        matchedTherapist = therapist;
+    for (const t of therapists) {
+      if (await bcrypt.compare(apiKey, t.apiKeyHash)) {
+        matchedTherapist = t;
         break;
       }
     }
 
     if (!matchedTherapist) {
-      // Legacy plain-text API key fallback removed for security (was THERAPIST_API_KEY env var)
       return res.status(403).json({ error: 'Invalid API key' });
     }
 

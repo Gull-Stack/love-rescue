@@ -27,6 +27,8 @@ const therapistService = {
   saveTreatmentPlan: (clientId, plan) => api.put(`/therapist/clients/${clientId}/treatment-plan`, plan),
   getModuleLibrary: () => api.get('/therapist/modules'),
   getRecommendedModules: (approach) => api.get('/therapist/modules/recommend', { params: { approach } }),
+  // Billing SSO — get the redirect URL to billing.loverescue.app
+  getBillingSsoUrl: () => api.get('/billing/sso-url'),
 };
 
 export default therapistService;

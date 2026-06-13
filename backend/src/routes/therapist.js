@@ -1383,4 +1383,98 @@ router.get('/outcomes', authenticateTherapist, async (req, res, next) => {
   }
 });
 
+// ─── Dashboard ─────────────────────────────────────────────────────
+
+/**
+ * GET /api/therapist/dashboard
+ * Aggregated stats for the therapist portal home screen.
+ */
+router.get('/dashboard', authenticateTherapist, async (req, res, next) => {
+  try {
+    const therapistId = req.therapist.id;
+
+    const [clientCount, alertCount, pendingTasks] = await Promise.all([
+      req.prisma.therapistClient.count({
+        where: { therapistId, consentStatus: 'GRANTED' },
+      }),
+      req.prisma.therapistAlert.count({
+        where: { therapistId, readAt: null },
+      }),
+      req.prisma.therapistTask.count({
+        where: { therapistId, completed: false },
+      }),
+    ]);
+
+    res.json({
+      stats: {
+        totalClients: clientCount,
+        unreadAlerts: alertCount,
+        pendingTasks,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─── Onboarding ────────────────────────────────────────────────────
+
+/**
+ * POST /api/therapist/onboard
+ * Save license info and therapeutic approach for the currently logged-in therapist.
+ * Uses regular user JWT auth (user.role === 'therapist').
+ */
+router.post('/onboard', authenticate, async (req, res, next) => {
+  try {
+    const { licenseType, licenseState, licenseNumber, practiceName, approach } = req.body;
+
+    // Ensure the user has therapist role; update it if not already set.
+    if (req.user.role !== 'therapist') {
+      await req.prisma.user.update({
+        where: { id: req.user.id },
+        data: { role: 'therapist' },
+      });
+    }
+
+    const user = await req.prisma.user.findUnique({ where: { id: req.user.id } });
+
+    // Upsert the Therapist provider record linked by email.
+    const therapist = await req.prisma.therapist.upsert({
+      where: { email: user.email },
+      update: {
+        licenseType: licenseType || undefined,
+        licenseState: licenseState || undefined,
+        licenseNumber: licenseNumber || undefined,
+        practiceName: practiceName || undefined,
+        isActive: true,
+      },
+      create: {
+        email: user.email,
+        firstName: user.firstName || user.email.split('@')[0],
+        lastName: user.lastName || '',
+        passwordHash: await bcrypt.hash(require('crypto').randomBytes(32).toString('hex'), 10),
+        licenseType: licenseType || undefined,
+        licenseState: licenseState || undefined,
+        licenseNumber: licenseNumber || undefined,
+        practiceName: practiceName || undefined,
+        isActive: true,
+      },
+    });
+
+    logger.info('Therapist onboarding completed', { userId: req.user.id, therapistId: therapist.id });
+
+    res.json({
+      message: 'Onboarding complete',
+      therapist: {
+        id: therapist.id,
+        email: therapist.email,
+        licenseType: therapist.licenseType,
+        licenseState: therapist.licenseState,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

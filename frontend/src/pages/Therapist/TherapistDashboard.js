@@ -11,6 +11,7 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import PeopleIcon from '@mui/icons-material/People';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import therapistService from '../../services/therapistService';
 import { ClientCard, AlertCard } from '../../components/therapist';
 
@@ -30,6 +31,7 @@ const TherapistDashboard = () => {
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('card');
   const [dashboard, setDashboard] = useState(null);
+  const [billingLoading, setBillingLoading] = useState(false);
 
   useEffect(() => {
     document.title = 'Therapist Dashboard | Love Rescue';
@@ -85,9 +87,32 @@ const TherapistDashboard = () => {
 
   const { stats = {}, clients = [], alerts = [] } = dashboard || {};
 
+  const openBilling = async () => {
+    setBillingLoading(true);
+    try {
+      const res = await therapistService.getBillingSsoUrl();
+      window.location.href = res.data.url;
+    } catch (err) {
+      setError('Could not launch Medical Billing. Please try again.');
+      setBillingLoading(false);
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h3" gutterBottom>Therapist Dashboard</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h3">Therapist Dashboard</Typography>
+        <Button
+          variant="contained"
+          color="secondary"
+          startIcon={billingLoading ? <CircularProgress size={16} color="inherit" /> : <LocalHospitalIcon />}
+          onClick={openBilling}
+          disabled={billingLoading}
+          sx={{ minHeight: 44 }}
+        >
+          Medical Billing
+        </Button>
+      </Box>
 
       {/* Quick Stats */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
