@@ -826,6 +826,7 @@ router.get('/me', authenticate, async (req, res, next) => {
         firstName: true,
         lastName: true,
         gender: true,
+        role: true,
         subscriptionStatus: true,
         authProvider: true,
         trialEndsAt: true,
