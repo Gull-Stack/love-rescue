@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   Box,
   Container,
@@ -79,6 +80,7 @@ const APPROACHES = [
 
 const TherapistOnboarding = () => {
   const navigate = useNavigate();
+  const { refreshUser } = useAuth();
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -119,6 +121,7 @@ const TherapistOnboarding = () => {
       setError('');
       try {
         await api.post('/therapist/onboard', formData);
+        await refreshUser();
         setActiveStep(3);
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to complete onboarding');
