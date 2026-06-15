@@ -185,6 +185,9 @@ const Layout = () => {
   const isPlatformAdmin = user?.isPlatformAdmin ||
     (user?.email && PLATFORM_ADMIN_EMAILS.includes(user.email.toLowerCase()));
 
+  // Therapist-side detection — drives distinct chrome
+  const isTherapistMode = location.pathname.startsWith('/therapist');
+
   // Dynamic state
   const userState = getUserState(user);
   const hasPartner = relationship?.hasPartner || false;
@@ -215,15 +218,24 @@ const Layout = () => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       {/* App Bar */}
-      <AppBar position="fixed" color="inherit" elevation={0} sx={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      <AppBar
+        position="fixed"
+        elevation={0}
+        sx={{
+          paddingTop: 'env(safe-area-inset-top)',
+          bgcolor: isTherapistMode ? '#0d4f5c' : 'background.paper',
+          color: isTherapistMode ? '#fff' : 'text.primary',
+          borderBottom: isTherapistMode ? 'none' : '1px solid',
+          borderColor: 'divider',
+        }}
+      >
         <Toolbar variant={isMobile ? 'dense' : 'regular'}>
           {isMobile && (
             <IconButton
               edge="start"
-              color="inherit"
               aria-label="Open navigation menu"
               onClick={() => setDrawerOpen(true)}
-              sx={{ mr: 2 }}
+              sx={{ mr: 2, color: isTherapistMode ? '#fff' : 'inherit' }}
             >
               <MenuIcon />
             </IconButton>
@@ -231,11 +243,11 @@ const Layout = () => {
 
           <Box
             component="a"
-            href="/dashboard"
-            onClick={(e) => { e.preventDefault(); navigate('/dashboard'); }}
-            sx={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'inherit', flexGrow: 1, cursor: 'pointer' }}
+            href={isTherapistMode ? '/therapist' : '/dashboard'}
+            onClick={(e) => { e.preventDefault(); navigate(isTherapistMode ? '/therapist' : '/dashboard'); }}
+            sx={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'inherit', flexGrow: 1, cursor: 'pointer', gap: 1 }}
           >
-            <FavoriteIcon color="primary" sx={{ mr: 1, flexShrink: 0 }} />
+            <FavoriteIcon sx={{ color: isTherapistMode ? '#7fd6e8' : 'primary.main', flexShrink: 0 }} />
             <Typography
               variant="h6"
               component="div"
@@ -243,12 +255,32 @@ const Layout = () => {
             >
               Love Rescue
             </Typography>
+            {isTherapistMode && (
+              <Box
+                sx={{
+                  ml: 1,
+                  px: 1,
+                  py: 0.25,
+                  borderRadius: 1,
+                  bgcolor: 'rgba(127,214,232,0.25)',
+                  border: '1px solid rgba(127,214,232,0.5)',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: '#7fd6e8',
+                  flexShrink: 0,
+                }}
+              >
+                Therapist
+              </Box>
+            )}
           </Box>
 
-          {user && <XPBar />}
+          {user && !isTherapistMode && <XPBar />}
 
           <IconButton aria-label="Account menu" onClick={(e) => setAnchorEl(e.currentTarget)}>
-            <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
+            <Avatar sx={{ bgcolor: isTherapistMode ? '#1a7a8a' : 'primary.main', width: 36, height: 36 }}>
               {userInitials}
             </Avatar>
           </IconButton>
@@ -351,8 +383,9 @@ const Layout = () => {
           mt: { xs: 'calc(48px + env(safe-area-inset-top))', md: '64px' },
           mb: isMobile ? '56px' : 0,
           ml: isMobile ? 0 : '240px',
-          // subtle warm on-brand wash instead of flat grey — adds depth/life behind the white cards
-          background: 'linear-gradient(180deg, #fff3f6 0%, #fafafa 30%)',
+          background: isTherapistMode
+            ? 'linear-gradient(180deg, #e8f6f8 0%, #f4fafb 30%)'
+            : 'linear-gradient(180deg, #fff3f6 0%, #fafafa 30%)',
           backgroundAttachment: 'fixed',
           minHeight: { xs: 'calc(100vh - 48px - env(safe-area-inset-top))', md: 'calc(100vh - 64px)' },
           overflowX: 'hidden',
