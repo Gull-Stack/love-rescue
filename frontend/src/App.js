@@ -48,6 +48,7 @@ const SessionPrep = React.lazy(() => import('./pages/Therapist/SessionPrep'));
 const CoupleView = React.lazy(() => import('./pages/Therapist/CoupleView'));
 const AlertsPage = React.lazy(() => import('./pages/Therapist/AlertsPage'));
 const TreatmentPlanner = React.lazy(() => import('./pages/Therapist/TreatmentPlanner'));
+const TherapistOnboarding = React.lazy(() => import('./pages/Therapist/TherapistOnboarding'));
 
 // Admin pages (lazy loaded)
 const AdminDashboard = React.lazy(() => import('./pages/Admin'));
@@ -205,6 +206,7 @@ function App() {
           <Route path="course/week" element={<CourseWeekDetail />} />
           <Route path="course/week/:weekNumber" element={<CourseWeekDetail />} />
           {/* Therapist routes */}
+          <Route path="therapist/onboarding" element={<TherapistOnboarding />} />
           <Route path="therapist" element={<TherapistRoute><TherapistDashboard /></TherapistRoute>} />
           <Route path="therapist/clients/:id" element={<TherapistRoute><ClientProgress /></TherapistRoute>} />
           <Route path="therapist/clients/:id/session-prep" element={<TherapistRoute><SessionPrep /></TherapistRoute>} />

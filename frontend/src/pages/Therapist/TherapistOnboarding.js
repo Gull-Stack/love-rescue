@@ -297,15 +297,15 @@ const TherapistOnboarding = () => {
           variant="contained"
           size="large"
           startIcon={<PersonAddIcon />}
-          onClick={() => navigate('/therapist/clients')}
+          onClick={() => navigate('/therapist')}
         >
-          Invite Your First Client
+          Go to Therapist Dashboard
         </Button>
         <Button
           variant="text"
-          onClick={() => navigate('/therapist/settings')}
+          onClick={() => navigate('/therapist')}
         >
-          Go to Therapist Settings
+          Go to Therapist Dashboard
         </Button>
       </Box>
     </Box>

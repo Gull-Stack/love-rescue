@@ -1477,4 +1477,61 @@ router.post('/onboard', authenticate, async (req, res, next) => {
   }
 });
 
+// ── Stub routes (called by frontend, not yet fully built) ─────────────────────
+
+router.get('/profile', authenticateTherapist, (req, res) => {
+  const t = req.therapist;
+  res.json({
+    id: t.id, email: t.email,
+    firstName: t.firstName, lastName: t.lastName,
+    licenseType: t.licenseType, licenseState: t.licenseState,
+    licenseNumber: t.licenseNumber, practiceName: t.practiceName,
+    isActive: t.isActive,
+  });
+});
+
+router.patch('/profile', authenticateTherapist, async (req, res, next) => {
+  try {
+    const { licenseType, licenseState, licenseNumber, practiceName, approach } = req.body;
+    const updated = await req.prisma.therapist.update({
+      where: { id: req.therapist.id },
+      data: {
+        licenseType: licenseType ?? undefined,
+        licenseState: licenseState ?? undefined,
+        licenseNumber: licenseNumber ?? undefined,
+        practiceName: practiceName ?? undefined,
+      },
+    });
+    res.json({ therapist: updated, approach });
+  } catch (error) { next(error); }
+});
+
+router.get('/notification-preferences', authenticateTherapist, (req, res) => {
+  res.json({ emailAlerts: true, pushAlerts: false, weeklyDigest: true });
+});
+
+router.patch('/notification-preferences', authenticateTherapist, (req, res) => {
+  res.json({ ok: true, preferences: req.body });
+});
+
+router.get('/audit-log', authenticateTherapist, (req, res) => {
+  res.json({ logs: [], total: 0, page: 1 });
+});
+
+router.get('/export', authenticateTherapist, (req, res) => {
+  res.json({ message: 'Export coming soon', data: [] });
+});
+
+router.get('/modules', authenticateTherapist, (req, res) => {
+  res.json({ modules: [] });
+});
+
+router.get('/modules/recommend', authenticateTherapist, (req, res) => {
+  res.json({ modules: [] });
+});
+
+router.get('/clients/invites', authenticateTherapist, (req, res) => {
+  res.json({ invites: [] });
+});
+
 module.exports = router;
