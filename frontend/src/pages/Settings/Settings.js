@@ -46,6 +46,9 @@ const Settings = () => {
   const [systemStatus, setSystemStatus] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [passwordDialog, setPasswordDialog] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
+  const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
     document.title = 'Settings | Love Rescue';
@@ -209,6 +212,32 @@ const Settings = () => {
       setDeleteConfirmText('');
     } finally {
       setLoading({ ...loading, deleteAccount: false });
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError('');
+    if (passwordForm.next !== passwordForm.confirm) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+    if (passwordForm.next.length < 8) {
+      setPasswordError('New password must be at least 8 characters');
+      return;
+    }
+    setLoading({ ...loading, password: true });
+    try {
+      await api.post('/auth/change-password', {
+        currentPassword: passwordForm.current,
+        newPassword: passwordForm.next,
+      });
+      setPasswordDialog(false);
+      setPasswordForm({ current: '', next: '', confirm: '' });
+      setSuccess('Password updated successfully');
+    } catch (err) {
+      setPasswordError(err.response?.data?.error || 'Failed to update password');
+    } finally {
+      setLoading({ ...loading, password: false });
     }
   };
 
@@ -393,7 +422,7 @@ const Settings = () => {
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 Password
               </Typography>
-              <Button variant="text" color="primary" size="small">
+              <Button variant="text" color="primary" size="small" onClick={() => setPasswordDialog(true)}>
                 Change Password
               </Button>
             </Box>
@@ -583,6 +612,50 @@ const Settings = () => {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Change Password Dialog */}
+      <Dialog open={passwordDialog} onClose={() => { setPasswordDialog(false); setPasswordForm({ current: '', next: '', confirm: '' }); setPasswordError(''); }} maxWidth="xs" fullWidth>
+        <DialogTitle>Change Password</DialogTitle>
+        <DialogContent>
+          {passwordError && <Alert severity="error" sx={{ mb: 2 }}>{passwordError}</Alert>}
+          <TextField
+            label="Current Password"
+            type="password"
+            fullWidth
+            size="small"
+            sx={{ mt: 1, mb: 2 }}
+            value={passwordForm.current}
+            onChange={e => setPasswordForm({ ...passwordForm, current: e.target.value })}
+          />
+          <TextField
+            label="New Password"
+            type="password"
+            fullWidth
+            size="small"
+            sx={{ mb: 2 }}
+            value={passwordForm.next}
+            onChange={e => setPasswordForm({ ...passwordForm, next: e.target.value })}
+          />
+          <TextField
+            label="Confirm New Password"
+            type="password"
+            fullWidth
+            size="small"
+            value={passwordForm.confirm}
+            onChange={e => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setPasswordDialog(false); setPasswordForm({ current: '', next: '', confirm: '' }); setPasswordError(''); }}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleChangePassword}
+            disabled={!passwordForm.current || !passwordForm.next || !passwordForm.confirm || loading.password}
+          >
+            {loading.password ? <CircularProgress size={20} /> : 'Update Password'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Delete Account Confirmation Dialog */}
       <Dialog

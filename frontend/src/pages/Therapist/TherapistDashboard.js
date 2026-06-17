@@ -12,6 +12,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import therapistService from '../../services/therapistService';
 import { ClientCard, AlertCard } from '../../components/therapist';
 
@@ -132,28 +133,49 @@ const TherapistDashboard = () => {
 
       {/* Client Roster */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h5">Client Roster</Typography>
-        <ToggleButtonGroup
-          value={viewMode}
-          exclusive
-          onChange={(_, v) => v && setViewMode(v)}
-          size="small"
-          aria-label="View mode"
-        >
-          <ToggleButton value="card" aria-label="Card view" sx={{ minWidth: 44, minHeight: 44 }}>
-            <ViewModuleIcon />
-          </ToggleButton>
-          <ToggleButton value="list" aria-label="List view" sx={{ minWidth: 44, minHeight: 44 }}>
-            <ViewListIcon />
-          </ToggleButton>
-        </ToggleButtonGroup>
+        <Typography variant="h5">Clients</Typography>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<PersonAddIcon />}
+            onClick={() => navigate('/therapist/clients')}
+            sx={{ minHeight: 44 }}
+          >
+            Invite Client
+          </Button>
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(_, v) => v && setViewMode(v)}
+            size="small"
+            aria-label="View mode"
+          >
+            <ToggleButton value="card" aria-label="Card view" sx={{ minWidth: 44, minHeight: 44 }}>
+              <ViewModuleIcon />
+            </ToggleButton>
+            <ToggleButton value="list" aria-label="List view" sx={{ minWidth: 44, minHeight: 44 }}>
+              <ViewListIcon />
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
       </Box>
 
       {clients.length === 0 ? (
         <Card sx={{ mb: 3 }}>
-          <CardContent sx={{ textAlign: 'center', py: 4 }}>
-            <PeopleIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
-            <Typography color="text.secondary">No clients yet</Typography>
+          <CardContent sx={{ textAlign: 'center', py: 5 }}>
+            <PeopleIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1.5 }} />
+            <Typography variant="h6" gutterBottom>No clients yet</Typography>
+            <Typography color="text.secondary" sx={{ mb: 3 }}>
+              Invite clients to connect with you on Love Rescue. They'll control what data they share.
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<PersonAddIcon />}
+              onClick={() => navigate('/therapist/clients')}
+            >
+              Invite Your First Client
+            </Button>
           </CardContent>
         </Card>
       ) : viewMode === 'card' ? (

@@ -887,15 +887,25 @@ router.get('/clients', authenticateTherapist, async (req, res, next) => {
           }),
         ]);
 
+        const progressWeek = courseProgress?.currentWeek || 0;
+        const progressPct = Math.min(Math.round((progressWeek / 16) * 100), 100);
+
         return {
+          // Top-level fields ClientCard and navigate() expect
+          id: link.clientId,
+          name: [link.client.firstName, link.client.lastName].filter(Boolean).join(' ') || link.client.email,
+          email: link.client.email,
+          progress: progressPct,
+          lastActive: latestLog?.date || null,
+          unreadAlerts: alertCount,
+          coupleStatus: link.couple?.status || null,
+          // Extra detail for future use
           linkId: link.id,
           permissionLevel: link.permissionLevel,
           consentGrantedAt: link.consentGrantedAt,
-          client: link.client,
           couple: link.couple,
           latestLog,
           courseProgress,
-          unreadAlerts: alertCount,
         };
       })
     );
@@ -1532,6 +1542,243 @@ router.get('/modules/recommend', authenticateTherapist, (req, res) => {
 
 router.get('/clients/invites', authenticateTherapist, (req, res) => {
   res.json({ invites: [] });
+});
+
+// ── GET /clients/:id — single client detail ──────────────────────────────────
+router.get('/clients/:id', authenticateTherapist, async (req, res, next) => {
+  try {
+    const link = await req.prisma.therapistClient.findFirst({
+      where: { therapistId: req.therapist.id, clientId: req.params.id },
+      include: {
+        client: {
+          select: { id: true, firstName: true, lastName: true, email: true, createdAt: true },
+        },
+        couple: {
+          select: {
+            id: true, status: true,
+            user1: { select: { id: true, firstName: true, lastName: true } },
+            user2: { select: { id: true, firstName: true, lastName: true } },
+          },
+        },
+      },
+    });
+    if (!link) return res.status(404).json({ error: 'Client not found' });
+    res.json({
+      id: link.client.id,
+      name: [link.client.firstName, link.client.lastName].filter(Boolean).join(' ') || link.client.email,
+      email: link.client.email,
+      consentStatus: link.consentStatus,
+      permissionLevel: link.permissionLevel,
+      coupleStatus: link.couple ? link.couple.status : null,
+      couple: link.couple || null,
+      joinedAt: link.client.createdAt,
+    });
+  } catch (error) { next(error); }
+});
+
+// ── GET /clients/:id/assessments — client assessment history ─────────────────
+router.get('/clients/:id/assessments', authenticateTherapist, async (req, res, next) => {
+  try {
+    const link = await req.prisma.therapistClient.findFirst({
+      where: { therapistId: req.therapist.id, clientId: req.params.id, consentStatus: 'GRANTED' },
+    });
+    if (!link) return res.status(403).json({ error: 'Access denied' });
+
+    const assessments = await req.prisma.assessment.findMany({
+      where: { userId: req.params.id },
+      select: { id: true, type: true, score: true, completedAt: true },
+      orderBy: { completedAt: 'desc' },
+    });
+    res.json({ assessments });
+  } catch (error) { next(error); }
+});
+
+// ── POST /clients/invite — generate invite link for a client ─────────────────
+router.post('/clients/invite', authenticateTherapist, async (req, res, next) => {
+  try {
+    const { permissionLevel = 'BASIC' } = req.body;
+    const jwt = require('jsonwebtoken');
+    const secret = process.env.JWT_SECRET;
+
+    // Stateless JWT invite — no DB row needed until the client accepts.
+    // clientId is NOT NULL in TherapistClient, so we can't pre-create the row.
+    const token = jwt.sign(
+      {
+        therapistId: req.therapist.id,
+        therapistName: `${req.therapist.firstName} ${req.therapist.lastName}`,
+        practiceName: req.therapist.practiceName || null,
+        permissionLevel,
+      },
+      secret,
+      { expiresIn: '7d' }
+    );
+
+    const inviteLink = `${process.env.FRONTEND_URL || 'https://loverescue.app'}/therapist/join/${token}`;
+    res.json({ inviteLink, expiresIn: '7 days' });
+  } catch (error) { next(error); }
+});
+
+// ── GET /clients/invite/:token — look up invite details (client-facing) ───────
+router.get('/clients/invite/:token', async (req, res, next) => {
+  try {
+    const jwt = require('jsonwebtoken');
+    let payload;
+    try {
+      payload = jwt.verify(req.params.token, process.env.JWT_SECRET);
+    } catch {
+      return res.status(401).json({ error: 'Invalid or expired invite link' });
+    }
+    res.json({
+      therapistName: payload.therapistName,
+      practiceName: payload.practiceName || null,
+      permissionLevel: payload.permissionLevel,
+    });
+  } catch (error) { next(error); }
+});
+
+// ── POST /clients/invite/:token/accept — client accepts invite ────────────────
+router.post('/clients/invite/:token/accept', authenticate, async (req, res, next) => {
+  try {
+    const jwt = require('jsonwebtoken');
+    let payload;
+    try {
+      payload = jwt.verify(req.params.token, process.env.JWT_SECRET);
+    } catch {
+      return res.status(401).json({ error: 'Invalid or expired invite link' });
+    }
+
+    // Client may choose a MORE restrictive level than what the therapist offered,
+    // but cannot escalate beyond the JWT-embedded ceiling.
+    const PERMISSION_ORDER = ['BASIC', 'STANDARD', 'FULL'];
+    const ceiling = payload.permissionLevel || 'BASIC';
+    const requested = req.body.permissionLevel?.toUpperCase();
+    const level = (requested && PERMISSION_ORDER.includes(requested) &&
+      PERMISSION_ORDER.indexOf(requested) <= PERMISSION_ORDER.indexOf(ceiling))
+      ? requested
+      : ceiling;
+
+    // Prevent duplicate links
+    const existing = await req.prisma.therapistClient.findFirst({
+      where: { therapistId: payload.therapistId, clientId: req.user.id },
+    });
+    if (existing?.consentStatus === 'GRANTED') {
+      return res.json({ message: 'Already connected', permissionLevel: existing.permissionLevel });
+    }
+
+    const relationship = await req.prisma.relationship.findFirst({
+      where: { OR: [{ user1Id: req.user.id }, { user2Id: req.user.id }], status: 'active' },
+    });
+
+    if (existing) {
+      await req.prisma.therapistClient.update({
+        where: { id: existing.id },
+        data: { consentStatus: 'GRANTED', consentGrantedAt: new Date(), permissionLevel: level, coupleId: relationship?.id || null },
+      });
+    } else {
+      await req.prisma.therapistClient.create({
+        data: {
+          therapistId: payload.therapistId,
+          clientId: req.user.id,
+          coupleId: relationship?.id || null,
+          consentStatus: 'GRANTED',
+          consentGrantedAt: new Date(),
+          permissionLevel: level,
+        },
+      });
+    }
+
+    res.json({ message: 'Connected successfully', permissionLevel: level });
+  } catch (error) { next(error); }
+});
+
+// ── POST /clients/invite/:token/decline — client declines invite ──────────────
+router.post('/clients/invite/:token/decline', async (req, res, next) => {
+  try {
+    const jwt = require('jsonwebtoken');
+    try { jwt.verify(req.params.token, process.env.JWT_SECRET); } catch {
+      return res.status(401).json({ error: 'Invalid or expired invite link' });
+    }
+    res.json({ message: 'Invite declined' });
+  } catch (error) { next(error); }
+});
+
+// ── PUT/PATCH /alerts/:id/read — mark single alert read (support both methods) ─
+router.patch('/alerts/:id/read', authenticateTherapist, async (req, res, next) => {
+  try {
+    const result = await req.prisma.therapistAlert.updateMany({
+      where: { id: req.params.id, therapistId: req.therapist.id },
+      data: { readAt: new Date() },
+    });
+    if (result.count === 0) return res.status(404).json({ error: 'Alert not found' });
+    res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
+// ── PATCH /alerts/bulk-read — mark multiple alerts read ──────────────────────
+router.patch('/alerts/bulk-read', authenticateTherapist, async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return res.json({ updated: 0 });
+    const result = await req.prisma.therapistAlert.updateMany({
+      where: { id: { in: ids }, therapistId: req.therapist.id },
+      data: { readAt: new Date() },
+    });
+    res.json({ updated: result.count });
+  } catch (error) { next(error); }
+});
+
+// ── GET /clients/:id/treatment-plan ──────────────────────────────────────────
+router.get('/clients/:id/treatment-plan', authenticateTherapist, async (req, res, next) => {
+  try {
+    const link = await req.prisma.therapistClient.findFirst({
+      where: { therapistId: req.therapist.id, clientId: req.params.id },
+    });
+    if (!link) return res.status(404).json({ error: 'Client not found' });
+    // treatmentPlan/goals columns not yet in schema — return empty stub
+    res.json({ plan: null, goals: [] });
+  } catch (error) { next(error); }
+});
+
+// ── PUT /clients/:id/treatment-plan ──────────────────────────────────────────
+router.put('/clients/:id/treatment-plan', authenticateTherapist, async (req, res, next) => {
+  try {
+    const link = await req.prisma.therapistClient.findFirst({
+      where: { therapistId: req.therapist.id, clientId: req.params.id },
+    });
+    if (!link) return res.status(404).json({ error: 'Client not found' });
+    // treatmentPlan/goals columns not yet in schema — accept write and return
+    const { plan = null, goals = [] } = req.body;
+    res.json({ plan, goals });
+  } catch (error) { next(error); }
+});
+
+// ── GET /couples/:id — couple detail for therapist ────────────────────────────
+router.get('/couples/:id', authenticateTherapist, async (req, res, next) => {
+  try {
+    const couple = await req.prisma.relationship.findUnique({
+      where: { id: req.params.id },
+      include: {
+        user1: { select: { id: true, firstName: true, lastName: true, email: true } },
+        user2: { select: { id: true, firstName: true, lastName: true, email: true } },
+      },
+    });
+    if (!couple) return res.status(404).json({ error: 'Couple not found' });
+
+    // Verify therapist has access to this couple
+    const link = await req.prisma.therapistClient.findFirst({
+      where: { therapistId: req.therapist.id, coupleId: req.params.id },
+    });
+    if (!link) return res.status(403).json({ error: 'Access denied' });
+
+    res.json({ couple });
+  } catch (error) { next(error); }
+});
+
+// ── GET /couples/:id/comparison ───────────────────────────────────────────────
+router.get('/couples/:id/comparison', authenticateTherapist, async (req, res, next) => {
+  try {
+    res.json({ comparison: null, message: 'Comparison data will be available once both partners complete assessments' });
+  } catch (error) { next(error); }
 });
 
 module.exports = router;

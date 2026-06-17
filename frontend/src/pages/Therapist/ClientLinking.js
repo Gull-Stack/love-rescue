@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -256,9 +255,8 @@ const TherapistClientLinking = () => {
 
 // ── Client View ─────────────────────────────────────────────────────────────
 
-const ClientLinkingAccept = () => {
-  const [searchParams] = useSearchParams();
-  const code = searchParams.get('code');
+const ClientLinkingAccept = ({ token: tokenProp }) => {
+  const token = tokenProp;
   const { user } = useAuth();
   const [invite, setInvite] = useState(null);
   const [permissionLevel, setPermissionLevel] = useState('standard');
@@ -269,29 +267,29 @@ const ClientLinkingAccept = () => {
 
   const fetchInvite = useCallback(async () => {
     try {
-      const response = await api.get(`/therapist/clients/invite/${code}`);
+      const response = await api.get(`/therapist/clients/invite/${token}`);
       setInvite(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Invalid or expired invite');
     } finally {
       setLoading(false);
     }
-  }, [code]);
+  }, [token]);
 
   useEffect(() => {
-    if (code) {
+    if (token) {
       fetchInvite();
     } else {
       setError('Invalid invite link');
       setLoading(false);
     }
-  }, [code, fetchInvite]);
+  }, [token, fetchInvite]);
 
   const handleAccept = async () => {
     setActionLoading(true);
     setError('');
     try {
-      await api.post(`/therapist/clients/invite/${code}/accept`, { permissionLevel });
+      await api.post(`/therapist/clients/invite/${token}/accept`, { permissionLevel });
       setSuccess('Connected! Your therapist can now support your relationship journey.');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to accept invite');
@@ -303,7 +301,7 @@ const ClientLinkingAccept = () => {
   const handleDecline = async () => {
     setActionLoading(true);
     try {
-      await api.post(`/therapist/clients/invite/${code}/decline`);
+      await api.post(`/therapist/clients/invite/${token}/decline`);
       setSuccess('Invite declined.');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to decline invite');

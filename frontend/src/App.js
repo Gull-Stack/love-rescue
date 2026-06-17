@@ -49,6 +49,8 @@ const CoupleView = React.lazy(() => import('./pages/Therapist/CoupleView'));
 const AlertsPage = React.lazy(() => import('./pages/Therapist/AlertsPage'));
 const TreatmentPlanner = React.lazy(() => import('./pages/Therapist/TreatmentPlanner'));
 const TherapistOnboarding = React.lazy(() => import('./pages/Therapist/TherapistOnboarding'));
+const TherapistClientLinking = React.lazy(() => import('./pages/Therapist/ClientLinking'));
+const TherapistJoin = React.lazy(() => import('./pages/Therapist/TherapistJoin'));
 
 // Admin pages (lazy loaded)
 const AdminDashboard = React.lazy(() => import('./pages/Admin'));
@@ -207,7 +209,9 @@ function App() {
           <Route path="course/week/:weekNumber" element={<CourseWeekDetail />} />
           {/* Therapist routes */}
           <Route path="therapist/onboarding" element={<TherapistOnboarding />} />
+          <Route path="therapist/join/:token" element={<TherapistJoin />} />
           <Route path="therapist" element={<TherapistRoute><TherapistDashboard /></TherapistRoute>} />
+          <Route path="therapist/clients" element={<TherapistRoute><TherapistClientLinking /></TherapistRoute>} />
           <Route path="therapist/clients/:id" element={<TherapistRoute><ClientProgress /></TherapistRoute>} />
           <Route path="therapist/clients/:id/session-prep" element={<TherapistRoute><SessionPrep /></TherapistRoute>} />
           <Route path="therapist/clients/:id/treatment-plan" element={<TherapistRoute><TreatmentPlanner /></TherapistRoute>} />
