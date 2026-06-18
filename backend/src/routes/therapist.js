@@ -20,6 +20,20 @@ const logger = require('../utils/logger');
 
 const router = express.Router();
 
+// Therapist access is gated: a user can only become a therapist if their email
+// is on the approved allowlist (set THERAPIST_ALLOWLIST on the backend, a
+// comma-separated list). Read at request time so the list can be updated via
+// env without a code change. Self-service therapist signup is intentionally
+// NOT allowed.
+function isAllowlistedTherapist(email) {
+  if (!email) return false;
+  const allowlist = (process.env.THERAPIST_ALLOWLIST || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return allowlist.includes(email.toLowerCase());
+}
+
 // CRIT-05: Aggressive rate limiting for therapist registration (3/hour/IP)
 const therapistRegisterLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
@@ -1439,7 +1453,15 @@ router.post('/onboard', authenticate, async (req, res, next) => {
     const { licenseType, licenseState, licenseNumber, practiceName, approach } = req.body;
 
     // Ensure the user has therapist role; update it if not already set.
+    // Elevation is GATED: only allowlisted emails may become therapists.
+    // Already-therapist users may always update their own profile here.
     if (req.user.role !== 'therapist') {
+      if (!isAllowlistedTherapist(req.user.email)) {
+        logger.warn('Blocked unapproved therapist onboarding attempt', { userId: req.user.id, email: req.user.email });
+        return res.status(403).json({
+          error: 'Therapist access requires verification. Contact Love Rescue to be approved as a provider.',
+        });
+      }
       await req.prisma.user.update({
         where: { id: req.user.id },
         data: { role: 'therapist' },
