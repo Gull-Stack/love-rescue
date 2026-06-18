@@ -28,6 +28,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useAuth } from '../../contexts/AuthContext';
 import api, { calendarApi, therapistApi, progressRingsApi } from '../../services/api';
 import MyTherapistSection from './MyTherapistSection';
+import NotificationSettings from '../../components/NotificationSettings';
 
 const Settings = () => {
   const [searchParams] = useSearchParams();
@@ -429,6 +430,9 @@ const Settings = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Notifications — daily reminder opt-in (the habit trigger) */}
+      <NotificationSettings />
 
       {/* Partner Settings */}
       <Card sx={{ mb: 3 }}>

@@ -13,9 +13,11 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import { hapticSuccess } from '../../utils/haptics';
 import { logsApi, streaksApi, gratitudeApi } from '../../services/api';
 import CelebrationToast from '../../components/gamification/CelebrationToast';
+import usePushNotifications from '../../hooks/usePushNotifications';
 import { celebration } from '../../components/gamification/Confetti';
 import MoodEmojiSlider from '../../components/gamification/MoodEmojiSlider';
 import EmotionChips from '../../components/gamification/EmotionChips';
@@ -99,6 +101,19 @@ const DailyLog = () => {
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationType, setCelebrationType] = useState('dailyLog');
   const [streakMilestone, setStreakMilestone] = useState(null);
+
+  // Daily-reminder opt-in offered at the peak-goodwill moment (just after a log).
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscribe: subscribePush } = usePushNotifications();
+  const [reminderOptIn, setReminderOptIn] = useState('idle'); // idle | asking | on
+  const handleEnableReminders = async () => {
+    setReminderOptIn('asking');
+    try {
+      const res = await subscribePush();
+      setReminderOptIn(res?.success ? 'on' : 'idle');
+    } catch {
+      setReminderOptIn('idle');
+    }
+  };
 
   // Touch handling
   const touchStartX = useRef(0);
@@ -600,6 +615,31 @@ const DailyLog = () => {
             <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)' }}>
               See you tomorrow.
             </Typography>
+
+            {pushSupported && !pushSubscribed && streakData.currentStreak <= 2 && reminderOptIn !== 'on' && (
+              <Box sx={{ mt: 4, maxWidth: 320 }}>
+                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)', mb: 1.5 }}>
+                  Want a gentle nudge each day so you don't break your streak?
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={handleEnableReminders}
+                  disabled={reminderOptIn === 'asking'}
+                  startIcon={<NotificationsActiveIcon />}
+                  sx={{
+                    bgcolor: '#fff', color: '#333', fontWeight: 'bold',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+                  }}
+                >
+                  {reminderOptIn === 'asking' ? 'Turning on…' : 'Turn on daily reminders'}
+                </Button>
+              </Box>
+            )}
+            {reminderOptIn === 'on' && (
+              <Typography variant="body2" sx={{ mt: 3, color: 'rgba(255,255,255,0.9)' }}>
+                🔔 Reminders on. We'll keep you on track.
+              </Typography>
+            )}
           </>
         )}
 

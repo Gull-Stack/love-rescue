@@ -6,15 +6,18 @@ const apns = require('../utils/apns');
 const router = express.Router();
 const prisma = require('../lib/prisma');
 
-// VAPID keys - in production, use environment variables
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BMm9QUx-G1gYCF9nkzVy5ctEmcFlCsYumIYEOuoZwUJOPQeRvAFHPQnC22bBulKcyINOVj4NqdMn4_oKUQAXZ5M';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'GPorgU6PgXgbCNcUTRhfxtNibjUJgj8_5kNvMYmx03Q';
+// VAPID keys come from the environment only. Never hardcode keys in a public
+// repo — a leaked VAPID private key lets anyone push to our subscribers.
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:support@loverescue.app';
 
-webpush.setVapidDetails(
-  'mailto:support@loverescue.app',
-  VAPID_PUBLIC_KEY,
-  VAPID_PRIVATE_KEY
-);
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+} else {
+  // eslint-disable-next-line no-console
+  console.warn('[push] VAPID keys not configured — web push disabled');
+}
 
 // Get VAPID public key for frontend
 router.get('/vapid-public-key', (req, res) => {
@@ -185,9 +188,9 @@ router.post('/test', authenticate, async (req, res) => {
 
 // Send daily reminder to all users (called by cron)
 router.post('/send-daily-reminder', async (req, res) => {
-  // Simple auth check - in production use proper API key
+  // Require a configured API key — no hardcoded fallback.
   const apiKey = req.headers['x-api-key'];
-  if (apiKey !== process.env.PUSH_API_KEY && apiKey !== 'loverescue-push-2026') {
+  if (!process.env.PUSH_API_KEY || apiKey !== process.env.PUSH_API_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

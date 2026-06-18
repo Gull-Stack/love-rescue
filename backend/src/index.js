@@ -245,6 +245,34 @@ async function cleanExpiredTokens() {
   }
 }
 
+// Daily-reminder scheduler. The whole notification send-path already exists
+// (sendDailyReminders) — this is the trigger that was missing. We run it
+// in-process every 15 minutes; sendDailyReminders only fires for users whose
+// LOCAL hour matches their chosen reminder time and who haven't logged today,
+// with same-day dedup, so frequent ticks are safe. Single Railway instance,
+// so an in-process interval is simpler and more reliable than an external cron.
+const REMINDER_INTERVAL_MS = 15 * 60 * 1000;
+async function runDailyReminders() {
+  try {
+    const { sendDailyReminders, sendEmailNudges } = require('./utils/pushNotifications');
+    await sendDailyReminders();
+    // Evening email fallback for users without push (self-disables if email
+    // isn't configured yet).
+    await sendEmailNudges();
+  } catch (err) {
+    logger.error('Daily reminder tick failed', { error: err.message });
+  }
+}
+function startReminderScheduler() {
+  if (process.env.NODE_ENV === 'test') return;
+  if (process.env.ENABLE_REMINDER_SCHEDULER === 'false') {
+    logger.info('Reminder scheduler disabled via ENABLE_REMINDER_SCHEDULER=false');
+    return;
+  }
+  setInterval(runDailyReminders, REMINDER_INTERVAL_MS);
+  logger.info(`Daily reminder scheduler started (every ${REMINDER_INTERVAL_MS / 60000} min)`);
+}
+
 // Graceful shutdown
 const gracefulShutdown = async () => {
   logger.info('Shutting down gracefully...');
@@ -350,6 +378,9 @@ async function startServer() {
     cleanExpiredTokens();
     // HIGH-NEW-04: Run token cleanup periodically (every hour)
     setInterval(cleanExpiredTokens, 60 * 60 * 1000);
+
+    // Start the daily-reminder trigger (the habit loop's missing spark).
+    startReminderScheduler();
 
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);

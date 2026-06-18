@@ -123,8 +123,73 @@ async function sendPartnerInviteEmail(email, inviterName, inviteLink) {
   });
 }
 
+/**
+ * Re-engagement: nudge a user whose streak is about to break (missed yesterday,
+ * hasn't logged today). Email reaches everyone regardless of push permission.
+ */
+async function sendStreakBreakNudge(email, firstName, currentStreak) {
+  const name = firstName || 'there';
+  const streakLine = currentStreak > 0
+    ? `Your ${currentStreak}-day streak is still alive — but only until tonight.`
+    : `It's been a couple of days. Today's a good day to get back on track.`;
+  const ctaUrl = `${process.env.FRONTEND_URL || 'https://loverescue.app'}/daily`;
+  return sendEmail({
+    to: email,
+    subject: currentStreak > 0 ? `Don't break your ${currentStreak}-day streak` : 'Your marriage is worth 60 seconds today',
+    text: `Hey ${name},\n\n${streakLine}\n\nTake 60 seconds for your check-in: ${ctaUrl}\n\nShowing up daily is the whole game.\n— Love Rescue`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #0F1722;">Hey ${name},</h2>
+        <p style="font-size: 16px; color: #1B2735;">${streakLine}</p>
+        <p style="font-size: 16px; color: #1B2735;">Showing up daily is the whole game. It takes about 60 seconds.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${ctaUrl}" style="background: #E08A3C; color: #fff; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Take today's check-in</a>
+        </div>
+        <p style="color: #9FB0C0; font-size: 13px;">You can turn these reminders off anytime in Settings.</p>
+      </div>
+    `
+  });
+}
+
+/**
+ * Re-engagement: weekly digest of the user's progress (the `weeklyDigest`
+ * preference previously had no sender).
+ */
+async function sendWeeklyDigest(email, firstName, stats = {}) {
+  const name = firstName || 'there';
+  const { logsThisWeek = 0, currentStreak = 0, headline } = stats;
+  const ctaUrl = `${process.env.FRONTEND_URL || 'https://loverescue.app'}/dashboard`;
+  const summary = headline || `You logged ${logsThisWeek} ${logsThisWeek === 1 ? 'day' : 'days'} this week${currentStreak > 0 ? ` and you're on a ${currentStreak}-day streak` : ''}.`;
+  return sendEmail({
+    to: email,
+    subject: 'Your week on Love Rescue',
+    text: `Hey ${name},\n\n${summary}\n\nSee your full progress: ${ctaUrl}\n\n— Love Rescue`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #0F1722;">Your week, ${name}</h2>
+        <p style="font-size: 16px; color: #1B2735;">${summary}</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${ctaUrl}" style="background: #E08A3C; color: #fff; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">See your progress</a>
+        </div>
+        <p style="color: #9FB0C0; font-size: 13px;">You can turn the weekly digest off anytime in Settings.</p>
+      </div>
+    `
+  });
+}
+
+/** True if any email transport is configured (SMTP or SendGrid). */
+function isEmailConfigured() {
+  return Boolean(
+    (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) ||
+    process.env.SENDGRID_API_KEY
+  );
+}
+
 module.exports = {
   sendEmail,
   sendPasswordResetEmail,
-  sendPartnerInviteEmail
+  sendPartnerInviteEmail,
+  sendStreakBreakNudge,
+  sendWeeklyDigest,
+  isEmailConfigured
 };

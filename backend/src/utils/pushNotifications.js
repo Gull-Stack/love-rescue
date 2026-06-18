@@ -9,6 +9,11 @@ const apns = require('./apns');
 
 const prisma = require('../lib/prisma');
 
+// In-memory same-day dedup so a process restart within the reminder hour
+// (single Railway instance) can't double-send a reminder to the same user.
+const remindedToday = new Set();
+let remindedDate = null;
+
 // Configure VAPID (idempotent - safe to call multiple times)
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
@@ -96,11 +101,16 @@ async function sendToUser(userId, notification) {
  */
 async function sendDailyReminders() {
   const now = new Date();
-  const currentHour = now.getUTCHours();
-  const currentMinute = now.getUTCMinutes();
 
-  // Get all users with reminders enabled who should receive one now
-  // We check users whose local time matches their reminder time
+  // Reset the same-day dedup set once per (UTC) day.
+  const todayUtc = now.toISOString().split('T')[0];
+  if (remindedDate !== todayUtc) {
+    remindedToday.clear();
+    remindedDate = todayUtc;
+  }
+
+  // Get all users with reminders enabled who should receive one now.
+  // We compare each user's *local* time to their chosen reminder time.
   const preferences = await prisma.notificationPreferences.findMany({
     where: { dailyReminderEnabled: true },
     include: {
@@ -111,7 +121,7 @@ async function sendDailyReminders() {
           dailyLogs: {
             where: {
               date: {
-                gte: new Date(now.toISOString().split('T')[0]) // Today
+                gte: new Date(todayUtc) // Today
               }
             },
             take: 1
@@ -121,12 +131,16 @@ async function sendDailyReminders() {
     }
   });
 
+  // Warm, direct nudges written for the actual user (a man working on his
+  // marriage), not robotic "system protocol" copy. Varied so the daily ping
+  // never feels like the same canned alert.
   const reminders = [
-    "Run today's relationship maintenance protocol",
-    "System check required — log today's data point",
-    "Daily sync pending — maintain your operational streak",
-    "Relationship OS requires input — run daily protocol",
-    "Maintenance window open — time to process today's data"
+    "One small move today. 60 seconds for your marriage.",
+    "She won't see the work — but she'll feel it. Take your check-in.",
+    "Showing up daily is the whole game. Your check-in is ready.",
+    "Don't break the chain. A quick check-in keeps your momentum.",
+    "Big change is built one day at a time. Log today.",
+    "Your future self will thank you for the next 60 seconds.",
   ];
 
   let sent = 0;
@@ -134,33 +148,32 @@ async function sendDailyReminders() {
 
   for (const pref of preferences) {
     try {
-      // Parse reminder time
-      const [reminderHour, reminderMinute] = pref.dailyReminderTime.split(':').map(Number);
+      const [reminderHour] = (pref.dailyReminderTime || '19:00').split(':').map(Number);
+      const local = getUserLocalTime(pref.timezone);
 
-      // Convert user's local reminder time to UTC
-      // This is a simplified version — production should use moment-timezone
-      const tzOffset = getTimezoneOffset(pref.timezone);
-      const reminderUTCHour = (reminderHour + tzOffset + 24) % 24;
+      // The scheduler ticks a few times per hour; fire during the local hour
+      // that matches the user's chosen reminder time (DST-safe via Intl).
+      if (local.hour !== reminderHour) continue;
 
-      // Check if it's time (within 30-min window for hourly cron)
-      if (Math.abs(currentHour - reminderUTCHour) > 0 || currentMinute > 30) {
-        continue;
-      }
-
-      // Skip if user already logged today
+      // Skip if the user already logged today.
       if (pref.user.dailyLogs && pref.user.dailyLogs.length > 0) {
         skipped++;
         continue;
       }
 
-      // Pick a random reminder message
+      // Same-day dedup (keyed by the user's local date).
+      const dedupeKey = `${pref.userId}:${local.dateStr}`;
+      if (remindedToday.has(dedupeKey)) continue;
+      remindedToday.add(dedupeKey);
+
+      // Pick a random reminder message (variable reward in the copy itself).
       const message = reminders[Math.floor(Math.random() * reminders.length)];
 
       const result = await sendToUser(pref.userId, {
-        title: '⚙️ Daily Sync Required',
+        title: 'Love Rescue',
         body: message,
         tag: 'daily-reminder',
-        data: { url: '/logs/new', type: 'daily-reminder' }
+        data: { url: '/daily', type: 'daily-reminder' }
       });
 
       if (result.success > 0) sent++;
@@ -170,6 +183,66 @@ async function sendDailyReminders() {
   }
 
   logger.info(`Daily reminders: ${sent} sent, ${skipped} skipped (already logged)`);
+  return { sent, skipped };
+}
+
+// Track email nudges separately from push so we don't double-send.
+const emailNudgedToday = new Set();
+let emailNudgedDate = null;
+
+/**
+ * Evening email fallback nudge. Reaches users regardless of push permission.
+ * Self-activating: does nothing (not even a DB query) until email is configured.
+ * Sends only to users who (a) have reminders enabled, (b) are at ~8pm local,
+ * (c) haven't logged today, and (d) have NO active push subscription — so push
+ * users aren't double-nudged.
+ */
+async function sendEmailNudges() {
+  const { isEmailConfigured, sendStreakBreakNudge } = require('./email');
+  if (!isEmailConfigured()) return { sent: 0, skipped: 0, disabled: true };
+
+  const EVENING_HOUR = 20; // 8pm local — a fallback well after the push reminder
+  const now = new Date();
+  const todayUtc = now.toISOString().split('T')[0];
+  if (emailNudgedDate !== todayUtc) {
+    emailNudgedToday.clear();
+    emailNudgedDate = todayUtc;
+  }
+
+  const preferences = await prisma.notificationPreferences.findMany({
+    where: { dailyReminderEnabled: true },
+    include: {
+      user: {
+        select: {
+          id: true, email: true, firstName: true,
+          dailyLogs: { where: { date: { gte: new Date(todayUtc) } }, take: 1 },
+          pushSubscriptions: { where: { enabled: true }, take: 1 },
+        },
+      },
+    },
+  });
+
+  let sent = 0;
+  let skipped = 0;
+  for (const pref of preferences) {
+    try {
+      const local = getUserLocalTime(pref.timezone);
+      if (local.hour !== EVENING_HOUR) continue;
+      if (pref.user.dailyLogs?.length > 0) { skipped++; continue; }
+      if (pref.user.pushSubscriptions?.length > 0) { skipped++; continue; } // push covers them
+      if (!pref.user.email) continue;
+
+      const dedupeKey = `${pref.userId}:${local.dateStr}`;
+      if (emailNudgedToday.has(dedupeKey)) continue;
+      emailNudgedToday.add(dedupeKey);
+
+      const ok = await sendStreakBreakNudge(pref.user.email, pref.user.firstName, 0);
+      if (ok) sent++;
+    } catch (error) {
+      logger.error(`Error sending email nudge to user ${pref.userId}:`, error);
+    }
+  }
+  logger.info(`Email nudges: ${sent} sent, ${skipped} skipped`);
   return { sent, skipped };
 }
 
@@ -208,21 +281,29 @@ async function notifyPartner(userId, type, message) {
 }
 
 /**
- * Simple timezone offset helper (hours from UTC)
- * For production, use moment-timezone or similar
+ * Get a user's current local time for any IANA timezone, DST-aware.
+ * Uses the built-in Intl API (no external dependency) so daylight-saving
+ * transitions and arbitrary zones are handled correctly.
+ * @param {string} timezone - IANA tz id (e.g. "America/New_York")
+ * @returns {{ hour: number, minute: number, dateStr: string }}
  */
-function getTimezoneOffset(timezone) {
-  const offsets = {
-    'America/New_York': 5,
-    'America/Chicago': 6,
-    'America/Denver': 7,
-    'America/Los_Angeles': 8,
-    'America/Phoenix': 7,
-    'Pacific/Honolulu': 10,
-    'America/Anchorage': 9,
-    'UTC': 0
-  };
-  return offsets[timezone] || 7; // Default to Denver
+function getUserLocalTime(timezone) {
+  const tz = timezone || 'America/Denver';
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      hour: '2-digit', minute: '2-digit',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date());
+    const get = (t) => parts.find((p) => p.type === t)?.value;
+    const hour = Number(get('hour')) % 24; // Intl can emit '24' for midnight
+    return { hour, minute: Number(get('minute')), dateStr: `${get('year')}-${get('month')}-${get('day')}` };
+  } catch (err) {
+    // Invalid/unknown timezone → fall back to UTC rather than crash.
+    const now = new Date();
+    return { hour: now.getUTCHours(), minute: now.getUTCMinutes(), dateStr: now.toISOString().split('T')[0] };
+  }
 }
 
 module.exports = {
