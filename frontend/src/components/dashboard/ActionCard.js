@@ -17,14 +17,16 @@ const fadeInUp = keyframes`
 // Number of assessments required before a personalized plan unlocks.
 const ASSESSMENTS_TO_UNLOCK_PLAN = 3;
 
+// Grounded masculine gradients (slate base, amber action, teal progress) to
+// match the app theme — the hero ActionCard is the first thing users see.
 const GRADIENTS = {
-  assessment: 'linear-gradient(135deg, #667eea, #764ba2)',
-  daily: 'linear-gradient(135deg, #f093fb, #f5576c)',
-  strategy: 'linear-gradient(135deg, #4facfe, #00f2fe)',
-  gratitude: 'linear-gradient(135deg, #43e97b, #38f9d7)',
-  realTalk: 'linear-gradient(135deg, #4facfe, #00f2fe)',
-  loveNote: 'linear-gradient(135deg, #f093fb, #f5576c)',
-  done: 'linear-gradient(135deg, #d4fc79, #96e6a1)',
+  assessment: 'linear-gradient(135deg, #1B2735, #33455B)',
+  daily: 'linear-gradient(135deg, #B86A22, #E08A3C)',
+  strategy: 'linear-gradient(135deg, #1B2735, #0E9F8E)',
+  gratitude: 'linear-gradient(135deg, #B86A22, #E08A3C)',
+  realTalk: 'linear-gradient(135deg, #1B2735, #33455B)',
+  loveNote: 'linear-gradient(135deg, #0A7368, #2DD4BF)',
+  done: 'linear-gradient(135deg, #0E9F8E, #2DD4BF)',
 };
 
 function getAction({

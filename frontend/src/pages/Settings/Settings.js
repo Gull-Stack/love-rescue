@@ -485,6 +485,7 @@ const Settings = () => {
                     type="email"
                     size="small"
                     fullWidth
+                    inputProps={{ inputMode: 'email', autoCapitalize: 'none', autoCorrect: 'off' }}
                     value={partnerEmail}
                     onChange={(e) => setPartnerEmail(e.target.value)}
                     sx={{ mb: 2 }}

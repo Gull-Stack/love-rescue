@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -81,6 +81,7 @@ const slideVariants = {
 
 const RealTalk = () => {
   const navigate = useNavigate();
+  useEffect(() => { document.title = 'Real Talk | Love Rescue'; }, []);
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [issue, setIssue] = useState('');
