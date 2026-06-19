@@ -149,6 +149,9 @@ function App() {
             </PublicRoute>
           }
         />
+        {/* Therapist invite acceptance — public so a brand-new client can open
+            the link, sign up, and be resumed back to it after auth. */}
+        <Route path="/therapist/join/:token" element={<TherapistJoin />} />
         <Route
           path="/login"
           element={
@@ -216,9 +219,8 @@ function App() {
           <Route path="course" element={<CourseJourney />} />
           <Route path="course/week" element={<CourseWeekDetail />} />
           <Route path="course/week/:weekNumber" element={<CourseWeekDetail />} />
-          {/* Therapist routes */}
+          {/* Therapist routes ( /therapist/join/:token is public — see above ) */}
           <Route path="therapist/onboarding" element={<TherapistOnboarding />} />
-          <Route path="therapist/join/:token" element={<TherapistJoin />} />
           <Route path="therapist" element={<TherapistRoute><TherapistDashboard /></TherapistRoute>} />
           <Route path="therapist/clients" element={<TherapistRoute><TherapistClientLinking /></TherapistRoute>} />
           <Route path="therapist/clients/:id" element={<TherapistRoute><ClientProgress /></TherapistRoute>} />

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Card, CardContent, Grid, Chip, Button,
   CircularProgress, Alert, ToggleButton, ToggleButtonGroup,
-  Skeleton,
+  Skeleton, Dialog, DialogTitle, DialogContent, DialogActions,
+  FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import ViewListIcon from '@mui/icons-material/ViewList';
@@ -13,6 +14,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import therapistService from '../../services/therapistService';
 import { ClientCard, AlertCard } from '../../components/therapist';
 
@@ -33,6 +35,11 @@ const TherapistDashboard = () => {
   const [viewMode, setViewMode] = useState('card');
   const [dashboard, setDashboard] = useState(null);
   const [billingLoading, setBillingLoading] = useState(false);
+  const [pairOpen, setPairOpen] = useState(false);
+  const [pairA, setPairA] = useState('');
+  const [pairB, setPairB] = useState('');
+  const [pairing, setPairing] = useState(false);
+  const [pairError, setPairError] = useState('');
 
   useEffect(() => {
     document.title = 'Therapist Dashboard | Love Rescue';
@@ -99,6 +106,38 @@ const TherapistDashboard = () => {
     }
   };
 
+  // Distinct couples derived from the roster (clients sharing a couple id).
+  const couples = Object.values(
+    clients.reduce((acc, c) => {
+      if (c.couple?.id) acc[c.couple.id] = c.couple;
+      return acc;
+    }, {})
+  );
+  const coupleName = (cp) => {
+    const a = cp.user1 ? [cp.user1.firstName, cp.user1.lastName].filter(Boolean).join(' ') : 'Partner 1';
+    const b = cp.user2 ? [cp.user2.firstName, cp.user2.lastName].filter(Boolean).join(' ') : 'Partner 2';
+    return `${a} & ${b}`;
+  };
+
+  const handlePairCouple = async () => {
+    setPairError('');
+    if (!pairA || !pairB || pairA === pairB) {
+      setPairError('Pick two different clients.');
+      return;
+    }
+    setPairing(true);
+    try {
+      await therapistService.createCouple(pairA, pairB);
+      setPairOpen(false);
+      setPairA(''); setPairB('');
+      await fetchData();
+    } catch (err) {
+      setPairError(err.response?.data?.error || 'Could not link these clients.');
+    } finally {
+      setPairing(false);
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -144,6 +183,17 @@ const TherapistDashboard = () => {
           >
             Invite Client
           </Button>
+          {clients.length >= 2 && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<FavoriteIcon />}
+              onClick={() => { setPairError(''); setPairOpen(true); }}
+              sx={{ minHeight: 44 }}
+            >
+              Link Couple
+            </Button>
+          )}
           <ToggleButtonGroup
             value={viewMode}
             exclusive
@@ -193,6 +243,60 @@ const TherapistDashboard = () => {
           ))}
         </Box>
       )}
+
+      {/* Couples */}
+      {couples.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h5" sx={{ mb: 2 }}>Couples</Typography>
+          <Grid container spacing={2}>
+            {couples.map((cp) => (
+              <Grid item xs={12} sm={6} key={cp.id}>
+                <Card>
+                  <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+                      <FavoriteIcon color="secondary" />
+                      <Typography fontWeight={600} noWrap>{coupleName(cp)}</Typography>
+                    </Box>
+                    <Button size="small" onClick={() => navigate(`/therapist/couples/${cp.id}`)} sx={{ minHeight: 44, flexShrink: 0 }}>
+                      View couple
+                    </Button>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
+
+      {/* Link-as-couple dialog */}
+      <Dialog open={pairOpen} onClose={() => setPairOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Link two clients as a couple</DialogTitle>
+        <DialogContent>
+          {pairError && <Alert severity="error" sx={{ mb: 2 }}>{pairError}</Alert>}
+          <FormControl fullWidth size="small" sx={{ mt: 1, mb: 2 }}>
+            <InputLabel id="pairA-label">First partner</InputLabel>
+            <Select labelId="pairA-label" label="First partner" value={pairA} onChange={(e) => setPairA(e.target.value)}>
+              {clients.map((c) => (
+                <MenuItem key={c.id} value={c.id} disabled={c.id === pairB}>{c.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth size="small">
+            <InputLabel id="pairB-label">Second partner</InputLabel>
+            <Select labelId="pairB-label" label="Second partner" value={pairB} onChange={(e) => setPairB(e.target.value)}>
+              {clients.map((c) => (
+                <MenuItem key={c.id} value={c.id} disabled={c.id === pairA}>{c.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPairOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handlePairCouple} disabled={pairing || !pairA || !pairB}>
+            {pairing ? <CircularProgress size={20} /> : 'Link couple'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Alert Feed */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>

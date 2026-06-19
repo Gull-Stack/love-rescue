@@ -16,6 +16,7 @@ const therapistService = {
   // Couple view
   getCouple: (id) => api.get(`/therapist/couples/${id}`),
   getCoupleComparison: (id) => api.get(`/therapist/couples/${id}/comparison`),
+  createCouple: (clientAId, clientBId) => api.post('/therapist/couples', { clientAId, clientBId }),
   
   // Alerts
   getAlerts: (params) => api.get('/therapist/alerts', { params }),

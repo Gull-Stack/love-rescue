@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -258,6 +259,7 @@ const TherapistClientLinking = () => {
 const ClientLinkingAccept = ({ token: tokenProp }) => {
   const token = tokenProp;
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [invite, setInvite] = useState(null);
   const [permissionLevel, setPermissionLevel] = useState('standard');
   const [loading, setLoading] = useState(true);
@@ -314,6 +316,36 @@ const ClientLinkingAccept = ({ token: tokenProp }) => {
     return (
       <Box display="flex" justifyContent="center" py={8}>
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Not logged in: stash the invite so we can resume after auth, then prompt
+  // the new client to create an account (or log in) — a brand-new client can
+  // now accept without losing the link.
+  if (!user) {
+    try { localStorage.setItem('lr_pending_invite', token); } catch (e) { /* storage unavailable */ }
+    return (
+      <Box maxWidth="sm" mx="auto" py={6} textAlign="center">
+        {error ? (
+          <Alert severity="error">{error}</Alert>
+        ) : (
+          <>
+            <ShieldIcon color="primary" sx={{ fontSize: 48, mb: 1 }} />
+            <Typography variant="h5" fontWeight="bold" gutterBottom>
+              {invite?.therapistName ? `${invite.therapistName} wants to connect with you` : 'Therapist connection request'}
+            </Typography>
+            <Typography color="text.secondary" sx={{ mb: 3 }}>
+              Create your free Love Rescue account (or log in) to connect and choose exactly what you share.
+            </Typography>
+            <Button variant="contained" size="large" fullWidth sx={{ mb: 1.5 }} onClick={() => navigate('/signup')}>
+              Create my free account
+            </Button>
+            <Button variant="text" fullWidth onClick={() => navigate('/login')}>
+              I already have an account
+            </Button>
+          </>
+        )}
       </Box>
     );
   }

@@ -166,6 +166,16 @@ const Dashboard = () => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  // Resume a therapist invite the user started before signing up/logging in.
+  useEffect(() => {
+    let pending;
+    try { pending = localStorage.getItem('lr_pending_invite'); } catch (e) { pending = null; }
+    if (pending) {
+      try { localStorage.removeItem('lr_pending_invite'); } catch (e) { /* ignore */ }
+      navigate(`/therapist/join/${pending}`);
+    }
+  }, [navigate]);
+
   const handleInvite = async () => {
     try {
       const response = await invitePartner();

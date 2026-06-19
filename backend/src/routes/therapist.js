@@ -1796,10 +1796,89 @@ router.get('/couples/:id', authenticateTherapist, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// ── GET /couples/:id/comparison ───────────────────────────────────────────────
+// ── GET /couples/:id/comparison — both partners' assessments side by side ─────
 router.get('/couples/:id/comparison', authenticateTherapist, async (req, res, next) => {
   try {
-    res.json({ comparison: null, message: 'Comparison data will be available once both partners complete assessments' });
+    // Verify access + get both partners.
+    const couple = await req.prisma.relationship.findUnique({
+      where: { id: req.params.id },
+      select: {
+        user1: { select: { id: true, firstName: true, lastName: true } },
+        user2: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    if (!couple) return res.status(404).json({ error: 'Couple not found' });
+    const link = await req.prisma.therapistClient.findFirst({
+      where: { therapistId: req.therapist.id, coupleId: req.params.id },
+    });
+    if (!link) return res.status(403).json({ error: 'Access denied' });
+
+    const ids = [couple.user1?.id, couple.user2?.id].filter(Boolean);
+    const assessments = await req.prisma.assessment.findMany({
+      where: { userId: { in: ids } },
+      select: { userId: true, type: true, score: true, completedAt: true },
+      orderBy: { completedAt: 'desc' },
+    });
+
+    // Latest assessment per (user, type).
+    const latestByUserType = {};
+    for (const a of assessments) {
+      const k = `${a.userId}:${a.type}`;
+      if (!latestByUserType[k]) latestByUserType[k] = a;
+    }
+    const types = [...new Set(assessments.map((a) => a.type))];
+    const comparison = types.map((type) => ({
+      type,
+      user1: latestByUserType[`${couple.user1?.id}:${type}`]?.score ?? null,
+      user2: latestByUserType[`${couple.user2?.id}:${type}`]?.score ?? null,
+    }));
+
+    res.json({
+      partners: { user1: couple.user1, user2: couple.user2 },
+      comparison,
+      message: comparison.length ? null : 'Comparison will appear once partners complete assessments',
+    });
+  } catch (error) { next(error); }
+});
+
+// ── POST /couples — therapist pairs two of their clients into a couple ────────
+router.post('/couples', authenticateTherapist, async (req, res, next) => {
+  try {
+    const { clientAId, clientBId } = req.body;
+    if (!clientAId || !clientBId || clientAId === clientBId) {
+      return res.status(400).json({ error: 'Two distinct clients are required' });
+    }
+
+    // Both must be this therapist's consented clients.
+    const links = await req.prisma.therapistClient.findMany({
+      where: { therapistId: req.therapist.id, clientId: { in: [clientAId, clientBId] }, consentStatus: 'GRANTED' },
+    });
+    if (links.length < 2) {
+      return res.status(403).json({ error: 'Both people must be your connected clients' });
+    }
+
+    // Reuse an existing relationship between the two, else create one.
+    let relationship = await req.prisma.relationship.findFirst({
+      where: {
+        OR: [
+          { user1Id: clientAId, user2Id: clientBId },
+          { user1Id: clientBId, user2Id: clientAId },
+        ],
+      },
+    });
+    if (!relationship) {
+      relationship = await req.prisma.relationship.create({
+        data: { user1Id: clientAId, user2Id: clientBId, status: 'active' },
+      });
+    }
+
+    // Link both client records to the couple.
+    await req.prisma.therapistClient.updateMany({
+      where: { therapistId: req.therapist.id, clientId: { in: [clientAId, clientBId] } },
+      data: { coupleId: relationship.id },
+    });
+
+    res.json({ coupleId: relationship.id, message: 'Couple linked' });
   } catch (error) { next(error); }
 });
 
