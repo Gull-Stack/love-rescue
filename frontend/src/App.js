@@ -90,7 +90,7 @@ const PublicRoute = ({ children }) => {
   }
 
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={user.role === 'therapist' ? '/therapist' : '/dashboard'} replace />;
   }
 
   return children;
@@ -256,7 +256,8 @@ const CatchAll = () => {
     );
   }
 
-  return user ? <Navigate to="/dashboard" replace /> : <Navigate to="/welcome" replace />;
+  if (!user) return <Navigate to="/welcome" replace />;
+  return <Navigate to={user.role === 'therapist' ? '/therapist' : '/dashboard'} replace />;
 };
 
 export default App;

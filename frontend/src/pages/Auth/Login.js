@@ -27,8 +27,10 @@ const Login = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const joinCode = searchParams.get('join');
-  const redirectTo = joinCode ? `/join/${joinCode}` : '/dashboard';
-  const { login, googleLogin, appleLogin, biometricLogin, checkBiometricAvailability, error } = useAuth();
+  const { login, googleLogin, appleLogin, biometricLogin, checkBiometricAvailability, error, user } = useAuth();
+  // Therapists land in their console, clients on the dashboard.
+  const homePath = user?.role === 'therapist' ? '/therapist' : '/dashboard';
+  const redirectTo = joinCode ? `/join/${joinCode}` : homePath;
   const [loading, setLoading] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -100,8 +102,9 @@ const Login = () => {
     setFormError('');
 
     try {
-      await login(formData.email, formData.password, rememberMe);
-      navigate(redirectTo);
+      const data = await login(formData.email, formData.password, rememberMe);
+      // Use the freshly-returned role (context user isn't updated yet here).
+      navigate(joinCode ? `/join/${joinCode}` : (data?.user?.role === 'therapist' ? '/therapist' : '/dashboard'));
     } catch (err) {
       setFormError(err.response?.data?.error || 'Login failed');
     } finally {
