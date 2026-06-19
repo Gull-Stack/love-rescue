@@ -2,40 +2,43 @@ import { createTheme, responsiveFontSizes } from '@mui/material/styles';
 
 const theme = createTheme({
   palette: {
+    // Grounded, masculine identity: deep slate as the brand, warm amber for
+    // action, teal for progress/success. Reads as "serious strategy for men,"
+    // not relationship-wellness pink. Kept in light mode for component safety.
     primary: {
-      main: '#e91e63',
-      light: '#ff6090',
-      dark: '#b0003a',
+      main: '#1B2735',
+      light: '#33455B',
+      dark: '#0F1722',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#9c27b0',
-      light: '#d05ce3',
-      dark: '#6a0080',
+      main: '#E08A3C',
+      light: '#F0A55C',
+      dark: '#B86A22',
       contrastText: '#ffffff',
     },
     success: {
-      main: '#4caf50',
-      light: '#80e27e',
-      dark: '#087f23',
+      main: '#0E9F8E',
+      light: '#2DD4BF',
+      dark: '#0A7368',
     },
     warning: {
-      main: '#ff9800',
-      light: '#ffc947',
-      dark: '#c66900',
+      main: '#E08A3C',
+      light: '#F0A55C',
+      dark: '#B86A22',
     },
     error: {
-      main: '#f44336',
-      light: '#ff7961',
-      dark: '#ba000d',
+      main: '#D14343',
+      light: '#E36868',
+      dark: '#A12B2B',
     },
     background: {
-      default: '#fafafa',
+      default: '#F4F6F8',
       paper: '#ffffff',
     },
     text: {
-      primary: '#212121',
-      secondary: '#757575',
+      primary: '#0F1722',
+      secondary: '#5A6B7B',
     },
   },
   typography: {
@@ -114,17 +117,19 @@ const theme = createTheme({
   },
 });
 
+// Subtle per-section washes in the grounded palette (cool slate / warm amber /
+// teal), keeping each area distinguishable without the old pastel-pink feel.
 export const sectionColors = {
-  dashboard: { gradient: 'linear-gradient(180deg, #FFF0EB 0%, #ffffff 100%)', accent: '#e91e63' },
-  assessments: { gradient: 'linear-gradient(180deg, #E8EAF6 0%, #ffffff 100%)', accent: '#3f51b5' },
-  daily: { gradient: 'linear-gradient(180deg, #E0F2F1 0%, #ffffff 100%)', accent: '#009688' },
-  strategies: { gradient: 'linear-gradient(180deg, #EDE7F6 0%, #ffffff 100%)', accent: '#673ab7' },
-  gratitude: { gradient: 'linear-gradient(180deg, #E8F5E9 0%, #ffffff 100%)', accent: '#4caf50' },
-  together: { gradient: 'linear-gradient(180deg, #FCE4EC 0%, #ffffff 100%)', accent: '#e91e63' },
-  reports: { gradient: 'linear-gradient(180deg, #FFF3E0 0%, #ffffff 100%)', accent: '#ff9800' },
-  course: { gradient: 'linear-gradient(180deg, #E3F2FD 0%, #ffffff 100%)', accent: '#1976d2' },
-  matchup: { gradient: 'linear-gradient(180deg, #FCE4EC 0%, #ffffff 100%)', accent: '#e91e63' },
-  realTalk: { gradient: 'linear-gradient(180deg, #E0F7FA 0%, #ffffff 100%)', accent: '#00838f' },
+  dashboard: { gradient: 'linear-gradient(180deg, #EEF1F4 0%, #ffffff 100%)', accent: '#E08A3C' },
+  assessments: { gradient: 'linear-gradient(180deg, #E9EDF2 0%, #ffffff 100%)', accent: '#33455B' },
+  daily: { gradient: 'linear-gradient(180deg, #E3F2F0 0%, #ffffff 100%)', accent: '#0E9F8E' },
+  strategies: { gradient: 'linear-gradient(180deg, #ECEFF3 0%, #ffffff 100%)', accent: '#1B2735' },
+  gratitude: { gradient: 'linear-gradient(180deg, #FBF1E6 0%, #ffffff 100%)', accent: '#E08A3C' },
+  together: { gradient: 'linear-gradient(180deg, #E3F2F0 0%, #ffffff 100%)', accent: '#0E9F8E' },
+  reports: { gradient: 'linear-gradient(180deg, #FBF1E6 0%, #ffffff 100%)', accent: '#E08A3C' },
+  course: { gradient: 'linear-gradient(180deg, #E9EDF2 0%, #ffffff 100%)', accent: '#33455B' },
+  matchup: { gradient: 'linear-gradient(180deg, #E3F2F0 0%, #ffffff 100%)', accent: '#0E9F8E' },
+  realTalk: { gradient: 'linear-gradient(180deg, #E9EDF2 0%, #ffffff 100%)', accent: '#33455B' },
 };
 
 export default responsiveFontSizes(theme);

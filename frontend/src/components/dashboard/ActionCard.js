@@ -42,9 +42,11 @@ function getAction({
     return {
       gradient: GRADIENTS.assessment,
       message: 'Your plan starts with a few quick questions about you',
-      subtitle: 'First assessment · ~5 min',
+      subtitle: 'First assessment · attachment style',
       cta: 'Start',
-      path: '/assessments',
+      // Go straight into the first question, not the catalog — fewer decisions,
+      // faster to the first "aha".
+      path: '/assessments/attachment',
     };
   }
 

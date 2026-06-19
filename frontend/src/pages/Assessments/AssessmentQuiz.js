@@ -28,6 +28,7 @@ import confetti from 'canvas-confetti';
 import { hapticLight, hapticMedium, hapticSuccess } from '../../utils/haptics';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import ShareIcon from '@mui/icons-material/Share';
 import CheckIcon from '@mui/icons-material/Check';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -946,16 +947,27 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
         <Button
           variant="outlined"
           size="large"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/assessments')}
+          startIcon={<ShareIcon />}
+          onClick={async () => {
+            const title = interpretation?.title || result?.title;
+            const text = title
+              ? `I just learned something about myself on Love Rescue — my result: "${title}". A real, week-by-week plan to save your marriage.`
+              : `I'm working on my marriage with a real plan on Love Rescue.`;
+            const shareData = { title: 'Love Rescue', text, url: 'https://loverescue.app' };
+            try {
+              if (navigator.share) await navigator.share(shareData);
+              else await navigator.clipboard.writeText(`${text} https://loverescue.app`);
+            } catch (e) { /* user dismissed share sheet */ }
+          }}
           sx={{ borderRadius: 2, px: 4 }}
         >
-          Back to Assessments
+          Share
         </Button>
         <Button
           variant="contained"
           size="large"
-          onClick={() => navigate('/matchup')}
+          startIcon={<ArrowForwardIcon />}
+          onClick={() => navigate('/assessments')}
           sx={{
             borderRadius: 2,
             px: 4,
@@ -963,7 +975,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
             fontWeight: 'bold',
           }}
         >
-          View Matchup
+          Take Another Assessment
         </Button>
       </Box>
     </Box>

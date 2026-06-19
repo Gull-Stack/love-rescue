@@ -351,7 +351,7 @@ router.get('/profile', authenticate, async (req, res, next) => {
     // Build unified profile
     const profile = {
       completedAssessments: Object.keys(latest).length,
-      totalAssessments: 8,
+      totalAssessments: 13,
 
       // Know Yourself
       knowYourself: {},

@@ -36,6 +36,17 @@ const CATEGORIES = [
   { label: 'Love', value: 'love', emoji: '❤️' },
 ];
 
+// Rotating prompts so the daily gratitude entry never feels like a blank box.
+const GRATITUDE_PROMPTS = [
+  "What's one thing you appreciate about your partner today?",
+  'When did she make your life easier this week — and did you say so?',
+  'What is something she does that you usually take for granted?',
+  'What first made you fall for her? Is a version of that still there?',
+  'What did she handle today that you didn\'t have to think about?',
+  'What\'s one small thing she said or did that stuck with you?',
+  'What strength of hers showed up this week?',
+];
+
 const Gratitude = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -192,7 +203,7 @@ const Gratitude = () => {
                 /* Entry Form */
                 <>
                   <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ color: '#92400e' }}>
-                    {todayEntry ? 'Edit Your Gratitude' : "What's one thing you appreciate about your partner today?"}
+                    {todayEntry ? 'Edit Your Gratitude' : GRATITUDE_PROMPTS[new Date().getDate() % GRATITUDE_PROMPTS.length]}
                   </Typography>
 
                   <TextField
