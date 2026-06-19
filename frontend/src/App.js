@@ -15,6 +15,7 @@ const Landing = React.lazy(() => import('./pages/Landing/Landing'));
 // Auth pages (lazy loaded)
 const Login = React.lazy(() => import('./pages/Auth/Login'));
 const Signup = React.lazy(() => import('./pages/Auth/Signup'));
+const QuickStart = React.lazy(() => import('./pages/QuickStart/QuickStart'));
 const JoinRelationship = React.lazy(() => import('./pages/Auth/JoinRelationship'));
 const ForgotPassword = React.lazy(() => import('./pages/Auth/ForgotPassword'));
 const ResetPassword = React.lazy(() => import('./pages/Auth/ResetPassword'));
@@ -140,6 +141,14 @@ function App() {
         />
 
         {/* Public routes */}
+        <Route
+          path="/start"
+          element={
+            <PublicRoute>
+              <QuickStart />
+            </PublicRoute>
+          }
+        />
         <Route
           path="/login"
           element={

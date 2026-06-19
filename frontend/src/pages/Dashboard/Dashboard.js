@@ -13,6 +13,7 @@ import {
   Snackbar,
   Collapse,
   LinearProgress,
+  Skeleton,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
@@ -188,23 +189,19 @@ const Dashboard = () => {
   };
 
   if (loading) {
+    // Skeleton that mirrors the real layout — feels instant instead of a blank
+    // spinner while the dashboard's queries resolve.
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="60vh"
-        flexDirection="column"
-        gap={2}
-      >
-        <CircularProgress size={48} />
-        <Typography color="text.secondary">Loading your dashboard...</Typography>
+      <Box sx={{ pb: 10, maxWidth: 600, mx: 'auto', px: 0 }}>
+        <Skeleton variant="rounded" height={150} sx={{ borderRadius: 4, mb: 3 }} />
+        <Skeleton variant="rounded" height={210} sx={{ borderRadius: 4, mb: 3 }} />
+        <Skeleton variant="rounded" height={120} sx={{ borderRadius: 4 }} />
       </Box>
     );
   }
 
   // Calculate derived state
-  const totalAssessments = 10;
+  const totalAssessments = 13;
   const assessmentsDone = data.assessments?.completed?.length || 0;
   const daysActive = getDaysActive(user?.createdAt);
   const strategyCycle = data.strategy?.cycle || 0;
