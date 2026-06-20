@@ -20,6 +20,7 @@ import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import GoogleIcon from '@mui/icons-material/Google';
 import AppleIcon from '@mui/icons-material/Apple';
 // GoogleLogin web component removed — using capacitor-google-auth for both platforms
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../contexts/AuthContext';
 import { isNative } from '../../utils/platform';
 
@@ -248,6 +249,35 @@ const Login = () => {
               </Link>
             </Box>
           </form>
+
+          {/* Web Google sign-in (Gmail SSO). Hidden until REACT_APP_GOOGLE_CLIENT_ID
+              is set so there's no dead button. Uses the same /auth/google backend
+              as signup. */}
+          {!isNative() && !!process.env.REACT_APP_GOOGLE_CLIENT_ID && (
+            <>
+              <Divider sx={{ my: 3 }}>
+                <Typography variant="body2" color="text.secondary">or</Typography>
+              </Divider>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                <GoogleLogin
+                  text="signin_with"
+                  onSuccess={async (credentialResponse) => {
+                    setLoading(true);
+                    setFormError('');
+                    try {
+                      const data = await googleLogin(credentialResponse.credential, rememberMe);
+                      navigate(joinCode ? `/join/${joinCode}` : (data?.user?.role === 'therapist' ? '/therapist' : '/dashboard'));
+                    } catch (err) {
+                      setFormError(err.response?.data?.error || 'Google sign-in failed');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  onError={() => setFormError('Google sign-in failed')}
+                />
+              </Box>
+            </>
+          )}
 
           {/* Third-party SSO uses native Capacitor plugins (iOS app). On the
               web launch we show only the verified email/password flow so there
