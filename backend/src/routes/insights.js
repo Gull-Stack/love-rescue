@@ -9,7 +9,9 @@ const router = express.Router();
  * GET /api/insights/daily
  * Get today's personalized insight based on user's course position
  */
-router.get('/daily', authenticate, requireSubscription, async (req, res, next) => {
+// Daily insight is the loop's variable reward — available to every signed-in
+// user (not gated), so new/free users get the pull-back too.
+router.get('/daily', authenticate, async (req, res, next) => {
   try {
     const position = getCoursePosition(req.user.createdAt || new Date());
 

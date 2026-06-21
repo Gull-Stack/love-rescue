@@ -500,6 +500,14 @@ const Dashboard = () => {
         </Card>
       )}
 
+      {/* Daily insight reward, surfaced early (DISCOVERING/BUILDING) so new
+          users get the variable reward before PRACTICING. */}
+      {(userState === STATE.DISCOVERING || userState === STATE.BUILDING) && (
+        <Box sx={{ mb: 2 }}>
+          <DailyInsight />
+        </Box>
+      )}
+
       {/* Feed section — PRACTICING+ */}
       {showFeed && (
         <>

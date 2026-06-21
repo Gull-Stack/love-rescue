@@ -120,7 +120,11 @@ function getBottomNavItems(userState, hasPartner) {
 }
 
 // Side drawer grouped items
-function getDrawerSections(isPlatformAdmin) {
+function getDrawerSections(isPlatformAdmin, userState) {
+  // Brand-new users (no assessments yet) shouldn't see a wall of empty,
+  // premature destinations — keep their menu focused on getting started.
+  const isBlank = userState === 'BLANK';
+  const hiddenForBlank = new Set(['/skills', '/matchup', '/reports', '/meetings']);
   const sections = [
     {
       header: 'GROW',
@@ -165,7 +169,11 @@ function getDrawerSections(isPlatformAdmin) {
     });
   }
 
-  return sections;
+  if (!isBlank) return sections;
+  // Filter premature items + drop any section left empty.
+  return sections
+    .map((s) => ({ ...s, items: s.items.filter((it) => !hiddenForBlank.has(it.path)) }))
+    .filter((s) => s.items.length > 0);
 }
 
 const Layout = () => {
@@ -192,7 +200,7 @@ const Layout = () => {
   const userState = getUserState(user);
   const hasPartner = relationship?.hasPartner || false;
   const bottomNavItems = getBottomNavItems(userState, hasPartner);
-  const drawerSections = getDrawerSections(isPlatformAdmin);
+  const drawerSections = getDrawerSections(isPlatformAdmin, userState);
 
   const handleNavigation = (path) => {
     navigate(path);
