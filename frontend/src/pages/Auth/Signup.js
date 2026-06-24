@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
@@ -33,6 +33,16 @@ const Signup = () => {
     confirmPassword: '',
   });
   const [error, setError] = useState('');
+  const [quickStart, setQuickStart] = useState(null);
+
+  // Pick up a QuickStart "quick read" so signup continues the momentum
+  // instead of feeling like starting over.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('lr_quickstart');
+      if (raw) setQuickStart(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -86,12 +96,27 @@ const Signup = () => {
           <Box textAlign="center" mb={4}>
             <FavoriteIcon color="primary" sx={{ fontSize: 48, mb: 1 }} />
             <Typography variant="h4" fontWeight="bold" gutterBottom>
-              Start Your Journey
+              {quickStart ? 'Pick up where you left off' : 'Start Your Journey'}
             </Typography>
             <Typography color="text.secondary">
-              Create an account to begin improving your relationship
+              {quickStart
+                ? 'Create your free account to go deeper than the quick read.'
+                : 'Create an account to begin improving your relationship'}
             </Typography>
           </Box>
+
+          {quickStart && (
+            <Alert
+              icon={false}
+              severity="success"
+              sx={{ mb: 3, borderRadius: 2, '& .MuiAlert-message': { width: '100%' } }}
+            >
+              <Typography variant="body2">
+                ✓ Your quick read is saved: <strong>{quickStart.title}</strong>. Your full
+                assessment builds on it to map your whole relationship.
+              </Typography>
+            </Alert>
+          )}
 
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>

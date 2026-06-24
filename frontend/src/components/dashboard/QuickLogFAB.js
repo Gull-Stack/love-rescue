@@ -13,12 +13,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import { logsApi } from '../../services/api';
-
-// Confetti animation
-const confettiFall = keyframes`
-  0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-`;
+import { celebrate } from '../../utils/celebrate';
 
 const bounce = keyframes`
   0%, 100% { transform: scale(1); }
@@ -50,12 +45,13 @@ const QuickLogFAB = ({ onLogComplete, partnerName }) => {
         quickLog: true,
       });
 
-      // Show confetti celebration
-      setShowConfetti(true);
-      
       // Variable reward - sometimes extra celebration
       const isBonus = Math.random() > 0.7;
-      
+
+      // Confetti + haptic (bigger burst on a bonus)
+      setShowConfetti(true);
+      celebrate({ big: isBonus });
+
       setTimeout(() => {
         setShowConfetti(false);
         setOpen(false);
@@ -72,17 +68,6 @@ const QuickLogFAB = ({ onLogComplete, partnerName }) => {
     }
   };
 
-  // Generate confetti pieces
-  const confettiColors = ['#FF6B35', '#e91e63', '#9c27b0', '#4caf50', '#ff9800', '#2196f3'];
-  const confettiPieces = Array.from({ length: 50 }, (_, i) => ({
-    id: i,
-    left: `${Math.random() * 100}%`,
-    delay: `${Math.random() * 0.5}s`,
-    duration: `${1 + Math.random() * 1}s`,
-    color: confettiColors[Math.floor(Math.random() * confettiColors.length)],
-    size: 8 + Math.random() * 8,
-  }));
-
   return (
     <>
       {/* FAB - positioned in thumb zone */}
@@ -97,11 +82,11 @@ const QuickLogFAB = ({ onLogComplete, partnerName }) => {
             right: { xs: 16, sm: 32 },
             width: 64,
             height: 64,
-            background: 'linear-gradient(135deg, #e91e63 0%, #ff6090 100%)',
-            boxShadow: '0 4px 20px rgba(233, 30, 99, 0.4)',
+            background: 'linear-gradient(135deg, #E08A3C 0%, #F0A55C 100%)',
+            boxShadow: '0 4px 20px rgba(224, 138, 60, 0.45)',
             animation: `${bounce} 2s ease-in-out infinite`,
             '&:hover': {
-              background: 'linear-gradient(135deg, #c2185b 0%, #e91e63 100%)',
+              background: 'linear-gradient(135deg, #B86A22 0%, #E08A3C 100%)',
             },
           }}
         >
@@ -123,38 +108,6 @@ const QuickLogFAB = ({ onLogComplete, partnerName }) => {
           },
         }}
       >
-        {/* Confetti overlay */}
-        {showConfetti && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              overflow: 'hidden',
-              pointerEvents: 'none',
-              zIndex: 10,
-            }}
-          >
-            {confettiPieces.map((piece) => (
-              <Box
-                key={piece.id}
-                sx={{
-                  position: 'absolute',
-                  left: piece.left,
-                  top: 0,
-                  width: piece.size,
-                  height: piece.size,
-                  backgroundColor: piece.color,
-                  borderRadius: '50%',
-                  animation: `${confettiFall} ${piece.duration} ease-out ${piece.delay} forwards`,
-                }}
-              />
-            ))}
-          </Box>
-        )}
-
         <DialogTitle sx={{ pb: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6" fontWeight="bold">
             Quick Check-in
