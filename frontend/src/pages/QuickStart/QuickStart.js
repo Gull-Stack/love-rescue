@@ -52,11 +52,22 @@ const QuickStart = () => {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const done = step >= QUESTIONS.length;
-  const result = done ? RESULTS[scoreAnswers(answers)] : null;
+  const leanKey = done ? scoreAnswers(answers) : null;
+  const result = leanKey ? RESULTS[leanKey] : null;
 
   const answer = (key, v) => {
     setAnswers((a) => ({ ...a, [key]: v }));
     setTimeout(() => setStep((s) => s + 1), 180); // brief beat, then advance
+  };
+
+  // Hand the quick read off to signup so the momentum carries through.
+  const goToSignup = () => {
+    try {
+      if (leanKey && result) {
+        localStorage.setItem('lr_quickstart', JSON.stringify({ lean: leanKey, title: result.title }));
+      }
+    } catch { /* storage unavailable — no problem */ }
+    navigate('/signup', { state: { quickStartTitle: result?.title } });
   };
 
   return (
@@ -127,7 +138,7 @@ const QuickStart = () => {
                 size="large"
                 color="secondary"
                 endIcon={<ArrowForwardIcon />}
-                onClick={() => navigate('/signup')}
+                onClick={goToSignup}
                 sx={{ py: 1.5, borderRadius: 2, fontWeight: 'bold', mb: 1.5 }}
               >
                 Create your free account

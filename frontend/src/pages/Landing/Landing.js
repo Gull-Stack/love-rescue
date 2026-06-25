@@ -25,7 +25,6 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import PlayCircleFilledIcon from '@mui/icons-material/PlayCircleFilled';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import OndemandVideoIcon from '@mui/icons-material/OndemandVideo';
@@ -520,8 +519,7 @@ const Landing = () => {
           <Button
             variant="outlined"
             size="large"
-            startIcon={<PlayCircleFilledIcon />}
-            onClick={() => scrollTo('#programs')}
+            onClick={() => navigate('/start')}
             sx={{
               borderColor: 'rgba(255,255,255,0.3)',
               color: '#fff',
@@ -536,7 +534,7 @@ const Landing = () => {
               },
             }}
           >
-            See How It Works
+            See where you stand · 60 sec, no signup
           </Button>
         </Box>
 

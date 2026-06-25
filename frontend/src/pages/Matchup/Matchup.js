@@ -19,10 +19,19 @@ import { useAuth } from '../../contexts/AuthContext';
 import { matchupApi, strategiesApi } from '../../services/api';
 import { sectionColors } from '../../theme';
 import EmptyState from '../../components/common/EmptyState';
+import AnimatedScoreRing from '../../components/common/AnimatedScoreRing';
+import { celebrate } from '../../utils/celebrate';
+
+function matchVerdict(score) {
+  if (score >= 80) return { label: 'Strong match', blurb: 'You two are deeply aligned. Build on it.' };
+  if (score >= 60) return { label: 'Solid foundation', blurb: 'A lot to work with, and clear places to grow.' };
+  if (score >= 40) return { label: 'Worth the work', blurb: 'Real differences — and a real path through them.' };
+  return { label: 'Different wiring', blurb: 'You see the world differently. With the right skills, that becomes a strength.' };
+}
 
 const Matchup = () => {
   const navigate = useNavigate();
-  const { relationship, user } = useAuth();
+  const { relationship } = useAuth();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [status, setStatus] = useState(null);
@@ -56,6 +65,10 @@ const Matchup = () => {
     try {
       const response = await matchupApi.generate();
       setMatchup(response.data.matchup);
+
+      // Reveal moment — celebrate the new number (bigger for a high match).
+      const score = response.data.matchup?.score || 0;
+      celebrate({ big: score >= 80, hearts: score >= 80 });
 
       // Also generate strategies
       await strategiesApi.generate();
@@ -169,12 +182,18 @@ const Matchup = () => {
         <>
           <Card sx={{ mb: 3, textAlign: 'center', py: 4 }}>
             <CardContent>
-              <FavoriteIcon color="primary" sx={{ fontSize: 48, mb: 2 }} />
-              <Typography variant="h2" color="primary" fontWeight="bold">
-                {matchup.score}%
+              <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1 }}>
+                Compatibility
               </Typography>
-              <Typography color="text.secondary">
-                Compatibility Score
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                {/* key on score so the count-up re-runs on every regenerate */}
+                <AnimatedScoreRing key={matchup.score} value={matchup.score} size={200} stroke={16} />
+              </Box>
+              <Typography variant="h5" fontWeight="bold" sx={{ color: 'text.primary' }}>
+                {matchVerdict(matchup.score).label}
+              </Typography>
+              <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 360, mx: 'auto' }}>
+                {matchVerdict(matchup.score).blurb}
               </Typography>
             </CardContent>
           </Card>

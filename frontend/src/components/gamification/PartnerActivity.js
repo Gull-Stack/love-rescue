@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../services/api';
-import Confetti from './Confetti';
+import { celebrate } from '../../utils/celebrate';
 
 // Partner Status Card - Shows if partner has logged today
 export const PartnerStatusCard = ({ onNudge }) => {
@@ -152,7 +152,6 @@ export const PartnerStatusCard = ({ onNudge }) => {
 export const MatchupScoreCard = () => {
   const [matchup, setMatchup] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showConfetti, setShowConfetti] = useState(false);
   const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
@@ -171,10 +170,10 @@ export const MatchupScoreCard = () => {
 
   const handleReveal = () => {
     setRevealed(true);
-    if (matchup?.alignmentScore >= 80) {
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 3000);
-    }
+    const s = matchup?.alignmentScore || 0;
+    // Always celebrate the reveal; pull out the stops (double burst + hearts)
+    // for a high-alignment day.
+    celebrate({ big: s >= 80, hearts: s >= 80 });
   };
 
   if (loading) {
@@ -221,8 +220,6 @@ export const MatchupScoreCard = () => {
 
   return (
     <>
-      {showConfetti && <Confetti />}
-      
       <motion.div
         className="bg-gradient-to-r from-purple-900/30 to-indigo-900/30 rounded-xl p-6 border border-purple-500/20"
         initial={{ opacity: 0, scale: 0.95 }}

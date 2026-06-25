@@ -32,6 +32,7 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import StarIcon from '@mui/icons-material/Star';
 import { skillTreeApi } from '../../services/api';
+import { celebrate } from '../../utils/celebrate';
 
 const TREE_ICONS = {
   chat: <ChatIcon />,
@@ -50,7 +51,7 @@ const SkillTree = () => {
   const [practiceNotes, setPracticeNotes] = useState('');
   const [effectivenessRating, setEffectivenessRating] = useState(0);
   const [practicing, setPracticing] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', mastered: false });
 
   useEffect(() => {
     document.title = 'Skill Tree | Love Rescue';
@@ -81,10 +82,15 @@ const SkillTree = () => {
         practiceNotes || undefined,
         effectivenessRating || undefined
       );
-      const msg = res.data.justMastered
-        ? `${selectedTechnique.name} MASTERED!`
+      const justMastered = !!res.data.justMastered;
+      if (justMastered) {
+        // Leveling up a skill should FEEL like leveling up.
+        celebrate({ big: true });
+      }
+      const msg = justMastered
+        ? `🏆 ${selectedTechnique.name} mastered!`
         : `Practice logged (${res.data.uses}/${res.data.uses_required})`;
-      setSnackbar({ open: true, message: msg });
+      setSnackbar({ open: true, message: msg, mastered: justMastered });
       setPracticeDialogOpen(false);
       setPracticeNotes('');
       setEffectivenessRating(0);
@@ -484,13 +490,27 @@ const SkillTree = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Snackbar */}
+      {/* Snackbar — mastery gets a gold, celebratory treatment */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ open: false, message: '' })}
+        autoHideDuration={snackbar.mastered ? 5000 : 4000}
+        onClose={() => setSnackbar({ open: false, message: '', mastered: false })}
         message={snackbar.message}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        ContentProps={
+          snackbar.mastered
+            ? {
+                sx: {
+                  background: 'linear-gradient(135deg, #E08A3C 0%, #F0A55C 100%)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  justifyContent: 'center',
+                  boxShadow: '0 6px 24px rgba(224,138,60,0.5)',
+                },
+              }
+            : undefined
+        }
       />
     </Box>
   );

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, Typography, keyframes } from '@mui/material';
+import { celebrate } from '../../utils/celebrate';
 
 // Celebration burst when a ring hits 100%
 const celebratePulse = keyframes`
@@ -29,6 +30,7 @@ const ProgressRings = ({ data }) => {
   const [animated, setAnimated] = useState(false);
   const [celebrated, setCelebrated] = useState({});
   const prevPercents = useRef({});
+  const initialized = useRef(false);
 
   useEffect(() => {
     // Trigger entry animation on mount
@@ -48,8 +50,16 @@ const ProgressRings = ({ data }) => {
       }
       prevPercents.current[key] = pct;
     });
+    // Don't celebrate rings that were ALREADY closed when the page loaded —
+    // only genuine 0→100 transitions during the session.
+    if (!initialized.current) {
+      initialized.current = true;
+      return;
+    }
     if (Object.keys(next).length > 0) {
       setCelebrated(prev => ({ ...prev, ...next }));
+      // Closing a ring is a real win — confetti + a buzz on device.
+      celebrate({ big: false });
       // Clear celebration after animation
       const t = setTimeout(() => setCelebrated({}), 1500);
       return () => clearTimeout(t);
