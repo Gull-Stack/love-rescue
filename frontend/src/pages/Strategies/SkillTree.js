@@ -147,7 +147,7 @@ const SkillTree = () => {
       {/* Header */}
       <Box sx={{ mb: 3 }}>
         <Box display="flex" alignItems="center" gap={1} mb={1}>
-          <IconButton onClick={() => navigate('/strategies')} size="small">
+          <IconButton onClick={() => navigate('/strategies')} size="small" aria-label="Go back">
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h5" fontWeight="bold">

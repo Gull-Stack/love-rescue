@@ -1388,7 +1388,7 @@ const Landing = () => {
         >
           Start Your Free 14-Day Trial
         </Button>
-        <Typography sx={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.85rem', mt: 2 }}>
+        <Typography sx={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.85rem', mt: 2 }}>
           No credit card required. Cancel anytime.
         </Typography>
       </Container>
@@ -1418,7 +1418,7 @@ const Landing = () => {
             </Box>
             <Typography
               sx={{
-                color: 'rgba(255,255,255,0.4)',
+                color: 'rgba(255,255,255,0.9)',
                 fontSize: '0.9rem',
                 lineHeight: 1.7,
                 maxWidth: 320,
@@ -1442,7 +1442,7 @@ const Landing = () => {
                   key={social.label}
                   aria-label={social.label}
                   sx={{
-                    color: 'rgba(255,255,255,0.45)',
+                    color: 'rgba(255,255,255,0.82)',
                     '&:hover': { color: ACCENT_AMBER, bgcolor: 'rgba(224,138,60,0.10)' },
                   }}
                 >
@@ -1462,12 +1462,12 @@ const Landing = () => {
                 <Typography
                   key={link}
                   sx={{
-                    color: 'rgba(255,255,255,0.4)',
+                    color: 'rgba(255,255,255,0.82)',
                     fontSize: '0.85rem',
                     mb: 1,
                     cursor: 'pointer',
                     transition: 'color 0.2s',
-                    '&:hover': { color: 'rgba(255,255,255,0.7)' },
+                    '&:hover': { color: '#fff' },
                   }}
                 >
                   {link}
@@ -1485,7 +1485,7 @@ const Landing = () => {
               <Typography
                 key={link}
                 sx={{
-                  color: 'rgba(255,255,255,0.62)',
+                  color: 'rgba(255,255,255,0.82)',
                   fontSize: '0.85rem',
                   mb: 1,
                   cursor: 'pointer',
@@ -1507,7 +1507,7 @@ const Landing = () => {
               <Typography
                 key={link}
                 sx={{
-                  color: 'rgba(255,255,255,0.62)',
+                  color: 'rgba(255,255,255,0.82)',
                   fontSize: '0.85rem',
                   mb: 1,
                   cursor: 'pointer',
@@ -1529,7 +1529,7 @@ const Landing = () => {
               <Typography
                 key={link}
                 sx={{
-                  color: 'rgba(255,255,255,0.62)',
+                  color: 'rgba(255,255,255,0.82)',
                   fontSize: '0.85rem',
                   mb: 1,
                   cursor: 'pointer',
@@ -1554,12 +1554,12 @@ const Landing = () => {
             gap: 2,
           }}
         >
-          <Typography sx={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.8rem' }}>
+          <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>
             {new Date().getFullYear()} Love Rescue. All rights reserved.
           </Typography>
           <Typography
             sx={{
-              color: 'rgba(255,255,255,0.25)',
+              color: 'rgba(255,255,255,0.7)',
               fontSize: '0.75rem',
               fontStyle: 'italic',
             }}

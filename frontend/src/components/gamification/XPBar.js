@@ -33,8 +33,8 @@ const XPBar = () => {
           value={levelProgress}
           sx={{
             flex: 1, height: 6, borderRadius: 3,
-            bgcolor: alpha('#667eea', 0.15),
-            '& .MuiLinearProgress-bar': { borderRadius: 3, bgcolor: '#667eea' },
+            bgcolor: alpha('#0E9F8E', 0.15),
+            '& .MuiLinearProgress-bar': { borderRadius: 3, bgcolor: '#0E9F8E' },
           }}
         />
         <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>

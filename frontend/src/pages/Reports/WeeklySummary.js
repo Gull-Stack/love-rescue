@@ -22,6 +22,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import api from '../../services/api';
+import { brandGradients } from '../../theme';
 
 const fillAnimation = keyframes`
   from { stroke-dashoffset: 283; }
@@ -187,7 +188,7 @@ const WeeklySummary = () => {
       {/* Hero header */}
       <Box
         sx={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: brandGradients.hero,
           mx: -3,
           mt: -3,
           px: 3,
@@ -257,7 +258,7 @@ const WeeklySummary = () => {
               </Typography>
             </Box>
             <Box>
-              <Typography variant="h5" fontWeight="bold" sx={{ color: '#f59e0b' }}>
+              <Typography variant="h5" fontWeight="bold" sx={{ color: '#E08A3C' }}>
                 {data.stats.appreciationsSent}
               </Typography>
               <Typography variant="caption" color="text.secondary">
@@ -283,10 +284,10 @@ const WeeklySummary = () => {
             Dimension Scores
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: 1 }}>
-            <SummaryRing value={Math.round(data.dimensions.appreciation)} max={100} color="#ff9800" label="Appreciation" delay={0} />
-            <SummaryRing value={Math.round(data.dimensions.consistency)} max={100} color="#e91e63" label="Consistency" delay={150} />
-            <SummaryRing value={Math.round(data.dimensions.vulnerability)} max={100} color="#9c27b0" label="Vulnerability" delay={300} />
-            <SummaryRing value={Math.round(data.dimensions.communication)} max={100} color="#4caf50" label="Communication" delay={450} />
+            <SummaryRing value={Math.round(data.dimensions.appreciation)} max={100} color="#E08A3C" label="Appreciation" delay={0} />
+            <SummaryRing value={Math.round(data.dimensions.consistency)} max={100} color="#33455B" label="Consistency" delay={150} />
+            <SummaryRing value={Math.round(data.dimensions.vulnerability)} max={100} color="#0E9F8E" label="Vulnerability" delay={300} />
+            <SummaryRing value={Math.round(data.dimensions.communication)} max={100} color="#2DD4BF" label="Communication" delay={450} />
           </Box>
 
           {/* Dominant dimension chip */}
@@ -331,8 +332,8 @@ const WeeklySummary = () => {
       <Card
         sx={{
           mb: 3,
-          background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-          border: '1px solid #e9d5ff',
+          background: brandGradients.warm,
+          border: '1px solid #F0A55C',
           boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
         }}
       >
@@ -363,8 +364,8 @@ const WeeklySummary = () => {
             borderRadius: 3,
             fontWeight: 'bold',
             textTransform: 'none',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            boxShadow: '0 4px 20px rgba(102, 126, 234, 0.3)',
+            background: brandGradients.hero,
+            boxShadow: '0 4px 20px rgba(27, 39, 53, 0.3)',
           }}
         >
           Start Next Week

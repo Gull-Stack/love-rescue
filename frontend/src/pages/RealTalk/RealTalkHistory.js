@@ -21,6 +21,7 @@ import AddIcon from '@mui/icons-material/Add';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { realTalkApi } from '../../services/api';
+import { brandGradients } from '../../theme';
 
 const EFFECTIVENESS_BADGES = {
   effective: { label: 'Worked', color: '#22c55e', bg: '#f0fdf4' },
@@ -97,7 +98,7 @@ const RealTalkHistory = () => {
     <Box sx={{ maxWidth: 600, mx: 'auto', pb: 10 }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
-        <IconButton onClick={() => navigate(-1)}>
+        <IconButton aria-label="Go back" onClick={() => navigate(-1)}>
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h5" fontWeight="bold" sx={{ flex: 1 }}>
@@ -112,7 +113,7 @@ const RealTalkHistory = () => {
             borderRadius: 3,
             textTransform: 'none',
             fontWeight: 600,
-            background: 'linear-gradient(135deg, #4facfe, #00f2fe)',
+            background: brandGradients.success,
           }}
         >
           New
@@ -137,7 +138,7 @@ const RealTalkHistory = () => {
               textTransform: 'none',
               fontWeight: 600,
               px: 4,
-              background: 'linear-gradient(135deg, #4facfe, #00f2fe)',
+              background: brandGradients.success,
             }}
           >
             Start Your First Real Talk
@@ -274,6 +275,7 @@ const RealTalkHistory = () => {
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 2 }}>
               <IconButton
+                aria-label="Delete entry"
                 onClick={() => handleDelete(detail.id)}
                 color="error"
                 size="small"

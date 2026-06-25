@@ -21,8 +21,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import api from '../../services/api';
 
 const fadeGlow = keyframes`
-  0%, 100% { box-shadow: 0 0 20px rgba(156, 39, 176, 0.2); }
-  50% { box-shadow: 0 0 40px rgba(156, 39, 176, 0.4); }
+  0%, 100% { box-shadow: 0 0 20px rgba(51, 69, 91, 0.2); }
+  50% { box-shadow: 0 0 40px rgba(51, 69, 91, 0.4); }
 `;
 
 const LOCAL_STORAGE_KEY = 'loverescue_expert_insights';
@@ -107,7 +107,7 @@ const ExpertInsight = () => {
         {/* Header gradient */}
         <Box
           sx={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'linear-gradient(135deg, #33455B 0%, #1B2735 100%)',
             p: 3,
             pb: 4,
             textAlign: 'center',
@@ -116,6 +116,7 @@ const ExpertInsight = () => {
         >
           <IconButton
             onClick={dismiss}
+            aria-label="Dismiss"
             sx={{
               position: 'absolute',
               top: 8,
@@ -206,7 +207,7 @@ const ExpertInsight = () => {
               borderRadius: 2,
               fontWeight: 'bold',
               textTransform: 'none',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'linear-gradient(135deg, #33455B 0%, #1B2735 100%)',
             }}
           >
             {insight.cta.label}

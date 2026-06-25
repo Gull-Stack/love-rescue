@@ -41,8 +41,8 @@ const TodayCard = ({
         action: () => navigate('/assessments'),
         buttonText: 'Continue',
         completed: false,
-        color: '#9c27b0',
-        gradient: 'linear-gradient(135deg, #9c27b0 0%, #d05ce3 100%)',
+        color: '#33455B',
+        gradient: 'linear-gradient(135deg, #33455B 0%, #1B2735 100%)',
       };
     }
 
@@ -58,8 +58,8 @@ const TodayCard = ({
         action: () => navigate('/daily'),
         buttonText: 'Log Now',
         completed: false,
-        color: '#e91e63',
-        gradient: 'linear-gradient(135deg, #e91e63 0%, #ff6090 100%)',
+        color: '#E08A3C',
+        gradient: 'linear-gradient(135deg, #E08A3C 0%, #F0A55C 100%)',
       };
     }
 
@@ -75,8 +75,8 @@ const TodayCard = ({
         action: () => navigate('/gratitude'),
         buttonText: 'Share',
         completed: false,
-        color: '#f59e0b',
-        gradient: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+        color: '#E08A3C',
+        gradient: 'linear-gradient(135deg, #E08A3C 0%, #F0A55C 100%)',
       };
     }
 
@@ -89,8 +89,8 @@ const TodayCard = ({
       action: null,
       buttonText: null,
       completed: true,
-      color: '#4caf50',
-      gradient: 'linear-gradient(135deg, #4caf50 0%, #80e27e 100%)',
+      color: '#0E9F8E',
+      gradient: 'linear-gradient(135deg, #0E9F8E 0%, #2DD4BF 100%)',
     };
   };
 

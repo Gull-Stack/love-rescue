@@ -21,8 +21,8 @@ const TIER_CONFIG = {
   first_time: {
     title: 'First Step!',
     icon: '🌱',
-    color: '#4caf50',
-    gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    color: '#0E9F8E',
+    gradient: 'linear-gradient(135deg, #0E9F8E 0%, #2DD4BF 100%)',
     duration: 3000,
     messages: [
       "Every expert was once a beginner. Gottman started with observation — so did you.",
@@ -33,8 +33,8 @@ const TIER_CONFIG = {
   skill_complete: {
     title: 'Skill Mastered!',
     icon: '🧠',
-    color: '#7c4dff',
-    gradient: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+    color: '#33455B',
+    gradient: 'linear-gradient(135deg, #33455B 0%, #2DD4BF 100%)',
     duration: 4500,
     messages: [
       "You just used a Voss technique — mirroring builds trust without saying a word.",
@@ -46,8 +46,8 @@ const TIER_CONFIG = {
   breakthrough: {
     title: 'BREAKTHROUGH',
     icon: '💎',
-    color: '#ff6d00',
-    gradient: 'linear-gradient(135deg, #f5576c 0%, #ff6d00 50%, #ffd700 100%)',
+    color: '#E08A3C',
+    gradient: 'linear-gradient(135deg, #1B2735 0%, #E08A3C 50%, #F0A55C 100%)',
     duration: 6000,
     messages: [
       "This is what Gottman calls a 'breakthrough repair.' Your relationship just leveled up.",
@@ -58,8 +58,8 @@ const TIER_CONFIG = {
   streak_3: {
     title: '3-Day Streak!',
     icon: '⚡',
-    color: '#2196f3',
-    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: '#0E9F8E',
+    gradient: 'linear-gradient(135deg, #0E9F8E 0%, #2DD4BF 100%)',
     duration: 3500,
     messages: [
       "3 days in. Gottman's research: small consistent moments beat grand gestures every time.",
@@ -69,8 +69,8 @@ const TIER_CONFIG = {
   streak_7: {
     title: '7-Day Streak!',
     icon: '🔥',
-    color: '#ff9800',
-    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    color: '#E08A3C',
+    gradient: 'linear-gradient(135deg, #E08A3C 0%, #F0A55C 100%)',
     duration: 5000,
     messages: [
       "7 days. Gottman research: this is when new patterns start to stick.",
@@ -80,8 +80,8 @@ const TIER_CONFIG = {
   streak_21: {
     title: '21-Day Streak!',
     icon: '👑',
-    color: '#ffd700',
-    gradient: 'linear-gradient(135deg, #ffd700 0%, #ff6d00 50%, #f5576c 100%)',
+    color: '#F0A55C',
+    gradient: 'linear-gradient(135deg, #1B2735 0%, #E08A3C 50%, #F0A55C 100%)',
     duration: 6000,
     messages: [
       "21 days. The science is clear: you've rewired a habit loop. Gottman would be proud.",
@@ -91,8 +91,8 @@ const TIER_CONFIG = {
   partner_sync: {
     title: 'Partner Synced!',
     icon: '💞',
-    color: '#e91e63',
-    gradient: 'linear-gradient(135deg, #f093fb 0%, #e91e63 100%)',
+    color: '#E08A3C',
+    gradient: 'linear-gradient(135deg, #F0A55C 0%, #E08A3C 100%)',
     duration: 5000,
     messages: [
       "Both partners engaged. Gottman's #1 predictor of success: mutual investment.",
@@ -302,8 +302,8 @@ const CelebrationToast = ({
         sx={{
           width: '100%',
           fontSize: '1rem',
-          background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-          boxShadow: '0 8px 32px rgba(245,87,108,0.3)',
+          background: 'linear-gradient(135deg, #E08A3C 0%, #F0A55C 100%)',
+          boxShadow: '0 8px 32px rgba(224,138,60,0.3)',
           '& .MuiAlert-icon': {
             fontSize: '2rem',
           },

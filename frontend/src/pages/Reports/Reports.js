@@ -41,7 +41,7 @@ import {
 } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
 import { reportsApi, logsApi } from '../../services/api';
-import { sectionColors } from '../../theme';
+import { sectionColors, brandGradients } from '../../theme';
 import EmptyState from '../../components/common/EmptyState';
 
 ChartJS.register(
@@ -122,8 +122,8 @@ const Reports = () => {
       {
         label: 'Ratio',
         data: stats?.chartData?.map((d) => d.ratio) || [],
-        borderColor: '#e91e63',
-        backgroundColor: 'rgba(233, 30, 99, 0.1)',
+        borderColor: '#2DD4BF',
+        backgroundColor: 'rgba(45, 212, 191, 0.1)',
         tension: 0.3,
         fill: true,
       },
@@ -199,7 +199,7 @@ const Reports = () => {
           subtitle="Start logging daily to see your progress unfold"
           ctaText="Log Today"
           onCta={() => navigate('/daily')}
-          gradient="linear-gradient(135deg, #f5576c 0%, #ff9a9e 100%)"
+          gradient={brandGradients.action}
         />
       ) : (
       <>
