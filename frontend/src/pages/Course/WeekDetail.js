@@ -155,7 +155,7 @@ const WeekDetail = () => {
     <Container maxWidth="md" sx={{ py: 3 }}>
       {/* Header */}
       <Box display="flex" alignItems="center" gap={1} mb={3}>
-        <IconButton onClick={() => navigate('/course')}>
+        <IconButton onClick={() => navigate('/course')} aria-label="Go back">
           <BackIcon />
         </IconButton>
         <Box flex={1}>
@@ -312,7 +312,7 @@ const WeekDetail = () => {
               <Typography variant="h6" fontWeight="bold">
                 Weekly Reflection
               </Typography>
-              <IconButton size="small" onClick={() => {
+              <IconButton size="small" aria-label="Edit reflection" onClick={() => {
                 setReflection(strategy?.reflection || '');
                 setReflectionDialog(true);
               }}>

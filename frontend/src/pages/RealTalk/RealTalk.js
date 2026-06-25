@@ -21,6 +21,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { realTalkApi } from '../../services/api';
+import { brandGradients } from '../../theme';
 
 const TOTAL_STEPS = 4;
 
@@ -30,10 +31,10 @@ const EMOTIONS = [
 ];
 
 const STEP_GRADIENTS = [
-  'linear-gradient(135deg, #4facfe, #00f2fe)', // Blue-teal: What happened
-  'linear-gradient(135deg, #667eea, #764ba2)', // Purple: Feelings
-  'linear-gradient(135deg, #43e97b, #38f9d7)', // Teal-green: Needs
-  'linear-gradient(135deg, #4facfe, #00f2fe)', // Blue-teal: Result
+  brandGradients.success, // Teal: What happened
+  brandGradients.hero,    // Slate: Feelings
+  brandGradients.success, // Teal: Needs
+  brandGradients.hero,    // Slate: Result
 ];
 
 const EXPERT_QUOTES = {
@@ -264,11 +265,11 @@ const RealTalk = () => {
     >
       <Box sx={{ display: 'flex', alignItems: 'center', px: 1, pt: 1 }}>
         {showBack ? (
-          <IconButton onClick={goBack} sx={{ color: '#fff' }}>
+          <IconButton aria-label="Go back" onClick={goBack} sx={{ color: '#fff' }}>
             <ArrowBackIcon />
           </IconButton>
         ) : (
-          <IconButton onClick={() => navigate(-1)} sx={{ color: '#fff' }}>
+          <IconButton aria-label="Go back" onClick={() => navigate(-1)} sx={{ color: '#fff' }}>
             <ArrowBackIcon />
           </IconButton>
         )}
@@ -277,7 +278,7 @@ const RealTalk = () => {
           <ProgressDots />
         </Box>
 
-        <IconButton onClick={() => navigate('/real-talk/history')} sx={{ color: '#fff' }}>
+        <IconButton aria-label="View history" onClick={() => navigate('/real-talk/history')} sx={{ color: '#fff' }}>
           <HistoryIcon />
         </IconButton>
       </Box>

@@ -19,6 +19,7 @@ import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
 import ShareIcon from '@mui/icons-material/Share';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { transformationApi } from '../../services/api';
+import { brandGradients } from '../../theme';
 
 const TransformationMirror = () => {
   const navigate = useNavigate();
@@ -85,7 +86,7 @@ const TransformationMirror = () => {
     return (
       <Box sx={{ pb: 4, maxWidth: 600, mx: 'auto' }}>
         <Box display="flex" alignItems="center" gap={1} mb={3}>
-          <IconButton onClick={() => navigate('/reports')} size="small">
+          <IconButton aria-label="Go back" onClick={() => navigate('/reports')} size="small">
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h5" fontWeight="bold">
@@ -125,13 +126,13 @@ const TransformationMirror = () => {
     <Box sx={{ pb: 4, maxWidth: 600, mx: 'auto' }}>
       {/* Header */}
       <Box display="flex" alignItems="center" gap={1} mb={1}>
-        <IconButton onClick={() => navigate('/reports')} size="small">
+        <IconButton aria-label="Go back" onClick={() => navigate('/reports')} size="small">
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h5" fontWeight="bold" flex={1}>
           Transformation Mirror
         </Typography>
-        <IconButton onClick={handleShare} size="small">
+        <IconButton aria-label="Share" onClick={handleShare} size="small">
           <ShareIcon />
         </IconButton>
       </Box>
@@ -279,21 +280,21 @@ const TransformationMirror = () => {
         <Card
           sx={{
             borderRadius: 3,
-            background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #fbcfe8 100%)',
-            border: '1px solid #f9a8d4',
+            background: brandGradients.warm,
+            border: '1px solid #F0A55C',
           }}
         >
           <CardContent sx={{ p: 2.5 }}>
             <Box display="flex" gap={1} mb={1}>
-              <FormatQuoteIcon sx={{ color: '#be185d', transform: 'rotate(180deg)' }} />
+              <FormatQuoteIcon sx={{ color: '#E08A3C', transform: 'rotate(180deg)' }} />
             </Box>
             <Typography
               variant="body2"
-              sx={{ fontStyle: 'italic', color: '#831843', mb: 1, lineHeight: 1.6 }}
+              sx={{ fontStyle: 'italic', color: '#0F1722', mb: 1, lineHeight: 1.6 }}
             >
               {data.expertQuote.quote}
             </Typography>
-            <Typography variant="caption" sx={{ color: '#9d174d', fontWeight: 'bold' }}>
+            <Typography variant="caption" sx={{ color: '#5A6B7B', fontWeight: 'bold' }}>
               — {data.expertQuote.expert}
             </Typography>
           </CardContent>

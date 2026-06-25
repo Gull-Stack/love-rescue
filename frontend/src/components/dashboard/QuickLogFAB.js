@@ -117,7 +117,7 @@ const QuickLogFAB = ({ onLogComplete, partnerName }) => {
           <Typography variant="h6" fontWeight="bold">
             Quick Check-in
           </Typography>
-          <IconButton onClick={() => setOpen(false)} size="small" disabled={submitting}>
+          <IconButton onClick={() => setOpen(false)} size="small" disabled={submitting} aria-label="Close">
             <CloseIcon />
           </IconButton>
         </DialogTitle>

@@ -24,15 +24,15 @@ import {
   TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import { courseApi } from '../../services/api';
-import { sectionColors } from '../../theme';
+import { sectionColors, brandGradients } from '../../theme';
 
 // Phase colors
 const PHASE_COLORS = {
-  1: { bg: '#e3f2fd', border: '#1976d2', text: '#1565c0' }, // Foundation - Blue
-  2: { bg: '#e8f5e9', border: '#388e3c', text: '#2e7d32' }, // Communication - Green
-  3: { bg: '#fff3e0', border: '#f57c00', text: '#e65100' }, // Emotional Depth - Orange
-  4: { bg: '#fce4ec', border: '#c2185b', text: '#ad1457' }, // Intimacy - Pink
-  5: { bg: '#f3e5f5', border: '#7b1fa2', text: '#6a1b9a' }, // Integration - Purple
+  1: { bg: '#E9EDF2', border: '#33455B', text: '#1B2735' }, // Foundation - Slate
+  2: { bg: '#DDF5F1', border: '#0E9F8E', text: '#0B7A6E' }, // Communication - Teal
+  3: { bg: '#FBF1E6', border: '#E08A3C', text: '#B86A22' }, // Emotional Depth - Amber
+  4: { bg: '#FBF1E6', border: '#F0A55C', text: '#B86A22' }, // Intimacy - Warm amber
+  5: { bg: '#E9EDF2', border: '#1B2735', text: '#1B2735' }, // Integration - Deep slate
 };
 
 const Journey = () => {
@@ -132,7 +132,7 @@ const Journey = () => {
 
       {/* Progress Overview */}
       {progress && (
-        <Card sx={{ mb: 4, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+        <Card sx={{ mb: 4, background: brandGradients.hero }}>
           <CardContent sx={{ color: 'white' }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
               <Box>
@@ -271,8 +271,8 @@ const Journey = () => {
                   {hasCurrentWeek && (
                     <Chip label="Current" color="primary" size="small" />
                   )}
-                  <IconButton size="small">
-                    <ExpandMoreIcon 
+                  <IconButton size="small" aria-label={isExpanded ? 'Collapse phase' : 'Expand phase'} aria-expanded={isExpanded}>
+                    <ExpandMoreIcon
                       sx={{ 
                         transform: isExpanded ? 'rotate(180deg)' : 'none',
                         transition: 'transform 0.2s'

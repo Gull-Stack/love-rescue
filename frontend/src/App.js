@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { MotionConfig } from 'framer-motion';
 import { useAuth } from './contexts/AuthContext';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -125,7 +126,7 @@ function App() {
   }, []);
 
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       <Disclaimer />
       <React.Suspense
         fallback={
@@ -245,7 +246,7 @@ function App() {
         <Route path="*" element={<CatchAll />} />
       </Routes>
       </React.Suspense>
-    </>
+    </MotionConfig>
   );
 }
 

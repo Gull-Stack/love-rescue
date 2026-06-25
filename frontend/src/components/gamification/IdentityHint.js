@@ -23,10 +23,10 @@ const shimmer = keyframes`
 `;
 
 const CATEGORY_GRADIENTS = {
-  appreciation: 'linear-gradient(135deg, #ff9a56 0%, #ff6b6b 50%, #ee5a24 100%)',
-  vulnerability: 'linear-gradient(135deg, #a18cd1 0%, #5f72bd 50%, #667eea 100%)',
-  communication: 'linear-gradient(135deg, #38ef7d 0%, #11998e 50%, #0f9b8e 100%)',
-  regulation: 'linear-gradient(135deg, #667eea 0%, #5c6bc0 50%, #3949ab 100%)',
+  appreciation: 'linear-gradient(135deg, #F0A55C 0%, #E08A3C 50%, #B86A22 100%)',
+  vulnerability: 'linear-gradient(135deg, #33455B 0%, #1B2735 50%, #0F1722 100%)',
+  communication: 'linear-gradient(135deg, #2DD4BF 0%, #0E9F8E 50%, #0A7368 100%)',
+  regulation: 'linear-gradient(135deg, #33455B 0%, #0E9F8E 50%, #2DD4BF 100%)',
 };
 
 const LOCAL_STORAGE_KEY = 'loverescue_identity_hints';
@@ -132,6 +132,7 @@ const IdentityHint = () => {
           <IconButton
             size="small"
             onClick={dismiss}
+            aria-label="Dismiss"
             sx={{
               position: 'absolute',
               top: 8,

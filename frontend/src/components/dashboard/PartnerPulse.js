@@ -13,9 +13,9 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { gratitudeApi } from '../../services/api';
 
 const pulse = keyframes`
-  0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(14, 159, 142, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(14, 159, 142, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(14, 159, 142, 0); }
 `;
 
 const heartBeat = keyframes`
@@ -95,7 +95,7 @@ const PartnerPulse = ({
           transition: 'all 0.2s',
           '&:hover': {
             borderColor: 'primary.main',
-            bgcolor: 'rgba(233, 30, 99, 0.04)',
+            bgcolor: 'rgba(224, 138, 60, 0.06)',
           },
         }}
       >
@@ -165,7 +165,7 @@ const PartnerPulse = ({
               width: 14,
               height: 14,
               borderRadius: '50%',
-              bgcolor: partnerActive ? '#4caf50' : '#9e9e9e',
+              bgcolor: partnerActive ? '#0E9F8E' : '#9e9e9e',
               border: '2px solid white',
             }}
           />
@@ -189,12 +189,13 @@ const PartnerPulse = ({
         <IconButton
           onClick={handleSendNudge}
           disabled={sending || sent}
+          aria-label="Send encouragement"
           sx={{
-            bgcolor: sent ? 'success.light' : 'rgba(233, 30, 99, 0.1)',
+            bgcolor: sent ? 'success.light' : 'rgba(224, 138, 60, 0.12)',
             color: sent ? 'white' : 'primary.main',
             animation: sent ? `${heartBeat} 1s ease-in-out` : 'none',
             '&:hover': {
-              bgcolor: sent ? 'success.light' : 'rgba(233, 30, 99, 0.2)',
+              bgcolor: sent ? 'success.light' : 'rgba(224, 138, 60, 0.22)',
             },
           }}
         >

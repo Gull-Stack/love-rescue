@@ -25,7 +25,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { useAuth } from '../../contexts/AuthContext';
 import { strategiesApi, calendarApi } from '../../services/api';
-import { sectionColors } from '../../theme';
+import { sectionColors, brandGradients } from '../../theme';
 import EmptyState from '../../components/common/EmptyState';
 import { trackEvent } from '../../utils/analytics';
 
@@ -296,7 +296,7 @@ const Strategies = () => {
                         />
                       </ListItem>
                       {goalWhy && (
-                        <Box sx={{ ml: 9, mr: 2, mb: 1.5, p: 1.5, bgcolor: 'grey.50', borderRadius: 2, borderLeft: '3px solid #f5576c' }}>
+                        <Box sx={{ ml: 9, mr: 2, mb: 1.5, p: 1.5, bgcolor: 'grey.50', borderRadius: 2, borderLeft: '3px solid #E08A3C' }}>
                           <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
                             💡 <strong>Why:</strong> {goalWhy}
                           </Typography>
@@ -359,7 +359,7 @@ const Strategies = () => {
                             />
                           </ListItem>
                           {actWhy && (
-                            <Box sx={{ ml: 9, mr: 2, mb: 1, p: 1.5, bgcolor: 'grey.50', borderRadius: 2, borderLeft: '3px solid #f5576c' }}>
+                            <Box sx={{ ml: 9, mr: 2, mb: 1, p: 1.5, bgcolor: 'grey.50', borderRadius: 2, borderLeft: '3px solid #E08A3C' }}>
                               <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
                                 💡 <strong>Why:</strong> {actWhy}
                               </Typography>
@@ -381,7 +381,7 @@ const Strategies = () => {
           subtitle="Complete a few assessments and we'll build a plan just for you"
           ctaText="Take Assessment"
           onCta={() => navigate('/assessments')}
-          gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+          gradient={brandGradients.hero}
         />
       )}
     </Box>

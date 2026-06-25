@@ -30,7 +30,7 @@ const LoadingScreen = () => (
           position: 'absolute',
           inset: 0,
           borderRadius: '50%',
-          background: 'conic-gradient(from 0deg, #e91e63, #9c27b0, #e91e6300)',
+          background: 'conic-gradient(from 0deg, #0E9F8E, #E08A3C, #0E9F8E00)',
           WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 0)',
           mask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 0)',
           animation: `${ring} 0.9s linear infinite`,
