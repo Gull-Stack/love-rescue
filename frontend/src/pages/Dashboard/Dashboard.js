@@ -12,7 +12,6 @@ import {
   Tooltip,
   Snackbar,
   Collapse,
-  LinearProgress,
   Skeleton,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -38,6 +37,7 @@ import {
   PartnerPulse,
   TodayCard,
   ProgressRings,
+  RelationshipHealth,
 } from '../../components/dashboard';
 import ActionCard from '../../components/dashboard/ActionCard';
 import IdentityHint from '../../components/gamification/IdentityHint';
@@ -248,6 +248,14 @@ const Dashboard = () => {
         overflowX: 'hidden',
       }}
     >
+      {/* Relationship health — THE hero. "Where things stand," front and center for everyone. */}
+      <RelationshipHealth
+        assessments={data.assessments}
+        progressRings={data.progressRings}
+        onViewDetails={() => navigate('/assessments')}
+        onStart={() => navigate('/assessments')}
+      />
+
       {/* Warm gradient header — PRACTICING+ states only */}
       {showHeader && (
         <Box
@@ -418,57 +426,6 @@ const Dashboard = () => {
         <Box sx={{ mb: 2 }}>
           <ProgressRings data={data.progressRings} />
         </Box>
-      )}
-
-      {/* System Health — BUILDING+ */}
-      {showProgressRings && data.progressRings && (
-        <Card sx={{ mb: 2, border: '1px solid', borderColor: 'divider' }}>
-          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-            <Typography
-              variant="subtitle2"
-              fontWeight="bold"
-              sx={{ color: 'text.primary', display: 'block', mb: 0.25 }}
-            >
-              Where you're growing
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-              Your strengths across the three things that make or break a marriage.
-            </Typography>
-            {[
-              { label: 'Connection', key: 'connection' },
-              { label: 'Communication', key: 'communication' },
-              { label: 'Conflict skills', key: 'conflict_skill' },
-            ].map(({ label, key }) => {
-              const pct = data.progressRings[key]?.percent ?? 0;
-              const barColor = pct > 80 ? '#22c55e' : pct >= 60 ? '#eab308' : '#ef4444';
-              return (
-                <Box key={key} sx={{ mb: key !== 'conflict_skill' ? 1.5 : 0 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                    <Typography variant="caption" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
-                      {label}
-                    </Typography>
-                    <Typography variant="caption" sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'text.secondary' }}>
-                      {pct}%
-                    </Typography>
-                  </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={pct}
-                    sx={{
-                      height: 6,
-                      borderRadius: 3,
-                      bgcolor: 'rgba(0,0,0,0.06)',
-                      '& .MuiLinearProgress-bar': {
-                        borderRadius: 3,
-                        bgcolor: barColor,
-                      },
-                    }}
-                  />
-                </Box>
-              );
-            })}
-          </CardContent>
-        </Card>
       )}
 
       {/* Strategy teaser — BUILDING state only */}
