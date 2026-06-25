@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, LinearProgress, Collapse, Paper, alpha } from '@mui/material';
+import { Box, Typography, LinearProgress, Collapse, Paper, ButtonBase, alpha } from '@mui/material';
 import { streaksApi } from '../../services/api';
 
 const XPBar = () => {
@@ -17,7 +17,13 @@ const XPBar = () => {
   const { xp = 0, level = 1, levelName = '', levelProgress = 0, xpToNextLevel = 100, currentStreak = 0 } = data;
 
   return (
-    <Box sx={{ mx: 1, minWidth: 120, maxWidth: 180, cursor: 'pointer' }} onClick={() => setExpanded(!expanded)}>
+    <Box sx={{ mx: 1, minWidth: 120, maxWidth: 180 }}>
+      <ButtonBase
+        onClick={() => setExpanded(!expanded)}
+        aria-label="Show level details"
+        aria-expanded={expanded}
+        sx={{ width: '100%', display: 'block', textAlign: 'inherit', borderRadius: 1 }}
+      >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
         <Typography variant="caption" fontWeight="bold" color="primary" sx={{ fontSize: '0.7rem' }}>
           Lv.{level}
@@ -35,6 +41,7 @@ const XPBar = () => {
           {xp}xp
         </Typography>
       </Box>
+      </ButtonBase>
 
       <Collapse in={expanded}>
         <Paper elevation={3} sx={{

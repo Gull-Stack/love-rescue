@@ -12,7 +12,9 @@ export async function initCapacitor() {
     const { StatusBar, Style } = await import('@capacitor/status-bar');
     await StatusBar.setStyle({ style: Style.Light });
     if (isIOS()) {
-      await StatusBar.setOverlaysWebView({ overlay: false });
+      // overlay: true => true native edge-to-edge; web view renders under the
+      // status bar so env(safe-area-inset-top) padding works (viewport-fit=cover).
+      await StatusBar.setOverlaysWebView({ overlay: true });
     }
   } catch (e) {
     console.warn('StatusBar plugin not available:', e);

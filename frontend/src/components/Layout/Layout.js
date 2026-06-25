@@ -93,7 +93,7 @@ function getBottomNavItems(userState, hasPartner) {
     case STATE.BUILDING:
       return [
         { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
-        { label: 'Log', path: '/daily', icon: <EditNoteIcon /> },
+        { label: 'Check-in', path: '/daily', icon: <EditNoteIcon /> },
         { label: 'Real Talk', path: '/real-talk', icon: <ChatBubbleOutlineIcon /> },
         { label: 'More', path: null, icon: <MoreHorizIcon /> },
       ];
@@ -104,15 +104,15 @@ function getBottomNavItems(userState, hasPartner) {
         return [
           { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
           { label: 'Journey', path: '/course', icon: <SchoolIcon /> },
-          { label: 'Log', path: '/daily', icon: <EditNoteIcon /> },
-          { label: 'Together', path: '/matchup', icon: <FavoriteIcon /> },
+          { label: 'Check-in', path: '/daily', icon: <EditNoteIcon /> },
+          { label: 'Matchup', path: '/matchup', icon: <FavoriteIcon /> },
           { label: 'More', path: null, icon: <MoreHorizIcon /> },
         ];
       }
       return [
         { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
         { label: 'Journey', path: '/course', icon: <SchoolIcon /> },
-        { label: 'Log', path: '/daily', icon: <EditNoteIcon /> },
+        { label: 'Check-in', path: '/daily', icon: <EditNoteIcon /> },
         { label: 'Gratitude', path: '/gratitude', icon: <VolunteerActivismIcon /> },
         { label: 'More', path: null, icon: <MoreHorizIcon /> },
       ];
@@ -149,6 +149,8 @@ function getDrawerSections(isPlatformAdmin, userState) {
         { label: 'Assessments', path: '/assessments', icon: <AssignmentIcon /> },
         { label: 'Matchup', path: '/matchup', icon: <FavoriteIcon /> },
         { label: 'Reports', path: '/reports', icon: <AssessmentIcon /> },
+        { label: 'Weekly Review', path: '/weekly-review', icon: <AssessmentIcon /> },
+        { label: 'Transformation Mirror', path: '/transformation', icon: <TipsAndUpdatesIcon /> },
       ],
     },
     {
@@ -389,13 +391,18 @@ const Layout = () => {
           flexGrow: 1,
           p: { xs: 1.5, sm: 2, md: 3 },
           mt: { xs: 'calc(48px + env(safe-area-inset-top))', md: '64px' },
-          mb: isMobile ? '56px' : 0,
+          // Bottom nav is ~56px tall AND adds pb: env(safe-area-inset-bottom);
+          // reserve both so content clears the home indicator on notched iPhones.
+          mb: isMobile ? 'calc(56px + env(safe-area-inset-bottom))' : 0,
           ml: isMobile ? 0 : '240px',
           background: isTherapistMode
             ? 'linear-gradient(180deg, #e8f6f8 0%, #f4fafb 30%)'
             : 'linear-gradient(180deg, #fff3f6 0%, #fafafa 30%)',
           backgroundAttachment: 'fixed',
-          minHeight: { xs: 'calc(100vh - 48px - env(safe-area-inset-top))', md: 'calc(100vh - 64px)' },
+          minHeight: {
+            xs: 'calc(100vh - 48px - env(safe-area-inset-top) - 56px - env(safe-area-inset-bottom))',
+            md: 'calc(100vh - 64px)',
+          },
           overflowX: 'hidden',
         }}
       >
@@ -439,7 +446,7 @@ const Layout = () => {
                   '&.Mui-selected .MuiSvgIcon-root': {
                     transform: 'scale(1.22) translateY(-1px)',
                     transition: 'transform 0.22s cubic-bezier(0.34,1.56,0.64,1)',
-                    filter: 'drop-shadow(0 3px 6px rgba(233,30,99,0.45))',
+                    filter: 'drop-shadow(0 3px 6px rgba(224,138,60,0.45))',
                   },
                   '&.Mui-selected': {
                     '& .MuiBottomNavigationAction-label': { fontWeight: 700 },

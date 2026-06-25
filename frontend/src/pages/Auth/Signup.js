@@ -134,6 +134,7 @@ const Signup = () => {
                   value={formData.firstName}
                   onChange={handleChange}
                   required
+                  autoComplete="given-name"
                 />
               </Grid>
               <Grid item xs={6}>
@@ -144,6 +145,7 @@ const Signup = () => {
                   value={formData.lastName}
                   onChange={handleChange}
                   required
+                  autoComplete="family-name"
                 />
               </Grid>
             </Grid>
@@ -189,20 +191,24 @@ const Signup = () => {
                   👩 Female
                 </Button>
               </Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{
-                  display: 'block',
-                  textAlign: 'center',
-                  mt: 0.5,
-                  cursor: 'pointer',
-                  '&:hover': { textDecoration: 'underline' }
-                }}
-                onClick={() => { setFormData({ ...formData, gender: 'prefer_not_to_say' }); setError(''); }}
-              >
-                {formData.gender === 'prefer_not_to_say' ? '✓ Prefer not to say' : 'Prefer not to say'}
-              </Typography>
+              <Box sx={{ textAlign: 'center', mt: 0.5 }}>
+                <Button
+                  variant="text"
+                  disableRipple
+                  onClick={() => { setFormData({ ...formData, gender: 'prefer_not_to_say' }); setError(''); }}
+                  sx={{
+                    minWidth: 0,
+                    p: 0,
+                    textTransform: 'none',
+                    fontSize: '0.75rem',
+                    fontWeight: 400,
+                    color: 'text.secondary',
+                    '&:hover': { backgroundColor: 'transparent', textDecoration: 'underline' }
+                  }}
+                >
+                  {formData.gender === 'prefer_not_to_say' ? '✓ Prefer not to say' : 'Prefer not to say'}
+                </Button>
+              </Box>
             </Box>
 
             <TextField
@@ -225,6 +231,7 @@ const Signup = () => {
               onChange={handleChange}
               margin="normal"
               required
+              autoComplete="new-password"
               helperText="At least 8 characters"
             />
             <TextField
@@ -236,6 +243,7 @@ const Signup = () => {
               onChange={handleChange}
               margin="normal"
               required
+              autoComplete="new-password"
             />
 
             <Button

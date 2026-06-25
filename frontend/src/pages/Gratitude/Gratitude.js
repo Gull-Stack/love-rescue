@@ -24,7 +24,8 @@ import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import ShareIcon from '@mui/icons-material/Share';
 import { gratitudeApi } from '../../services/api';
-import { sectionColors } from '../../theme';
+import { sectionColors, brandGradients } from '../../theme';
+import PageLoader from '../../components/common/PageLoader';
 
 const CATEGORIES = [
   { label: 'Kindness', value: 'kindness', emoji: '💛' },
@@ -39,12 +40,12 @@ const CATEGORIES = [
 // Rotating prompts so the daily gratitude entry never feels like a blank box.
 const GRATITUDE_PROMPTS = [
   "What's one thing you appreciate about your partner today?",
-  'When did she make your life easier this week — and did you say so?',
-  'What is something she does that you usually take for granted?',
-  'What first made you fall for her? Is a version of that still there?',
-  'What did she handle today that you didn\'t have to think about?',
-  'What\'s one small thing she said or did that stuck with you?',
-  'What strength of hers showed up this week?',
+  'When did your partner make your life easier this week — and did you say so?',
+  'What is something your partner does that you usually take for granted?',
+  'What first made you fall for them? Is a version of that still there?',
+  'What did your partner handle today that you didn\'t have to think about?',
+  'What\'s one small thing they said or did that stuck with you?',
+  'What strength of theirs showed up this week?',
 ];
 
 const Gratitude = () => {
@@ -95,7 +96,7 @@ const Gratitude = () => {
       setLoveNote(loveNoteRes.data.loveNote);
       setLoveNoteHasPartner(loveNoteRes.data.hasPartner !== false);
     } catch (err) {
-      setError('Failed to load gratitude data');
+      setError("We couldn't load your gratitude entries. Check your connection and refresh to try again.");
     } finally {
       setLoading(false);
     }
@@ -125,7 +126,7 @@ const Gratitude = () => {
       setStreakData(streakRes.data);
       setHistory(historyRes.data.entries);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to save gratitude entry');
+      setError(err.response?.data?.error || "We couldn't save your entry. Give it another try in a moment.");
     } finally {
       setSaving(false);
     }
@@ -141,7 +142,7 @@ const Gratitude = () => {
       // Update in history
       setHistory(prev => prev.map(e => e.id === entryId ? res.data.entry : e));
     } catch (err) {
-      setError('Failed to toggle sharing');
+      setError("We couldn't update sharing just now. Try again in a moment.");
     }
   };
 
@@ -153,11 +154,7 @@ const Gratitude = () => {
   const showForm = !todayEntry || editing;
 
   if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoader />;
   }
 
   return (
@@ -165,7 +162,7 @@ const Gratitude = () => {
       {/* Section Gradient Header */}
       <Box sx={{ background: sectionColors.gratitude.gradient, mx: -3, mt: -3, px: 3, pt: 3, pb: 2, mb: 2 }}>
         <Box display="flex" alignItems="center" gap={1} mb={1}>
-          <VolunteerActivismIcon sx={{ fontSize: 32, color: '#f59e0b' }} />
+          <VolunteerActivismIcon sx={{ fontSize: 32, color: 'secondary.main' }} />
           <Typography variant="h4" fontWeight="bold">
             Daily Gratitude
           </Typography>
@@ -191,18 +188,16 @@ const Gratitude = () => {
         <Grid item xs={12}>
           <Card
             sx={{
-              background: showForm
-                ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fcd34d 100%)'
-                : 'linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%)',
+              background: brandGradients.warm,
               border: '1px solid',
-              borderColor: '#f59e0b',
+              borderColor: 'secondary.light',
             }}
           >
             <CardContent sx={{ p: 3 }}>
               {showForm ? (
                 /* Entry Form */
                 <>
-                  <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ color: '#92400e' }}>
+                  <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ color: 'secondary.dark' }}>
                     {todayEntry ? 'Edit Your Gratitude' : GRATITUDE_PROMPTS[new Date().getDate() % GRATITUDE_PROMPTS.length]}
                   </Typography>
 
@@ -222,7 +217,7 @@ const Gratitude = () => {
                     }}
                   />
 
-                  <Typography variant="subtitle2" sx={{ mb: 1, color: '#92400e' }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1, color: 'secondary.dark' }}>
                     Category (optional)
                   </Typography>
                   <Box display="flex" flexWrap="wrap" gap={1} mb={2}>
@@ -235,7 +230,7 @@ const Gratitude = () => {
                         variant={category === cat.value ? 'filled' : 'outlined'}
                         sx={{
                           fontWeight: category === cat.value ? 'bold' : 'normal',
-                          '&:hover': { bgcolor: '#fef3c7' },
+                          '&:hover': { bgcolor: 'rgba(224, 138, 60, 0.12)' },
                         }}
                       />
                     ))}
@@ -247,11 +242,7 @@ const Gratitude = () => {
                       startIcon={saving ? <CircularProgress size={20} /> : <SaveIcon />}
                       onClick={handleSubmit}
                       disabled={saving || !text.trim()}
-                      sx={{
-                        bgcolor: '#f59e0b',
-                        color: '#fff',
-                        '&:hover': { bgcolor: '#d97706' },
-                      }}
+                      color="secondary"
                     >
                       {saving ? 'Saving...' : todayEntry ? 'Update' : 'Save Gratitude'}
                     </Button>
@@ -267,10 +258,10 @@ const Gratitude = () => {
                 <>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                     <Box flex={1}>
-                      <Typography variant="overline" sx={{ color: '#92400e' }}>
+                      <Typography variant="overline" sx={{ color: 'secondary.dark' }}>
                         Today's Gratitude ✨
                       </Typography>
-                      <Typography variant="body1" sx={{ mt: 1, mb: 1, fontSize: '1.1rem', color: '#78350f' }}>
+                      <Typography variant="body1" sx={{ mt: 1, mb: 1, fontSize: '1.1rem', color: 'text.primary' }}>
                         "{todayEntry.text}"
                       </Typography>
                       <Box display="flex" alignItems="center" gap={1} mt={1}>
@@ -278,7 +269,7 @@ const Gratitude = () => {
                           <Chip
                             label={`${CATEGORIES.find(c => c.value === todayEntry.category)?.emoji || '✨'} ${todayEntry.category}`}
                             size="small"
-                            sx={{ bgcolor: '#fef3c7', color: '#92400e' }}
+                            sx={{ bgcolor: 'rgba(224, 138, 60, 0.12)', color: 'secondary.dark' }}
                           />
                         )}
                       </Box>
@@ -288,13 +279,13 @@ const Gratitude = () => {
                         <IconButton
                           aria-label={todayEntry.isShared ? 'Unshare with partner' : 'Share with partner'}
                           onClick={() => handleToggleShare(todayEntry.id)}
-                          sx={{ color: todayEntry.isShared ? '#e11d48' : '#9ca3af' }}
+                          sx={{ color: todayEntry.isShared ? 'secondary.main' : 'text.secondary' }}
                         >
                           {todayEntry.isShared ? <FavoriteIcon /> : <FavoriteBorderIcon />}
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Edit">
-                        <IconButton aria-label="Edit gratitude entry" onClick={() => setEditing(true)} sx={{ color: '#92400e' }}>
+                        <IconButton aria-label="Edit gratitude entry" onClick={() => setEditing(true)} sx={{ color: 'secondary.dark' }}>
                           <EditIcon />
                         </IconButton>
                       </Tooltip>
@@ -313,8 +304,8 @@ const Gratitude = () => {
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={12} sm={4} sx={{ textAlign: 'center' }}>
                   <Box display="flex" alignItems="center" justifyContent="center" gap={1}>
-                    <LocalFireDepartmentIcon sx={{ fontSize: 40, color: '#ef4444' }} />
-                    <Typography variant="h3" fontWeight="bold" sx={{ color: '#ef4444' }}>
+                    <LocalFireDepartmentIcon sx={{ fontSize: 40, color: 'secondary.main' }} />
+                    <Typography variant="h3" fontWeight="bold" sx={{ color: 'secondary.main' }}>
                       {streakData.currentStreak}
                     </Typography>
                   </Box>
@@ -347,11 +338,9 @@ const Gratitude = () => {
         <Grid item xs={12}>
           <Card
             sx={{
-              background: loveNote
-                ? 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 30%, #fbcfe8 100%)'
-                : 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+              background: brandGradients.warm,
               border: '2px solid',
-              borderColor: loveNote ? '#f9a8d4' : '#f3e8ff',
+              borderColor: loveNote ? 'secondary.light' : 'divider',
               borderRadius: 3,
               position: 'relative',
               overflow: 'visible',
@@ -362,7 +351,7 @@ const Gratitude = () => {
                 variant="h6"
                 fontWeight="bold"
                 gutterBottom
-                sx={{ color: '#9d174d', display: 'flex', alignItems: 'center', gap: 1 }}
+                sx={{ color: 'secondary.dark', display: 'flex', alignItems: 'center', gap: 1 }}
               >
                 💌 Your Weekly Love Note
               </Typography>
@@ -370,15 +359,15 @@ const Gratitude = () => {
               {loveNote ? (
                 <>
                   <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle1" sx={{ color: '#be185d', fontWeight: 600 }}>
+                    <Typography variant="subtitle1" sx={{ color: 'secondary.dark', fontWeight: 600 }}>
                       From {loveNote.fromName}
                     </Typography>
-                    <Typography variant="caption" sx={{ color: '#9d174d', opacity: 0.7 }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', opacity: 0.9 }}>
                       {loveNote.weekOf}
                     </Typography>
                   </Box>
 
-                  <Divider sx={{ mb: 2, borderColor: '#f9a8d4' }} />
+                  <Divider sx={{ mb: 2, borderColor: 'secondary.light' }} />
 
                   {loveNote.entries.map((entry, idx) => (
                     <Box
@@ -386,36 +375,37 @@ const Gratitude = () => {
                       sx={{
                         mb: 2,
                         pl: 2,
-                        borderLeft: '3px solid #f9a8d4',
+                        borderLeft: '3px solid',
+                        borderColor: 'secondary.light',
                       }}
                     >
                       <Typography
                         variant="body1"
-                        sx={{ color: '#831843', fontStyle: 'italic', mb: 0.5 }}
+                        sx={{ color: 'text.primary', fontStyle: 'italic', mb: 0.5 }}
                       >
                         "{entry.text}"
                       </Typography>
                       <Box display="flex" alignItems="center" gap={1}>
-                        <Typography variant="caption" sx={{ color: '#9d174d', opacity: 0.6 }}>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                           {new Date(entry.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                         </Typography>
                         {entry.category && (
                           <Chip
                             label={`${CATEGORIES.find(c => c.value === entry.category)?.emoji || '✨'} ${entry.category}`}
                             size="small"
-                            sx={{ bgcolor: 'rgba(249, 168, 212, 0.3)', color: '#9d174d', height: 22 }}
+                            sx={{ bgcolor: 'rgba(224, 138, 60, 0.15)', color: 'secondary.dark', height: 22 }}
                           />
                         )}
                       </Box>
                     </Box>
                   ))}
 
-                  <Divider sx={{ mb: 2, borderColor: '#f9a8d4' }} />
+                  <Divider sx={{ mb: 2, borderColor: 'secondary.light' }} />
 
                   <Typography
                     variant="body2"
                     sx={{
-                      color: '#9d174d',
+                      color: 'secondary.dark',
                       fontWeight: 500,
                       textAlign: 'center',
                       fontStyle: 'italic',
@@ -425,11 +415,11 @@ const Gratitude = () => {
                   </Typography>
                 </>
               ) : loveNoteHasPartner ? (
-                <Typography variant="body1" sx={{ color: '#9d174d', textAlign: 'center', py: 2 }}>
+                <Typography variant="body1" sx={{ color: 'text.secondary', textAlign: 'center', py: 2 }}>
                   No love note yet this week. When your partner shares their gratitudes, you'll see them here 💛
                 </Typography>
               ) : (
-                <Typography variant="body1" sx={{ color: '#9d174d', textAlign: 'center', py: 2 }}>
+                <Typography variant="body1" sx={{ color: 'text.secondary', textAlign: 'center', py: 2 }}>
                   Connect with your partner to receive weekly love notes
                 </Typography>
               )}
@@ -441,7 +431,7 @@ const Gratitude = () => {
         {hasPartner && sharedEntries.length > 0 && (
           <Grid item xs={12}>
             <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <FavoriteIcon sx={{ color: '#e11d48' }} />
+              <FavoriteIcon sx={{ color: 'secondary.main' }} />
               From Your Partner
             </Typography>
             <Grid container spacing={2}>
@@ -449,22 +439,23 @@ const Gratitude = () => {
                 <Grid item xs={12} sm={6} key={entry.id}>
                   <Card
                     sx={{
-                      background: 'linear-gradient(135deg, #fce7f3 0%, #fdf2f8 100%)',
-                      border: '1px solid #f9a8d4',
+                      background: brandGradients.warm,
+                      border: '1px solid',
+                      borderColor: 'secondary.light',
                     }}
                   >
                     <CardContent>
                       <Typography variant="caption" color="text.secondary">
                         {formatDate(entry.date)}
                       </Typography>
-                      <Typography variant="body1" sx={{ mt: 0.5, color: '#831843' }}>
+                      <Typography variant="body1" sx={{ mt: 0.5, color: 'text.primary' }}>
                         "{entry.text}"
                       </Typography>
                       {entry.category && (
                         <Chip
                           label={entry.category}
                           size="small"
-                          sx={{ mt: 1, bgcolor: '#fce7f3', color: '#9d174d' }}
+                          sx={{ mt: 1, bgcolor: 'rgba(224, 138, 60, 0.15)', color: 'secondary.dark' }}
                         />
                       )}
                     </CardContent>
@@ -494,7 +485,7 @@ const Gratitude = () => {
                         <Box display="flex" alignItems="center" gap={0.5}>
                           {entry.isShared && (
                             <Tooltip title="Shared with partner">
-                              <ShareIcon sx={{ fontSize: 16, color: '#e11d48' }} />
+                              <ShareIcon sx={{ fontSize: 16, color: 'secondary.main' }} />
                             </Tooltip>
                           )}
                           <Tooltip title={entry.isShared ? 'Unshare' : 'Share with partner'}>
@@ -502,7 +493,7 @@ const Gratitude = () => {
                               size="small"
                               aria-label={entry.isShared ? 'Unshare with partner' : 'Share with partner'}
                               onClick={() => handleToggleShare(entry.id)}
-                              sx={{ color: entry.isShared ? '#e11d48' : '#d1d5db' }}
+                              sx={{ color: entry.isShared ? 'secondary.main' : 'text.disabled' }}
                             >
                               {entry.isShared ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
                             </IconButton>

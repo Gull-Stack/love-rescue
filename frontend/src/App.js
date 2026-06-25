@@ -117,7 +117,10 @@ function App() {
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       StatusBar.setStyle({ style: Style.Light });
-      StatusBar.setOverlaysWebView({ overlay: false });
+      // overlay: true => web view goes edge-to-edge under the status bar so the
+      // env(safe-area-inset-top) padding in Layout actually takes effect (matches
+      // viewport-fit=cover in index.html).
+      StatusBar.setOverlaysWebView({ overlay: true });
     }
   }, []);
 

@@ -37,6 +37,7 @@ import {
   Edit as EditIcon,
 } from '@mui/icons-material';
 import { courseApi } from '../../services/api';
+import PageLoader from '../../components/common/PageLoader';
 
 const WeekDetail = () => {
   const navigate = useNavigate();
@@ -82,7 +83,7 @@ const WeekDetail = () => {
         setWeekData(stratRes.data.weekData);
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load week data');
+      setError(err.response?.data?.error || "We couldn't load this week. Check your connection and refresh to try again.");
     } finally {
       setLoading(false);
     }
@@ -96,7 +97,7 @@ const WeekDetail = () => {
       setPracticeNotes('');
       fetchData(); // Refresh data
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to log practice');
+      setError(err.response?.data?.error || "We couldn't save that just now. Give it another try in a moment.");
     } finally {
       setSubmitting(false);
     }
@@ -109,7 +110,7 @@ const WeekDetail = () => {
       setReflectionDialog(false);
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to save reflection');
+      setError(err.response?.data?.error || "We couldn't save your reflection. Give it another try in a moment.");
     } finally {
       setSubmitting(false);
     }
@@ -126,7 +127,7 @@ const WeekDetail = () => {
         fetchData();
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to advance week');
+      setError(err.response?.data?.error || "We couldn't move you to the next week just yet. Give it another try in a moment.");
     } finally {
       setSubmitting(false);
     }
@@ -136,11 +137,7 @@ const WeekDetail = () => {
   const displayWeek = weekNumber ? parseInt(weekNumber) : progress?.currentWeek;
 
   if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoader />;
   }
 
   if (!weekData) {
@@ -229,7 +226,7 @@ const WeekDetail = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="h6" fontWeight="bold" gutterBottom>
-            Skills to Learn
+            What you'll get good at
           </Typography>
           <List disablePadding>
             {weekData.skills?.map((skill, idx) => (
@@ -281,7 +278,7 @@ const WeekDetail = () => {
                 fullWidth
                 onClick={() => setPracticeDialog(true)}
               >
-                Log Today's Practice
+                Mark it done
               </Button>
             </>
           )}
@@ -345,13 +342,13 @@ const WeekDetail = () => {
           onClick={() => setAdvanceDialog(true)}
           sx={{ mb: 3 }}
         >
-          Complete Week & Advance
+          Finish this week
         </Button>
       )}
 
       {/* Practice Dialog */}
       <Dialog open={practiceDialog} onClose={() => setPracticeDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Log Today's Practice</DialogTitle>
+        <DialogTitle>Mark it done</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1 }}>
             <FormControlLabel
@@ -361,7 +358,7 @@ const WeekDetail = () => {
                   onChange={(e) => setPracticeCompleted(e.target.checked)}
                 />
               }
-              label="I practiced today's skill"
+              label="I worked on this today"
             />
             <TextField
               fullWidth
