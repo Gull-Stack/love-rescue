@@ -11,6 +11,7 @@ import {
   Chip,
   Alert,
 } from '@mui/material';
+import PageLoader from '../../components/common/PageLoader';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
@@ -52,7 +53,7 @@ const Matchup = () => {
       setStatus(statusRes.data);
       setMatchup(matchupRes.data.matchup);
     } catch (err) {
-      setError('Failed to load matchup data');
+      setError("We couldn't load your matchup. Check your connection and refresh to try again.");
     } finally {
       setLoading(false);
     }
@@ -73,18 +74,14 @@ const Matchup = () => {
       // Also generate strategies
       await strategiesApi.generate();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to generate matchup');
+      setError(err.response?.data?.error || "We couldn't build your matchup just now. Give it another try in a moment.");
     } finally {
       setGenerating(false);
     }
   };
 
   if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoader />;
   }
 
   if (!relationship?.hasPartner) {
@@ -118,7 +115,7 @@ const Matchup = () => {
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>
-              Assessment Progress
+              Where you two stand
             </Typography>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
@@ -231,7 +228,7 @@ const Matchup = () => {
                 <CardContent>
                   <Box display="flex" alignItems="center" gap={1} mb={2}>
                     <WarningIcon color="warning" />
-                    <Typography variant="h6">Areas to Work On</Typography>
+                    <Typography variant="h6">Where it gets hard</Typography>
                   </Box>
                   {matchup.misses?.length > 0 ? (
                     matchup.misses.map((miss, idx) => (
@@ -260,7 +257,7 @@ const Matchup = () => {
               disabled={generating || !status?.canGenerateMatchup}
               sx={{ mr: 2 }}
             >
-              {generating ? 'Regenerating...' : 'Regenerate'}
+              {generating ? 'Refreshing...' : 'Refresh'}
             </Button>
             <Button variant="contained" onClick={() => navigate('/strategies')}>
               View Strategies
@@ -283,7 +280,7 @@ const Matchup = () => {
               onClick={handleGenerate}
               disabled={generating}
             >
-              {generating ? <CircularProgress size={24} /> : 'Generate Matchup Score'}
+              {generating ? <CircularProgress size={24} /> : 'See your matchup'}
             </Button>
           </CardContent>
         </Card>

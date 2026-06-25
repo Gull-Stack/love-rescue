@@ -51,9 +51,9 @@ export const PartnerStatusCard = ({ onNudge }) => {
 
   if (!status?.hasPartner) {
     return (
-      <div className="bg-gradient-to-r from-pink-900/30 to-purple-900/30 rounded-xl p-4 border border-pink-500/20">
+      <div className="bg-gradient-to-r from-slate-800/40 to-slate-900/40 rounded-xl p-4 border border-[#33455B]">
         <div className="flex items-center gap-3">
-          <span className="text-3xl">💕</span>
+          <span className="text-3xl" aria-hidden="true">💕</span>
           <div>
             <p className="text-white font-medium">Invite your partner!</p>
             <p className="text-gray-400 text-sm">Share your journey together</p>
@@ -80,10 +80,14 @@ export const PartnerStatusCard = ({ onNudge }) => {
       {/* Partner avatar and status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${
-            partnerLoggedToday ? 'bg-green-500/20' : 'bg-gray-700'
-          }`}>
-            {partnerLoggedToday ? '✅' : '😴'}
+          <div
+            className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${
+              partnerLoggedToday ? 'bg-[#0E9F8E]/20' : 'bg-gray-700'
+            }`}
+            role="img"
+            aria-label={partnerLoggedToday ? 'Logged today' : 'Has not logged yet'}
+          >
+            <span aria-hidden="true">{partnerLoggedToday ? '✅' : '😴'}</span>
           </div>
           <div>
             <p className="text-white font-bold">{partnerName}</p>
@@ -96,8 +100,8 @@ export const PartnerStatusCard = ({ onNudge }) => {
         {/* Partner streak */}
         {partnerStreak > 0 && (
           <div className="text-center">
-            <p className="text-2xl">🔥</p>
-            <p className="text-xs text-gray-400">{partnerStreak} day</p>
+            <p className="text-2xl" aria-hidden="true">🔥</p>
+            <p className="text-xs text-gray-400">{partnerStreak} day streak</p>
           </div>
         )}
       </div>
@@ -112,17 +116,18 @@ export const PartnerStatusCard = ({ onNudge }) => {
         <motion.button
           onClick={handleNudge}
           disabled={nudging}
-          className="mt-3 w-full py-2.5 bg-pink-600 hover:bg-pink-500 disabled:bg-gray-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+          aria-label={nudging ? 'Sending gentle nudge' : 'Send gentle nudge to partner'}
+          className="mt-3 w-full py-2.5 bg-[#0E9F8E] hover:bg-[#0A7368] disabled:bg-gray-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
           whileTap={{ scale: 0.98 }}
         >
           {nudging ? (
             <>
-              <span className="animate-spin">💕</span>
+              <span className="animate-spin" aria-hidden="true">💕</span>
               Sending...
             </>
           ) : (
             <>
-              <span>💌</span>
+              <span aria-hidden="true">💌</span>
               Send Gentle Nudge
             </>
           )}
@@ -190,14 +195,14 @@ export const MatchupScoreCard = () => {
 
   if (!matchup.bothLogged) {
     return (
-      <div className="bg-gradient-to-r from-purple-900/30 to-indigo-900/30 rounded-xl p-6 border border-purple-500/20">
+      <div className="bg-gradient-to-r from-slate-800/40 to-slate-900/40 rounded-xl p-6 border border-[#33455B]">
         <div className="text-center">
-          <span className="text-4xl mb-2 block">💕</span>
+          <span className="text-4xl mb-2 block" aria-hidden="true">💕</span>
           <h3 className="text-white font-bold text-lg mb-1">Today's Matchup</h3>
           <p className="text-gray-400 text-sm">{matchup.message}</p>
           <div className="mt-4 h-4 bg-gray-700 rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-pink-500 to-purple-500"
+              className="h-full bg-gradient-to-r from-[#0E9F8E] to-[#E08A3C]"
               initial={{ width: 0 }}
               animate={{ width: matchup.userLogged || matchup.partnerLogged ? '50%' : '0%' }}
               transition={{ duration: 0.5 }}
@@ -221,22 +226,23 @@ export const MatchupScoreCard = () => {
   return (
     <>
       <motion.div
-        className="bg-gradient-to-r from-purple-900/30 to-indigo-900/30 rounded-xl p-6 border border-purple-500/20"
+        className="bg-gradient-to-r from-slate-800/40 to-slate-900/40 rounded-xl p-6 border border-[#33455B]"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
       >
         <div className="text-center">
-          <span className="text-4xl mb-2 block">💝</span>
+          <span className="text-4xl mb-2 block" aria-hidden="true">💝</span>
           <h3 className="text-white font-bold text-lg mb-4">Today's Matchup</h3>
           
           {!revealed ? (
             <motion.button
               onClick={handleReveal}
-              className="px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-bold rounded-xl text-lg shadow-lg hover:shadow-xl transition-shadow"
+              aria-label="Reveal your alignment score"
+              className="px-8 py-4 bg-gradient-to-r from-[#0E9F8E] to-[#E08A3C] text-white font-bold rounded-xl text-lg shadow-lg hover:shadow-xl transition-shadow"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              ✨ Reveal Your Alignment ✨
+              <span aria-hidden="true">✨ </span>Reveal Your Alignment<span aria-hidden="true"> ✨</span>
             </motion.button>
           ) : (
             <motion.div
@@ -270,8 +276,8 @@ export const MatchupScoreCard = () => {
                   />
                   <defs>
                     <linearGradient id="matchupGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#ec4899" />
-                      <stop offset="100%" stopColor="#8b5cf6" />
+                      <stop offset="0%" stopColor="#0E9F8E" />
+                      <stop offset="100%" stopColor="#E08A3C" />
                     </linearGradient>
                   </defs>
                 </svg>
@@ -293,11 +299,15 @@ export const MatchupScoreCard = () => {
               {/* Mood comparison */}
               <div className="flex justify-center gap-8 mt-4">
                 <div className="text-center">
-                  <p className="text-2xl">{getMoodEmoji(matchup.userMood)}</p>
+                  <p className="text-2xl" role="img" aria-label={`Your mood: ${getMoodLabel(matchup.userMood)}`}>
+                    <span aria-hidden="true">{getMoodEmoji(matchup.userMood)}</span>
+                  </p>
                   <p className="text-xs text-gray-400">You</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl">{getMoodEmoji(matchup.partnerMood)}</p>
+                  <p className="text-2xl" role="img" aria-label={`Partner's mood: ${getMoodLabel(matchup.partnerMood)}`}>
+                    <span aria-hidden="true">{getMoodEmoji(matchup.partnerMood)}</span>
+                  </p>
                   <p className="text-xs text-gray-400">Partner</p>
                 </div>
               </div>
@@ -316,6 +326,15 @@ function getMoodEmoji(score) {
   if (score >= 4) return '😐';
   if (score >= 2) return '😔';
   return '😢';
+}
+
+// Helper: Get screen-reader label for mood score
+function getMoodLabel(score) {
+  if (score >= 8) return 'great';
+  if (score >= 6) return 'good';
+  if (score >= 4) return 'okay';
+  if (score >= 2) return 'low';
+  return 'very low';
 }
 
 export default { PartnerStatusCard, MatchupScoreCard };

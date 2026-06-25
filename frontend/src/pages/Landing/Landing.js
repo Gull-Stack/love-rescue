@@ -19,6 +19,7 @@ import {
   ListItemText,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { brandGradients } from '../../theme';
 
 // Icons
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -48,13 +49,14 @@ import PodcastsIcon from '@mui/icons-material/Podcasts';
 import MicIcon from '@mui/icons-material/Mic';
 
 // ─── CONSTANTS ───────────────────────────────────────────────
-const DARK_BG = '#0d0221';
-const DARK_BG_2 = '#1a0a2e';
-const DARK_BG_3 = '#140720';
-const ACCENT_PINK = '#e91e63';
-const ACCENT_PURPLE = '#9c27b0';
-const ACCENT_GRADIENT = 'linear-gradient(135deg, #e91e63 0%, #9c27b0 100%)';
-const ACCENT_GRADIENT_HOVER = 'linear-gradient(135deg, #f4407a 0%, #b040d0 100%)';
+// Grounded brand palette: deep slate backgrounds, amber action, teal accent.
+const DARK_BG = '#0F1722';   // slate dark
+const DARK_BG_2 = '#1B2735'; // slate primary
+const DARK_BG_3 = '#0F1722'; // slate dark (deepest section)
+const ACCENT_AMBER = '#E08A3C';  // action / CTA
+const ACCENT_TEAL = '#0E9F8E';   // success / accent
+const ACCENT_GRADIENT = brandGradients.action;        // amber CTA gradient
+const ACCENT_GRADIENT_HOVER = 'linear-gradient(135deg, #B86A22 0%, #E08A3C 100%)'; // amber dark→base
 
 const programs = [
   {
@@ -62,7 +64,7 @@ const programs = [
     subtitle: '4 Scientific Assessments',
     description: 'Discover your attachment style, personality dynamics, wellness behaviors, and closeness patterns through research-backed questionnaires.',
     icon: <AssignmentIcon sx={{ fontSize: 40 }} />,
-    color: '#e91e63',
+    color: '#E08A3C',
     tag: 'Foundation',
   },
   {
@@ -70,7 +72,7 @@ const programs = [
     subtitle: '14-Week Guided Course',
     description: 'Receive personalized daily insights based on your unique assessment profile. 98 days of science-backed relationship wisdom delivered to you.',
     icon: <LightbulbIcon sx={{ fontSize: 40 }} />,
-    color: '#ff9800',
+    color: '#F0A55C',
     tag: 'Daily Growth',
   },
   {
@@ -78,7 +80,7 @@ const programs = [
     subtitle: 'Curated Expert Content',
     description: 'Watch hand-picked educational videos from leading relationship scientists, therapists, and TED speakers. Track your streak and build consistency.',
     icon: <OndemandVideoIcon sx={{ fontSize: 40 }} />,
-    color: '#2196f3',
+    color: '#33455B',
     tag: 'Education',
   },
   {
@@ -86,7 +88,7 @@ const programs = [
     subtitle: 'Compatibility Deep-Dive',
     description: 'See where you and your partner align and where you can grow together. Data-driven insights into your relationship dynamics.',
     icon: <InsightsIcon sx={{ fontSize: 40 }} />,
-    color: '#4caf50',
+    color: '#0E9F8E',
     tag: 'Together',
   },
   {
@@ -94,7 +96,7 @@ const programs = [
     subtitle: 'Personalized Action Plans',
     description: 'Weekly and cycle-based strategy plans tailored to your relationship profile. Actionable goals with progress tracking built in.',
     icon: <PsychologyIcon sx={{ fontSize: 40 }} />,
-    color: '#9c27b0',
+    color: '#B86A22',
     tag: 'Action',
   },
   {
@@ -102,7 +104,7 @@ const programs = [
     subtitle: 'Guided Video Sessions',
     description: 'Schedule weekly 30-minute facilitated discussions with neutral guides via Google Meet. Structured conversations, not therapy.',
     icon: <VideocamIcon sx={{ fontSize: 40 }} />,
-    color: '#00bcd4',
+    color: '#2DD4BF',
     tag: 'Premium',
   },
 ];
@@ -213,7 +215,7 @@ const Landing = () => {
         right: 0,
         zIndex: 1200,
         transition: 'all 0.3s ease',
-        bgcolor: scrolled ? 'rgba(13, 2, 33, 0.95)' : 'transparent',
+        bgcolor: scrolled ? 'rgba(15, 23, 34, 0.95)' : 'transparent',
         backdropFilter: scrolled ? 'blur(20px)' : 'none',
         borderBottom: scrolled ? '1px solid rgba(255,255,255,0.08)' : 'none',
       }}
@@ -233,7 +235,7 @@ const Landing = () => {
             sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
-            <FavoriteIcon sx={{ color: ACCENT_PINK, fontSize: 32 }} />
+            <FavoriteIcon sx={{ color: ACCENT_AMBER, fontSize: 32 }} />
             <Typography
               variant="h6"
               sx={{
@@ -256,7 +258,7 @@ const Landing = () => {
                   component="a"
                   onClick={() => scrollTo(link.href)}
                   sx={{
-                    color: 'rgba(255,255,255,0.75)',
+                    color: 'rgba(255,255,255,0.92)',
                     cursor: 'pointer',
                     fontSize: '0.9rem',
                     fontWeight: 500,
@@ -368,9 +370,9 @@ const Landing = () => {
         justifyContent: 'center',
         overflow: 'hidden',
         background: `
-          radial-gradient(ellipse at 20% 50%, rgba(233,30,99,0.15) 0%, transparent 50%),
-          radial-gradient(ellipse at 80% 20%, rgba(156,39,176,0.12) 0%, transparent 50%),
-          radial-gradient(ellipse at 50% 80%, rgba(233,30,99,0.08) 0%, transparent 50%),
+          radial-gradient(ellipse at 20% 50%, rgba(224,138,60,0.15) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 20%, rgba(14,159,142,0.12) 0%, transparent 50%),
+          radial-gradient(ellipse at 50% 80%, rgba(224,138,60,0.08) 0%, transparent 50%),
           linear-gradient(180deg, ${DARK_BG} 0%, ${DARK_BG_2} 50%, ${DARK_BG_3} 100%)
         `,
       }}
@@ -387,7 +389,7 @@ const Landing = () => {
             width: '600px',
             height: '600px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(233,30,99,0.06) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(224,138,60,0.06) 0%, transparent 70%)',
             top: '-10%',
             right: '-10%',
             animation: 'float 20s ease-in-out infinite',
@@ -398,7 +400,7 @@ const Landing = () => {
             width: '400px',
             height: '400px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(156,39,176,0.06) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(14,159,142,0.06) 0%, transparent 70%)',
             bottom: '-5%',
             left: '-5%',
             animation: 'float 15s ease-in-out infinite reverse',
@@ -434,12 +436,12 @@ const Landing = () => {
           label="SCIENCE-BACKED RELATIONSHIP TRANSFORMATION"
           sx={{
             mb: 4,
-            bgcolor: 'rgba(233,30,99,0.15)',
-            color: ACCENT_PINK,
+            bgcolor: 'rgba(224,138,60,0.15)',
+            color: ACCENT_AMBER,
             fontWeight: 600,
             fontSize: { xs: '0.65rem', md: '0.75rem' },
             letterSpacing: '0.1em',
-            border: '1px solid rgba(233,30,99,0.3)',
+            border: '1px solid rgba(224,138,60,0.3)',
             px: 2,
             py: 2.5,
           }}
@@ -475,7 +477,7 @@ const Landing = () => {
         {/* Subheadline */}
         <Typography
           sx={{
-            color: 'rgba(255,255,255,0.7)',
+            color: 'rgba(255,255,255,0.92)',
             fontSize: { xs: '1.05rem', md: '1.35rem' },
             maxWidth: '680px',
             mx: 'auto',
@@ -505,10 +507,10 @@ const Landing = () => {
               borderRadius: '50px',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
-              boxShadow: '0 4px 30px rgba(233,30,99,0.4)',
+              boxShadow: '0 4px 30px rgba(224,138,60,0.4)',
               '&:hover': {
                 background: ACCENT_GRADIENT_HOVER,
-                boxShadow: '0 6px 40px rgba(233,30,99,0.5)',
+                boxShadow: '0 6px 40px rgba(224,138,60,0.5)',
                 transform: 'translateY(-2px)',
               },
               transition: 'all 0.3s ease',
@@ -545,14 +547,13 @@ const Landing = () => {
             justifyContent: 'center',
             gap: { xs: 3, md: 5 },
             flexWrap: 'wrap',
-            opacity: 0.6,
           }}
         >
           {['Based on Gottman Research', 'HIPAA Compliant', '14-Day Free Trial', 'Cancel Anytime'].map(
             (item) => (
               <Box key={item} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <CheckCircleIcon sx={{ color: '#4caf50', fontSize: 16 }} />
-                <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 500 }}>
+                <CheckCircleIcon sx={{ color: ACCENT_TEAL, fontSize: 16 }} />
+                <Typography sx={{ color: 'rgba(255,255,255,0.92)', fontSize: '0.8rem', fontWeight: 500 }}>
                   {item}
                 </Typography>
               </Box>
@@ -602,7 +603,7 @@ const Landing = () => {
                   {stat.value}
                 </Typography>
                 <Typography
-                  sx={{ color: 'rgba(255,255,255,0.5)', fontSize: { xs: '0.8rem', md: '0.9rem' }, fontWeight: 400 }}
+                  sx={{ color: 'rgba(255,255,255,0.75)', fontSize: { xs: '0.8rem', md: '0.9rem' }, fontWeight: 400 }}
                 >
                   {stat.label}
                 </Typography>
@@ -630,12 +631,12 @@ const Landing = () => {
             label="PROGRAMS"
             sx={{
               mb: 2,
-              bgcolor: 'rgba(156,39,176,0.15)',
-              color: ACCENT_PURPLE,
+              bgcolor: 'rgba(14,159,142,0.15)',
+              color: ACCENT_TEAL,
               fontWeight: 600,
               fontSize: '0.7rem',
               letterSpacing: '0.15em',
-              border: '1px solid rgba(156,39,176,0.3)',
+              border: '1px solid rgba(14,159,142,0.3)',
             }}
           />
           <Typography
@@ -662,7 +663,7 @@ const Landing = () => {
           </Typography>
           <Typography
             sx={{
-              color: 'rgba(255,255,255,0.5)',
+              color: 'rgba(255,255,255,0.72)',
               fontSize: { xs: '1rem', md: '1.15rem' },
               maxWidth: '600px',
               mx: 'auto',
@@ -731,7 +732,7 @@ const Landing = () => {
                     {program.subtitle}
                   </Typography>
                   <Typography
-                    sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem', lineHeight: 1.6 }}
+                    sx={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.9rem', lineHeight: 1.6 }}
                   >
                     {program.description}
                   </Typography>
@@ -765,7 +766,7 @@ const Landing = () => {
           width: '500px',
           height: '500px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(233,30,99,0.04) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(224,138,60,0.04) 0%, transparent 70%)',
         }}
       />
 
@@ -775,12 +776,12 @@ const Landing = () => {
             label="HOW IT WORKS"
             sx={{
               mb: 2,
-              bgcolor: 'rgba(233,30,99,0.15)',
-              color: ACCENT_PINK,
+              bgcolor: 'rgba(224,138,60,0.15)',
+              color: ACCENT_AMBER,
               fontWeight: 600,
               fontSize: '0.7rem',
               letterSpacing: '0.15em',
-              border: '1px solid rgba(233,30,99,0.3)',
+              border: '1px solid rgba(224,138,60,0.3)',
             }}
           />
           <Typography
@@ -820,7 +821,7 @@ const Landing = () => {
                       right: -40,
                       width: 80,
                       height: 2,
-                      background: 'linear-gradient(90deg, rgba(233,30,99,0.3), rgba(156,39,176,0.3))',
+                      background: 'linear-gradient(90deg, rgba(224,138,60,0.35), rgba(14,159,142,0.35))',
                       display: { xs: 'none', md: 'block' },
                     }}
                   />
@@ -845,7 +846,7 @@ const Landing = () => {
                 >
                   {step.title}
                 </Typography>
-                <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem', lineHeight: 1.7 }}>
+                <Typography sx={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.9rem', lineHeight: 1.7 }}>
                   {step.description}
                 </Typography>
               </Box>
@@ -871,12 +872,12 @@ const Landing = () => {
               label="FEATURED"
               sx={{
                 mb: 2,
-                bgcolor: 'rgba(233,30,99,0.15)',
-                color: ACCENT_PINK,
+                bgcolor: 'rgba(224,138,60,0.15)',
+                color: ACCENT_AMBER,
                 fontWeight: 600,
                 fontSize: '0.7rem',
                 letterSpacing: '0.15em',
-                border: '1px solid rgba(233,30,99,0.3)',
+                border: '1px solid rgba(224,138,60,0.3)',
               }}
             />
             <Typography
@@ -903,7 +904,7 @@ const Landing = () => {
             </Typography>
             <Typography
               sx={{
-                color: 'rgba(255,255,255,0.6)',
+                color: 'rgba(255,255,255,0.85)',
                 fontSize: '1.05rem',
                 lineHeight: 1.8,
                 mb: 4,
@@ -920,8 +921,8 @@ const Landing = () => {
                 { icon: <AutoAwesomeIcon />, text: 'Personalized insights based on your unique assessment profile' },
               ].map((item) => (
                 <Box key={item.text} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box sx={{ color: ACCENT_PINK }}>{item.icon}</Box>
-                  <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.95rem' }}>
+                  <Box sx={{ color: ACCENT_TEAL }}>{item.icon}</Box>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.92)', fontSize: '0.95rem' }}>
                     {item.text}
                   </Typography>
                 </Box>
@@ -985,12 +986,12 @@ const Landing = () => {
             label="RESULTS"
             sx={{
               mb: 2,
-              bgcolor: 'rgba(76,175,80,0.15)',
-              color: '#4caf50',
+              bgcolor: 'rgba(14,159,142,0.15)',
+              color: ACCENT_TEAL,
               fontWeight: 600,
               fontSize: '0.7rem',
               letterSpacing: '0.15em',
-              border: '1px solid rgba(76,175,80,0.3)',
+              border: '1px solid rgba(14,159,142,0.3)',
             }}
           />
           <Typography
@@ -1035,11 +1036,11 @@ const Landing = () => {
               >
                 <CardContent sx={{ p: 3 }}>
                   <FormatQuoteIcon
-                    sx={{ color: ACCENT_PINK, fontSize: 32, opacity: 0.5, mb: 1 }}
+                    sx={{ color: ACCENT_AMBER, fontSize: 32, opacity: 0.6, mb: 1 }}
                   />
                   <Typography
                     sx={{
-                      color: 'rgba(255,255,255,0.75)',
+                      color: 'rgba(255,255,255,0.92)',
                       fontSize: '0.9rem',
                       lineHeight: 1.7,
                       mb: 3,
@@ -1050,7 +1051,7 @@ const Landing = () => {
                   </Typography>
                   <Box sx={{ display: 'flex', mb: 1 }}>
                     {[...Array(t.rating)].map((_, i) => (
-                      <StarIcon key={i} sx={{ color: '#ff9800', fontSize: 18 }} />
+                      <StarIcon key={i} sx={{ color: '#E08A3C', fontSize: 18 }} />
                     ))}
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -1069,7 +1070,7 @@ const Landing = () => {
                       <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: '0.85rem' }}>
                         {t.name}
                       </Typography>
-                      <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem' }}>
+                      <Typography sx={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.75rem' }}>
                         {t.location}
                       </Typography>
                     </Box>
@@ -1098,12 +1099,12 @@ const Landing = () => {
             label="PRICING"
             sx={{
               mb: 2,
-              bgcolor: 'rgba(233,30,99,0.15)',
-              color: ACCENT_PINK,
+              bgcolor: 'rgba(224,138,60,0.15)',
+              color: ACCENT_AMBER,
               fontWeight: 600,
               fontSize: '0.7rem',
               letterSpacing: '0.15em',
-              border: '1px solid rgba(233,30,99,0.3)',
+              border: '1px solid rgba(224,138,60,0.3)',
             }}
           />
           <Typography
@@ -1130,7 +1131,7 @@ const Landing = () => {
           </Typography>
           <Typography
             sx={{
-              color: 'rgba(255,255,255,0.5)',
+              color: 'rgba(255,255,255,0.72)',
               fontSize: '1.05rem',
               maxWidth: '500px',
               mx: 'auto',
@@ -1179,8 +1180,8 @@ const Landing = () => {
                   'Therapist Integration',
                 ].map((feature) => (
                   <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-                    <CheckCircleIcon sx={{ color: '#4caf50', fontSize: 18 }} />
-                    <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>
+                    <CheckCircleIcon sx={{ color: ACCENT_TEAL, fontSize: 18 }} />
+                    <Typography sx={{ color: 'rgba(255,255,255,0.88)', fontSize: '0.9rem' }}>
                       {feature}
                     </Typography>
                   </Box>
@@ -1213,8 +1214,8 @@ const Landing = () => {
           <Grid item xs={12} sm={6}>
             <Card
               sx={{
-                background: 'linear-gradient(135deg, rgba(233,30,99,0.08) 0%, rgba(156,39,176,0.08) 100%)',
-                border: '1px solid rgba(233,30,99,0.3)',
+                background: 'linear-gradient(135deg, rgba(224,138,60,0.10) 0%, rgba(14,159,142,0.08) 100%)',
+                border: '1px solid rgba(224,138,60,0.35)',
                 borderRadius: 4,
                 height: '100%',
                 position: 'relative',
@@ -1273,10 +1274,10 @@ const Landing = () => {
                   'Priority Support',
                 ].map((feature, i) => (
                   <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-                    <CheckCircleIcon sx={{ color: ACCENT_PINK, fontSize: 18 }} />
+                    <CheckCircleIcon sx={{ color: ACCENT_TEAL, fontSize: 18 }} />
                     <Typography
                       sx={{
-                        color: i === 0 ? '#fff' : 'rgba(255,255,255,0.7)',
+                        color: i === 0 ? '#fff' : 'rgba(255,255,255,0.88)',
                         fontSize: '0.9rem',
                         fontWeight: i === 0 ? 600 : 400,
                       }}
@@ -1296,10 +1297,10 @@ const Landing = () => {
                     py: 1.5,
                     fontWeight: 700,
                     borderRadius: '50px',
-                    boxShadow: '0 4px 20px rgba(233,30,99,0.3)',
+                    boxShadow: '0 4px 20px rgba(224,138,60,0.3)',
                     '&:hover': {
                       background: ACCENT_GRADIENT_HOVER,
-                      boxShadow: '0 6px 30px rgba(233,30,99,0.4)',
+                      boxShadow: '0 6px 30px rgba(224,138,60,0.4)',
                     },
                   }}
                 >
@@ -1319,7 +1320,7 @@ const Landing = () => {
       sx={{
         py: { xs: 8, md: 10 },
         background: `
-          radial-gradient(ellipse at 50% 50%, rgba(233,30,99,0.15) 0%, transparent 60%),
+          radial-gradient(ellipse at 50% 50%, rgba(224,138,60,0.15) 0%, transparent 60%),
           ${DARK_BG_2}
         `,
         textAlign: 'center',
@@ -1350,7 +1351,7 @@ const Landing = () => {
         </Typography>
         <Typography
           sx={{
-            color: 'rgba(255,255,255,0.6)',
+            color: 'rgba(255,255,255,0.85)',
             fontSize: { xs: '1rem', md: '1.2rem' },
             maxWidth: '550px',
             mx: 'auto',
@@ -1376,10 +1377,10 @@ const Landing = () => {
             borderRadius: '50px',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
-            boxShadow: '0 4px 30px rgba(233,30,99,0.4)',
+            boxShadow: '0 4px 30px rgba(224,138,60,0.4)',
             '&:hover': {
               background: ACCENT_GRADIENT_HOVER,
-              boxShadow: '0 6px 40px rgba(233,30,99,0.5)',
+              boxShadow: '0 6px 40px rgba(224,138,60,0.5)',
               transform: 'translateY(-2px)',
             },
             transition: 'all 0.3s ease',
@@ -1410,7 +1411,7 @@ const Landing = () => {
           {/* Brand column */}
           <Grid item xs={12} md={4}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <FavoriteIcon sx={{ color: ACCENT_PINK, fontSize: 28 }} />
+              <FavoriteIcon sx={{ color: ACCENT_AMBER, fontSize: 28 }} />
               <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '1.2rem' }}>
                 Love Rescue
               </Typography>
@@ -1441,8 +1442,8 @@ const Landing = () => {
                   key={social.label}
                   aria-label={social.label}
                   sx={{
-                    color: 'rgba(255,255,255,0.3)',
-                    '&:hover': { color: ACCENT_PINK, bgcolor: 'rgba(233,30,99,0.08)' },
+                    color: 'rgba(255,255,255,0.45)',
+                    '&:hover': { color: ACCENT_AMBER, bgcolor: 'rgba(224,138,60,0.10)' },
                   }}
                 >
                   {social.icon}
@@ -1484,12 +1485,12 @@ const Landing = () => {
               <Typography
                 key={link}
                 sx={{
-                  color: 'rgba(255,255,255,0.4)',
+                  color: 'rgba(255,255,255,0.62)',
                   fontSize: '0.85rem',
                   mb: 1,
                   cursor: 'pointer',
                   transition: 'color 0.2s',
-                  '&:hover': { color: 'rgba(255,255,255,0.7)' },
+                  '&:hover': { color: '#fff' },
                 }}
               >
                 {link}
@@ -1506,12 +1507,12 @@ const Landing = () => {
               <Typography
                 key={link}
                 sx={{
-                  color: 'rgba(255,255,255,0.4)',
+                  color: 'rgba(255,255,255,0.62)',
                   fontSize: '0.85rem',
                   mb: 1,
                   cursor: 'pointer',
                   transition: 'color 0.2s',
-                  '&:hover': { color: 'rgba(255,255,255,0.7)' },
+                  '&:hover': { color: '#fff' },
                 }}
               >
                 {link}
@@ -1528,12 +1529,12 @@ const Landing = () => {
               <Typography
                 key={link}
                 sx={{
-                  color: 'rgba(255,255,255,0.4)',
+                  color: 'rgba(255,255,255,0.62)',
                   fontSize: '0.85rem',
                   mb: 1,
                   cursor: 'pointer',
                   transition: 'color 0.2s',
-                  '&:hover': { color: 'rgba(255,255,255,0.7)' },
+                  '&:hover': { color: '#fff' },
                 }}
               >
                 {link}

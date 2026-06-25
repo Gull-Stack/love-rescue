@@ -1,0 +1,16 @@
+/* Global baseline. Kept minimal — MUI theme owns the look. */
+
+/* Respect the OS "Reduce Motion" setting (iOS Accessibility, macOS, etc.).
+   Neutralizes the app's CSS keyframe animations (pulse / glow / shimmer /
+   bounce / flicker / confetti-fall) for users who ask for less motion.
+   canvas-confetti is gated separately via disableForReducedMotion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

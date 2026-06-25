@@ -7,6 +7,7 @@ import {
   Typography,
   Chip,
   Alert,
+  Button,
   IconButton,
   Tooltip,
   Snackbar,
@@ -42,6 +43,7 @@ import ActionCard from '../../components/dashboard/ActionCard';
 import IdentityHint from '../../components/gamification/IdentityHint';
 import ExpertInsight from '../../components/gamification/ExpertInsight';
 import { assessmentLabel } from '../../utils/assessmentLabels';
+import { brandGradients } from '../../theme';
 
 // User progress states
 const STATE = {
@@ -92,10 +94,12 @@ const Dashboard = () => {
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
   const [bonusCelebration, setBonusCelebration] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const partnerName = relationship?.partner?.firstName || null;
 
   const fetchDashboardData = useCallback(async () => {
+    setLoadError(false);
     try {
       const [
         promptRes,
@@ -154,7 +158,9 @@ const Dashboard = () => {
         realTalkCount: realTalkRes.data?.pagination?.total || 0,
       });
     } catch {
-      // Errors handled via fallback data in individual .catch() blocks
+      // Individual calls fall back gracefully; a throw here means something
+      // broader failed (e.g. network) — surface it instead of a silent blank.
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -265,6 +271,21 @@ const Dashboard = () => {
         strategy={data.strategy}
       />
 
+      {/* Non-blocking load-failure banner — no more silent blank dashboard. */}
+      {loadError && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 2, borderRadius: 3 }}
+          action={
+            <Button color="inherit" size="small" onClick={fetchDashboardData}>
+              Retry
+            </Button>
+          }
+        >
+          Some things didn&apos;t load. Check your connection and try again.
+        </Alert>
+      )}
+
       {/* Warm gradient header — PRACTICING+ states only */}
       {showHeader && (
         <Box
@@ -359,7 +380,7 @@ const Dashboard = () => {
                   flexShrink: 0, width: 24, height: 24, borderRadius: '50%',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: '0.75rem', fontWeight: 700,
-                  bgcolor: step.done ? '#22c55e' : step.active ? 'primary.main' : 'rgba(0,0,0,0.08)',
+                  bgcolor: step.done ? 'success.main' : step.active ? 'secondary.main' : 'rgba(0,0,0,0.08)',
                   color: step.done || step.active ? '#fff' : 'text.secondary',
                 }}>
                   {step.done ? '✓' : step.n}
@@ -421,7 +442,7 @@ const Dashboard = () => {
                       return 'Complete';
                     })()}
                     size="small"
-                    sx={{ bgcolor: '#667eea15', color: '#667eea', fontWeight: 600, textTransform: 'capitalize' }}
+                    sx={{ bgcolor: 'rgba(14,159,142,0.10)', color: 'success.dark', fontWeight: 600, textTransform: 'capitalize' }}
                   />
                 </Box>
               </CardContent>
@@ -489,26 +510,27 @@ const Dashboard = () => {
               onClick={() => navigate('/gratitude')}
               sx={{
                 mb: 2,
-                background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #fbcfe8 100%)',
-                border: '2px solid #f9a8d4',
+                background: brandGradients.warm,
+                border: '1px solid',
+                borderColor: 'secondary.light',
                 cursor: 'pointer',
                 borderRadius: 3,
                 transition: 'transform 0.2s, box-shadow 0.2s',
                 '&:hover': {
                   transform: 'translateY(-2px)',
-                  boxShadow: '0 8px 25px rgba(244, 114, 182, 0.25)',
+                  boxShadow: '0 8px 25px rgba(224, 138, 60, 0.22)',
                 },
               }}
             >
               <CardContent sx={{ p: 2.5 }}>
-                <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#9d174d', mb: 0.5 }}>
+                <Typography variant="subtitle1" fontWeight="bold" sx={{ color: 'secondary.dark', mb: 0.5 }}>
                   💌 Love Note from {data.loveNote.fromName}
                 </Typography>
                 {data.loveNote.entries?.[0] && (
                   <Typography
                     variant="body2"
                     sx={{
-                      color: '#831843',
+                      color: 'text.primary',
                       fontStyle: 'italic',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -537,19 +559,20 @@ const Dashboard = () => {
             mb: 2,
             cursor: 'pointer',
             borderRadius: 3,
-            background: 'linear-gradient(135deg, #fdf2f8, #ede9fe)',
-            border: '1px solid #e9d5ff',
-            '&:hover': { boxShadow: '0 4px 20px rgba(139,92,246,0.15)' },
+            background: brandGradients.cool,
+            border: '1px solid',
+            borderColor: 'divider',
+            '&:hover': { boxShadow: '0 4px 20px rgba(14,159,142,0.15)' },
           }}
         >
           <CardContent sx={{ p: 2.5 }}>
             <Box display="flex" alignItems="center" gap={1} mb={1}>
-              <CompareArrowsIcon sx={{ color: '#7c3aed' }} />
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#5b21b6' }}>
+              <CompareArrowsIcon sx={{ color: 'success.main' }} />
+              <Typography variant="subtitle1" fontWeight="bold" sx={{ color: 'primary.main' }}>
                 Transformation Mirror
               </Typography>
             </Box>
-            <Typography variant="body2" sx={{ color: '#6b21a8' }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               See your THEN vs NOW growth side by side
             </Typography>
           </CardContent>

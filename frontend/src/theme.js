@@ -117,6 +117,17 @@ const theme = createTheme({
   },
 });
 
+// Reusable brand gradients — the ONLY place gradients should be defined.
+// Pages import these instead of hand-rolling pink/purple/rainbow strings, so
+// the grounded slate/amber/teal identity stays coherent everywhere.
+export const brandGradients = {
+  hero: 'linear-gradient(135deg, #1B2735 0%, #33455B 100%)',   // deep slate — headers / dark heroes
+  action: 'linear-gradient(135deg, #E08A3C 0%, #F0A55C 100%)', // amber — primary action / CTAs / FAB
+  success: 'linear-gradient(135deg, #0E9F8E 0%, #2DD4BF 100%)', // teal — wins / progress / celebration
+  warm: 'linear-gradient(135deg, #FBF1E6 0%, #ffffff 100%)',   // soft amber wash — love note / warm cards
+  cool: 'linear-gradient(135deg, #E9EDF2 0%, #ffffff 100%)',   // soft slate wash — neutral cards
+};
+
 // Subtle per-section washes in the grounded palette (cool slate / warm amber /
 // teal), keeping each area distinguishable without the old pastel-pink feel.
 export const sectionColors = {

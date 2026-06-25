@@ -7,6 +7,7 @@ import {
   Box,
   Typography,
   IconButton,
+  ButtonBase,
   Zoom,
   keyframes,
 } from '@mui/material';
@@ -14,6 +15,7 @@ import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import { logsApi } from '../../services/api';
 import { celebrate } from '../../utils/celebrate';
+import { hapticLight } from '../../utils/haptics';
 
 const bounce = keyframes`
   0%, 100% { transform: scale(1); }
@@ -75,7 +77,7 @@ const QuickLogFAB = ({ onLogComplete, partnerName }) => {
         <Fab
           color="primary"
           aria-label="Quick log"
-          onClick={() => setOpen(true)}
+          onClick={() => { hapticLight(); setOpen(true); }}
           sx={{
             position: 'fixed',
             bottom: { xs: 80, sm: 32 }, // Above bottom nav on mobile
@@ -87,6 +89,9 @@ const QuickLogFAB = ({ onLogComplete, partnerName }) => {
             animation: `${bounce} 2s ease-in-out infinite`,
             '&:hover': {
               background: 'linear-gradient(135deg, #B86A22 0%, #E08A3C 100%)',
+            },
+            '&:active': {
+              transform: 'scale(0.92)',
             },
           }}
         >
@@ -131,19 +136,29 @@ const QuickLogFAB = ({ onLogComplete, partnerName }) => {
             }}
           >
             {moods.map((mood) => (
-              <Box
+              <ButtonBase
                 key={mood.value}
                 onClick={() => !submitting && handleMoodSelect(mood)}
+                disabled={submitting}
+                aria-label={`Mood: ${mood.label}`}
                 sx={{
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: 44,
+                  minHeight: 44,
+                  p: 1,
+                  borderRadius: 2,
                   cursor: submitting ? 'default' : 'pointer',
                   opacity: submitting && selectedMood !== mood.value ? 0.4 : 1,
                   transform: selectedMood === mood.value ? 'scale(1.2)' : 'scale(1)',
                   transition: 'all 0.2s ease',
                   '&:hover': !submitting && {
                     transform: 'scale(1.1)',
+                  },
+                  '&:active': {
+                    transform: 'scale(0.92)',
                   },
                 }}
               >
@@ -164,7 +179,7 @@ const QuickLogFAB = ({ onLogComplete, partnerName }) => {
                 >
                   {mood.label}
                 </Typography>
-              </Box>
+              </ButtonBase>
             ))}
           </Box>
 

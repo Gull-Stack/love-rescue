@@ -31,7 +31,7 @@ const RESULTS = {
   },
   avoidant: {
     title: 'You lean Avoidant',
-    body: 'Under stress you protect yourself by withdrawing. It keeps you steady, but your partner can read distance as “he doesn’t care.” The skill is staying in the room when it’s uncomfortable.',
+    body: 'Under stress you protect yourself by withdrawing. It keeps you steady, but your partner can read distance as not caring. The skill is staying in the room when it’s uncomfortable.',
   },
   secure: {
     title: 'You lean Secure',

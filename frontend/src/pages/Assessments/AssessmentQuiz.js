@@ -39,6 +39,8 @@ import StarIcon from '@mui/icons-material/Star';
 import { assessmentsApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { trackEvent } from '../../utils/analytics';
+import { brandGradients } from '../../theme';
+import PageLoader from '../../components/common/PageLoader';
 
 // ─── Assessment Metadata ──────────────────────────────────────────────────────
 const assessmentMeta = {
@@ -47,8 +49,8 @@ const assessmentMeta = {
     icon: '❤️',
     encouragement: 'There are no bad attachment styles — only patterns to understand.',
     scaleType: 'likert7',
-    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: '#667eea',
+    gradient: brandGradients.hero,
+    color: '#33455B',
     scaleLabels: {
       1: 'Strongly Disagree',
       2: 'Disagree',
@@ -64,8 +66,8 @@ const assessmentMeta = {
     icon: '🧠',
     encouragement: 'Every personality type has unique gifts to offer a relationship.',
     scaleType: 'likert7',
-    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: '#764ba2',
+    gradient: brandGradients.hero,
+    color: '#1B2735',
     scaleLabels: {
       1: 'Not at all like me',
       2: 'Rarely like me',
@@ -81,8 +83,8 @@ const assessmentMeta = {
     icon: '💝',
     encouragement: 'There is no wrong way to love — just YOUR way.',
     scaleType: 'forced_choice',
-    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: '#e91e63',
+    gradient: brandGradients.hero,
+    color: '#33455B',
     scaleLabels: {},
   },
   human_needs: {
@@ -90,8 +92,8 @@ const assessmentMeta = {
     icon: '⚡',
     encouragement: 'All six needs are valid. Knowing yours is power.',
     scaleType: 'likert7',
-    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: '#ff9800',
+    gradient: brandGradients.hero,
+    color: '#33455B',
     scaleLabels: {
       1: 'Never',
       2: 'Rarely',
@@ -107,8 +109,8 @@ const assessmentMeta = {
     icon: '🏠',
     encouragement: 'Awareness of patterns is the first step to changing them.',
     scaleType: 'likert7',
-    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    color: '#f5576c',
+    gradient: brandGradients.action,
+    color: '#E08A3C',
     scaleLabels: {
       1: 'Strongly Disagree',
       2: 'Disagree',
@@ -124,8 +126,8 @@ const assessmentMeta = {
     icon: '🎯',
     encouragement: 'EQ is a skill, not a fixed trait. You can always grow.',
     scaleType: 'likert7',
-    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    color: '#9c27b0',
+    gradient: brandGradients.action,
+    color: '#B86A22',
     scaleLabels: {
       1: 'Never',
       2: 'Rarely',
@@ -141,8 +143,8 @@ const assessmentMeta = {
     icon: '⚔️',
     encouragement: 'No style is always right — mastery means choosing wisely.',
     scaleType: 'likert7',
-    gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    color: '#4facfe',
+    gradient: brandGradients.success,
+    color: '#0E9F8E',
     scaleLabels: {
       1: 'Strongly Disagree',
       2: 'Disagree',
@@ -158,8 +160,8 @@ const assessmentMeta = {
     icon: '🌱',
     encouragement: 'Growth means learning to hold yourself AND stay connected.',
     scaleType: 'likert7',
-    gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    color: '#00c9a7',
+    gradient: brandGradients.success,
+    color: '#0A7368',
     scaleLabels: {
       1: 'Not at all true',
       2: 'Rarely true',
@@ -175,8 +177,8 @@ const assessmentMeta = {
     icon: '🧬',
     encouragement: 'Your body tells a story. This helps you listen — not diagnose.',
     scaleType: 'likert7',
-    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    color: '#e91e63',
+    gradient: 'linear-gradient(135deg, #33455B 0%, #0E9F8E 100%)',
+    color: '#0A7368',
     scaleLabels: {
       1: 'Strongly Disagree',
       2: 'Disagree',
@@ -192,8 +194,8 @@ const assessmentMeta = {
     icon: '💪',
     encouragement: 'Your physical health powers everything — including your love life.',
     scaleType: 'likert7',
-    gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-    color: '#00c9a7',
+    gradient: 'linear-gradient(135deg, #33455B 0%, #0E9F8E 100%)',
+    color: '#0A7368',
     scaleLabels: {
       1: 'Strongly Disagree',
       2: 'Disagree',
@@ -661,7 +663,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
               {typeof interpretation === 'object' && interpretation.emoji && (
                 <Typography variant="h5" component="span">{interpretation.emoji}</Typography>
               )}
-              <LightbulbIcon sx={{ color: '#ff9800' }} />
+              <LightbulbIcon sx={{ color: '#E08A3C' }} />
               <Typography variant="h6" fontWeight="bold">
                 {typeof interpretation === 'object' && interpretation.title 
                   ? interpretation.title 
@@ -707,8 +709,8 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                       p: 2, 
                       mt: 2, 
                       borderRadius: 2, 
-                      bgcolor: alpha('#4caf50', 0.04),
-                      borderLeft: '3px solid #4caf50'
+                      bgcolor: alpha('#0E9F8E', 0.04),
+                      borderLeft: '3px solid #0E9F8E'
                     }}
                   >
                     <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
@@ -765,7 +767,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                   </Paper>
                 )}
                 {interpretation.secondary && typeof interpretation.secondary === 'object' && (interpretation.secondary.description || interpretation.secondary.whatItMeans) && (
-                  <Paper elevation={0} sx={{ p: 2, mt: 1.5, borderRadius: 2, bgcolor: 'grey.50', borderLeft: '3px solid #9e9e9e' }}>
+                  <Paper elevation={0} sx={{ p: 2, mt: 1.5, borderRadius: 2, bgcolor: 'grey.50', borderLeft: '3px solid #5A6B7B' }}>
                     <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
                       {interpretation.secondary.emoji || '💜'} Secondary: {interpretation.secondary.title || (interpretation.secondary.name ? interpretation.secondary.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '')}
                     </Typography>
@@ -776,7 +778,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                 )}
                 {/* Overall insight / creator reframe */}
                 {interpretation.overallInsight && (
-                  <Paper elevation={0} sx={{ p: 2, mt: 2, borderRadius: 2, bgcolor: alpha('#ff9800', 0.04), borderLeft: '3px solid #ff9800' }}>
+                  <Paper elevation={0} sx={{ p: 2, mt: 2, borderRadius: 2, bgcolor: alpha('#E08A3C', 0.04), borderLeft: '3px solid #E08A3C' }}>
                     <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
                       🧠 Key Insight
                     </Typography>
@@ -786,7 +788,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                   </Paper>
                 )}
                 {interpretation.creatorReframe && (
-                  <Paper elevation={0} sx={{ p: 2, mt: 1.5, borderRadius: 2, bgcolor: alpha('#f5576c', 0.04), borderLeft: '3px solid #f5576c' }}>
+                  <Paper elevation={0} sx={{ p: 2, mt: 1.5, borderRadius: 2, bgcolor: alpha('#B86A22', 0.04), borderLeft: '3px solid #B86A22' }}>
                     <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
                       ⚔️ The Creator Mindset
                     </Typography>
@@ -836,7 +838,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
             <Card sx={{ flex: 1, borderRadius: 3 }}>
               <CardContent sx={{ p: 3 }}>
                 <Box display="flex" alignItems="center" gap={1} mb={2}>
-                  <TrendingUpIcon sx={{ color: '#ff9800' }} />
+                  <TrendingUpIcon sx={{ color: '#E08A3C' }} />
                   <Typography variant="h6" fontWeight="bold">
                     Growth Edges
                   </Typography>
@@ -849,7 +851,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
                     gap={1}
                     mb={1.5}
                   >
-                    <Typography sx={{ color: '#ff9800', mt: 0.2 }}>🌱</Typography>
+                    <Typography sx={{ color: '#E08A3C', mt: 0.2 }}>🌱</Typography>
                     <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
                       {typeof g === 'string' ? g : (g?.text || g?.description || JSON.stringify(g))}
                     </Typography>
@@ -923,13 +925,13 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
             p: 3,
             mb: 3,
             borderRadius: 3,
-            bgcolor: alpha('#ff9800', 0.06),
-            borderLeft: '4px solid #ff9800',
+            bgcolor: alpha('#E08A3C', 0.06),
+            borderLeft: '4px solid #E08A3C',
           }}
         >
           <Box display="flex" alignItems="center" gap={1} mb={1}>
-            <SelfImprovementIcon sx={{ color: '#ff9800' }} />
-            <Typography variant="subtitle2" fontWeight="bold" color="#e65100">
+            <SelfImprovementIcon sx={{ color: '#E08A3C' }} />
+            <Typography variant="subtitle2" fontWeight="bold" color="#B86A22">
               A Different Way to See This
             </Typography>
           </Box>
@@ -1010,8 +1012,8 @@ const AssessmentQuiz = () => {
     icon: '📝',
     encouragement: 'Be honest — your answers are just for you.',
     scaleType: 'likert7',
-    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: '#667eea',
+    gradient: brandGradients.hero,
+    color: '#33455B',
     scaleLabels: {
       1: 'Strongly Disagree',
       2: 'Disagree',
@@ -1152,8 +1154,9 @@ const AssessmentQuiz = () => {
 
       // 🎉 Confetti explosion + haptic on completion
       hapticSuccess();
-      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-      setTimeout(() => confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 } }), 300);
+      const brandConfettiColors = ['#0E9F8E', '#2DD4BF', '#E08A3C', '#F0A55C', '#33455B'];
+      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: brandConfettiColors });
+      setTimeout(() => confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 }, colors: brandConfettiColors }), 300);
       
       // +50 XP floating animation
       setShowXpAnimation(true);
@@ -1185,11 +1188,7 @@ const AssessmentQuiz = () => {
     (currentQuestion?.choices && currentQuestion.choices.length > 0);
 
   if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
-        <CircularProgress sx={{ color: meta.color }} />
-      </Box>
-    );
+    return <PageLoader />;
   }
 
   // ─── Result View ────────────────────────────────────────────────────────────
@@ -1217,8 +1216,8 @@ const AssessmentQuiz = () => {
               variant="h3"
               fontWeight="bold"
               sx={{
-                color: '#FFD700',
-                textShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                color: '#E08A3C',
+                textShadow: '0 2px 8px rgba(184,106,34,0.35)',
                 fontSize: '2.5rem',
               }}
             >

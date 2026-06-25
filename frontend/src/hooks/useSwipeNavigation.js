@@ -1,7 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const TAB_ROUTES = ['/dashboard', '/strategies', '/daily', '/matchup', '/settings'];
+// Core swipeable destinations. Keep this in sync with the primary bottom-nav
+// tabs in Layout.js so swiping never jumps to a page that isn't in the nav.
+const TAB_ROUTES = ['/dashboard', '/daily', '/real-talk', '/matchup', '/settings'];
 const SWIPE_THRESHOLD = 50;
 const VELOCITY_THRESHOLD = 0.3;
 const EDGE_EXCLUSION = 20; // px from left edge to avoid browser back gesture

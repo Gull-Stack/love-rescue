@@ -31,7 +31,8 @@ import SchoolIcon from '@mui/icons-material/School';
 import LockIcon from '@mui/icons-material/Lock';
 import { assessmentsApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { sectionColors } from '../../theme';
+import { sectionColors, brandGradients } from '../../theme';
+import PageLoader from '../../components/common/PageLoader';
 
 // ─── Assessment Type Definitions ──────────────────────────────────────────────
 const assessmentTypes = [
@@ -155,8 +156,8 @@ const categories = [
     tagline: 'Awareness is the first act of love.',
     description:
       'Before you can love someone well, you need to understand how YOU are wired. These assessments reveal your patterns — not to judge them, but to own them.',
-    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: '#667eea',
+    gradient: brandGradients.hero,
+    color: '#33455B',
   },
   {
     name: 'Own Yourself',
@@ -164,8 +165,8 @@ const categories = [
     tagline: 'You can\'t give what you don\'t have.',
     description:
       'Now that you see your patterns, it\'s time to take responsibility for them. These assessments measure where you\'re strong and where you have room to grow.',
-    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    color: '#f5576c',
+    gradient: brandGradients.action,
+    color: '#E08A3C',
   },
   {
     name: 'Grow Yourself',
@@ -173,8 +174,8 @@ const categories = [
     tagline: 'Growth is the price of admission to a great relationship.',
     description:
       'The most attractive thing you can do in a relationship is become a better version of yourself. These assessments show you the path forward.',
-    gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    color: '#00c9a7',
+    gradient: brandGradients.success,
+    color: '#0E9F8E',
   },
   {
     name: 'Fuel Yourself',
@@ -182,8 +183,8 @@ const categories = [
     tagline: 'Your body is the vehicle for your love.',
     description:
       'You can\'t pour from an empty cup. These assessments examine the physiological foundations — hormones, fitness, sleep, nutrition, energy — that power everything you bring to your relationship. Optional but powerful.',
-    gradient: 'linear-gradient(135deg, #f093fb 0%, #e91e63 100%)',
-    color: '#e91e63',
+    gradient: 'linear-gradient(135deg, #33455B 0%, #0E9F8E 100%)',
+    color: '#0A7368',
   },
 ];
 
@@ -255,7 +256,7 @@ const renderScoreSummary = (type, score) => {
           </Typography>
         )}
         {score.relationshipStyle && (
-          <Box sx={{ mb: 1, p: 1.5, bgcolor: 'grey.50', borderRadius: 2, borderLeft: '3px solid #f5576c' }}>
+          <Box sx={{ mb: 1, p: 1.5, bgcolor: 'grey.50', borderRadius: 2, borderLeft: '3px solid #E08A3C' }}>
             <Typography variant="caption" fontWeight="bold" display="block" gutterBottom>
               💡 What this means for your relationships:
             </Typography>
@@ -883,7 +884,7 @@ const CategorySection = ({
                               }),
                         }}
                       >
-                        {completed ? 'Retake Assessment' : 'Begin Assessment'}
+                        {completed ? 'Run it again' : 'See what this says about you'}
                       </Button>
                   </CardActions>
                 </Card>
@@ -972,11 +973,7 @@ const Assessments = () => {
   }, [completedCount, completedTypes]);
 
   if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
-        <CircularProgress />
-      </Box>
-    );
+    return <PageLoader />;
   }
 
   return (
@@ -1078,8 +1075,8 @@ const Assessments = () => {
             '& .MuiLinearProgress-bar': {
               borderRadius: 5,
               background: allCompleted
-                ? 'linear-gradient(90deg, #43e97b 0%, #38f9d7 100%)'
-                : 'linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+                ? brandGradients.success
+                : 'linear-gradient(90deg, #1B2735 0%, #33455B 50%, #E08A3C 100%)',
             },
           }}
         />
@@ -1093,7 +1090,7 @@ const Assessments = () => {
             p: 3,
             mb: 4,
             borderRadius: 3,
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: brandGradients.hero,
             color: 'white',
             cursor: 'pointer',
             transition: 'all 0.3s ease',
@@ -1146,7 +1143,7 @@ const Assessments = () => {
                 navigate(`/assessments/${recommendedNext.type}`);
               }}
             >
-              Start
+              See what this says about you
             </Button>
           </Box>
         </Paper>
@@ -1181,7 +1178,7 @@ const Assessments = () => {
               p: 4,
               textAlign: 'center',
               borderRadius: 3,
-              background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+              background: brandGradients.success,
               color: 'white',
               mt: 2,
             }}
@@ -1203,7 +1200,7 @@ const Assessments = () => {
                 onClick={() => navigate('/matchup')}
                 sx={{
                   bgcolor: 'white',
-                  color: '#00c9a7',
+                  color: '#0A7368',
                   fontWeight: 'bold',
                   '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
                 }}

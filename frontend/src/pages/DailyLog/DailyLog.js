@@ -18,7 +18,8 @@ import { hapticSuccess } from '../../utils/haptics';
 import { logsApi, streaksApi, gratitudeApi } from '../../services/api';
 import CelebrationToast from '../../components/gamification/CelebrationToast';
 import usePushNotifications from '../../hooks/usePushNotifications';
-import { celebration } from '../../components/gamification/Confetti';
+import { celebrate } from '../../utils/celebrate';
+import { brandGradients } from '../../theme';
 import MoodEmojiSlider from '../../components/gamification/MoodEmojiSlider';
 import EmotionChips from '../../components/gamification/EmotionChips';
 import StreakFlames from '../../components/gamification/StreakFlames';
@@ -27,14 +28,16 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const TOTAL_CARDS = 7;
 
+// On-brand card gradients — slate / teal / amber variations, each card
+// distinct but all grounded in the brand palette (no rainbow candy).
 const cardGradients = [
-  'linear-gradient(135deg, #667eea, #764ba2)',
-  'linear-gradient(135deg, #f093fb, #f5576c)',
-  'linear-gradient(135deg, #4facfe, #00f2fe)',
-  'linear-gradient(135deg, #43e97b, #38f9d7)',
-  'linear-gradient(135deg, #fa709a, #fee140)',
-  'linear-gradient(135deg, #a18cd1, #fbc2eb)',
-  'linear-gradient(135deg, #43e97b, #38f9d7)',
+  brandGradients.hero,                                          // 0 Mood — deep slate
+  brandGradients.success,                                       // 1 Connection — teal win
+  'linear-gradient(135deg, #0A7368 0%, #0E9F8E 100%)',         // 2 Interactions — deep teal
+  brandGradients.action,                                        // 3 Gratitude — amber warmth
+  'linear-gradient(135deg, #33455B 0%, #1B2735 100%)',         // 4 Emotions — slate, reversed
+  'linear-gradient(135deg, #B86A22 0%, #E08A3C 100%)',         // 5 Reflection — deep amber
+  brandGradients.success,                                       // 6 Done — teal celebration
 ];
 
 // White-on-gradient styling for MUI components
@@ -129,7 +132,7 @@ const DailyLog = () => {
   const partnerName = relationship?.partner?.firstName || 'your partner';
 
   useEffect(() => {
-    document.title = 'Daily Log | Love Rescue';
+    document.title = 'Check-in | Love Rescue';
     fetchTodayData();
     fetchStreakData();
     return () => {
@@ -181,7 +184,7 @@ const DailyLog = () => {
         // No log for today yet
       }
     } catch (err) {
-      setError('Failed to load data');
+      setError("Couldn't load your check-in — check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -230,7 +233,7 @@ const DailyLog = () => {
       setSubmitted(true);
 
       if (wasFirstLogToday) {
-        celebration();
+        celebrate({ big: true });
 
         const streakRes = await streaksApi.getStreak();
         const newStreak = streakRes.data;
@@ -248,7 +251,7 @@ const DailyLog = () => {
         setShowCelebration(true);
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to save log');
+      setError(err.response?.data?.error || "Couldn't save your check-in — check your connection and try again.");
       hasSubmittedRef.current = false;
     } finally {
       setSaving(false);
@@ -346,7 +349,7 @@ const DailyLog = () => {
       {/* Top bar: back + dots + skip */}
       <Box sx={{ display: 'flex', alignItems: 'center', px: 1, pt: 1 }}>
         {showBack ? (
-          <IconButton onClick={goBack} sx={{ color: '#fff' }}>
+          <IconButton onClick={goBack} aria-label="Go back to previous step" sx={{ color: '#fff', '&:active': { transform: 'scale(0.96)' } }}>
             <ArrowBackIcon />
           </IconButton>
         ) : <Box sx={{ width: 48 }} />}
@@ -384,12 +387,13 @@ const DailyLog = () => {
       sx={{
         mt: 4, px: 6, py: 1.5,
         bgcolor: '#fff',
-        color: '#333',
+        color: '#0F1722',
         fontWeight: 'bold',
         fontSize: '1.1rem',
         borderRadius: 3,
         textTransform: 'none',
         '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+        '&:active': { transform: 'scale(0.96)' },
       }}
     >
       {label}
@@ -409,7 +413,7 @@ const DailyLog = () => {
           onChange={handleMoodChange}
         />
       </Box>
-      <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', mt: 3 }}>
+      <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)', mt: 3 }}>
         Auto-advances after selection
       </Typography>
     </CardShell>
@@ -457,9 +461,11 @@ const DailyLog = () => {
             <IconButton
               onClick={() => handleCountChange('positiveCount', -1)}
               disabled={formData.positiveCount === 0}
+              aria-label="Remove one positive moment"
               sx={{
                 bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', width: 56, height: 56,
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
+                '&:active': { transform: 'scale(0.96)' },
                 '&.Mui-disabled': { color: 'rgba(255,255,255,0.3)' },
               }}
             >
@@ -470,9 +476,11 @@ const DailyLog = () => {
             </Typography>
             <IconButton
               onClick={() => handleCountChange('positiveCount', 1)}
+              aria-label="Add a positive moment"
               sx={{
-                bgcolor: '#fff', color: '#4facfe', width: 56, height: 56,
+                bgcolor: '#fff', color: '#0E9F8E', width: 56, height: 56,
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+                '&:active': { transform: 'scale(0.96)' },
               }}
             >
               <AddIcon sx={{ fontSize: 28 }} />
@@ -489,9 +497,11 @@ const DailyLog = () => {
             <IconButton
               onClick={() => handleCountChange('negativeCount', -1)}
               disabled={formData.negativeCount === 0}
+              aria-label="Remove one difficult moment"
               sx={{
                 bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', width: 56, height: 56,
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
+                '&:active': { transform: 'scale(0.96)' },
                 '&.Mui-disabled': { color: 'rgba(255,255,255,0.3)' },
               }}
             >
@@ -502,9 +512,11 @@ const DailyLog = () => {
             </Typography>
             <IconButton
               onClick={() => handleCountChange('negativeCount', 1)}
+              aria-label="Add a difficult moment"
               sx={{
-                bgcolor: '#fff', color: '#f5576c', width: 56, height: 56,
+                bgcolor: '#fff', color: '#33455B', width: 56, height: 56,
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+                '&:active': { transform: 'scale(0.96)' },
               }}
             >
               <AddIcon sx={{ fontSize: 28 }} />
@@ -627,7 +639,7 @@ const DailyLog = () => {
                   disabled={reminderOptIn === 'asking'}
                   startIcon={<NotificationsActiveIcon />}
                   sx={{
-                    bgcolor: '#fff', color: '#333', fontWeight: 'bold',
+                    bgcolor: '#fff', color: '#0F1722', fontWeight: 'bold',
                     '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
                   }}
                 >
@@ -648,7 +660,7 @@ const DailyLog = () => {
             variant="contained"
             onClick={() => { hasSubmittedRef.current = false; handleSubmit(); }}
             sx={{
-              mt: 3, bgcolor: '#fff', color: '#333', fontWeight: 'bold',
+              mt: 3, bgcolor: '#fff', color: '#0F1722', fontWeight: 'bold',
               '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
             }}
           >
@@ -696,7 +708,7 @@ const DailyLog = () => {
           setCurrentCard(0);
         }}
         sx={{
-          bgcolor: '#fff', color: '#333', fontWeight: 'bold',
+          bgcolor: '#fff', color: '#0F1722', fontWeight: 'bold',
           px: 4, py: 1.5, borderRadius: 3, textTransform: 'none',
           '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
         }}
