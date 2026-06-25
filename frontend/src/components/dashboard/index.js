@@ -5,3 +5,4 @@ export { default as PartnerPulse } from './PartnerPulse';
 export { default as TodayCard } from './TodayCard';
 export { default as ProgressRings } from './ProgressRings';
 export { default as RelationshipHealth } from './RelationshipHealth';
+export { default as ProgressJourney } from './ProgressJourney';

@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Chip,
   Alert,
   IconButton,
@@ -35,9 +34,9 @@ import {
   StreakHero,
   QuickLogFAB,
   PartnerPulse,
-  TodayCard,
   ProgressRings,
   RelationshipHealth,
+  ProgressJourney,
 } from '../../components/dashboard';
 import ActionCard from '../../components/dashboard/ActionCard';
 import IdentityHint from '../../components/gamification/IdentityHint';
@@ -254,6 +253,16 @@ const Dashboard = () => {
         progressRings={data.progressRings}
         onViewDetails={() => navigate('/assessments')}
         onStart={() => navigate('/assessments')}
+      />
+
+      {/* Where am I + what's next — the wayfinding/continue anchor. */}
+      <ProgressJourney
+        userState={userState}
+        assessmentsDone={assessmentsDone}
+        assessmentsToUnlock={3}
+        hasLoggedToday={data.hasLoggedToday}
+        hasGratitudeToday={!!data.gratitude}
+        strategy={data.strategy}
       />
 
       {/* Warm gradient header — PRACTICING+ states only */}
