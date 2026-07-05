@@ -4,6 +4,7 @@ const therapistService = {
   // Dashboard
   getDashboard: () => api.get('/therapist/dashboard'),
   getClients: (params) => api.get('/therapist/clients', { params }),
+  getOutcomes: () => api.get('/therapist/outcomes'),
   
   // Client progress
   getClient: (id) => api.get(`/therapist/clients/${id}`),

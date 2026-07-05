@@ -1,17 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Box, Typography, Card, CardContent, Grid, Chip, Button,
+  Box, Typography, Card, CardContent, Grid, Button,
   CircularProgress, Alert, ToggleButton, ToggleButtonGroup,
   Skeleton, Dialog, DialogTitle, DialogContent, DialogActions,
   FormControl, InputLabel, Select, MenuItem,
+  Table, TableBody, TableCell, TableHead, TableRow,
 } from '@mui/material';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import PeopleIcon from '@mui/icons-material/People';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import SchoolIcon from '@mui/icons-material/School';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -41,31 +45,34 @@ const TherapistDashboard = () => {
   const [pairing, setPairing] = useState(false);
   const [pairError, setPairError] = useState('');
 
-  useEffect(() => {
-    document.title = 'Therapist Dashboard | Love Rescue';
-    fetchData();
-  }, []);
-
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const [dashRes, clientsRes, alertsRes] = await Promise.all([
+      const [dashRes, clientsRes, alertsRes, outcomesRes] = await Promise.all([
         therapistService.getDashboard(),
         therapistService.getClients(),
         therapistService.getAlerts({ limit: 10, unreadOnly: true }),
+        // Outcomes are supplementary — don't fail the whole dashboard if they error.
+        therapistService.getOutcomes().catch(() => null),
       ]);
       setDashboard({
         stats: dashRes.data.stats || {},
         clients: clientsRes.data.clients || [],
         alerts: alertsRes.data.alerts || [],
+        outcomes: outcomesRes?.data?.outcomes || null,
       });
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load dashboard');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to load dashboard');
     } finally {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    document.title = 'Therapist Dashboard | Love Rescue';
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (
@@ -93,7 +100,7 @@ const TherapistDashboard = () => {
     );
   }
 
-  const { stats = {}, clients = [], alerts = [] } = dashboard || {};
+  const { stats = {}, clients = [], alerts = [], outcomes = null } = dashboard || {};
 
   const openBilling = async () => {
     setBillingLoading(true);
@@ -160,13 +167,13 @@ const TherapistDashboard = () => {
           <StatCard icon={<PeopleIcon />} label="Total Clients" value={stats.totalClients || 0} />
         </Grid>
         <Grid item xs={6} md={3}>
-          <StatCard icon={<TrendingUpIcon />} label="Active This Week" value={stats.activeThisWeek || 0} color="success.main" />
+          <StatCard icon={<NotificationsActiveIcon />} label="Unread Alerts" value={stats.unreadAlerts || 0} color="warning.main" />
         </Grid>
         <Grid item xs={6} md={3}>
-          <StatCard icon={<WarningAmberIcon />} label="Alerts" value={stats.alertsCount || 0} color="warning.main" />
+          <StatCard icon={<AssignmentIcon />} label="Pending Tasks" value={stats.pendingTasks || 0} color="secondary.main" />
         </Grid>
         <Grid item xs={6} md={3}>
-          <StatCard icon={<NotificationsActiveIcon />} label="Avg Progress" value={`${stats.avgProgress || 0}%`} color="secondary.main" />
+          <StatCard icon={<FavoriteIcon />} label="Linked Couples" value={couples.length} color="success.main" />
         </Grid>
       </Grid>
 
@@ -297,6 +304,82 @@ const TherapistDashboard = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Caseload Outcomes */}
+      {outcomes?.summary && (outcomes.summary.totalClients || 0) > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h5" sx={{ mb: 2 }}>Caseload Outcomes</Typography>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={6} sm={4} md={2.4}>
+              <StatCard icon={<SchoolIcon />} label="Active in Course" value={outcomes.summary.activeInCourse || 0} />
+            </Grid>
+            <Grid item xs={6} sm={4} md={2.4}>
+              <StatCard icon={<CheckCircleIcon />} label="Course Completed" value={outcomes.summary.courseCompleted || 0} color="success.main" />
+            </Grid>
+            <Grid item xs={6} sm={4} md={2.4}>
+              <StatCard
+                icon={<SchoolIcon />}
+                label="Avg Course Week"
+                value={outcomes.summary.avgCourseWeek != null ? outcomes.summary.avgCourseWeek : '—'}
+                color="secondary.main"
+              />
+            </Grid>
+            <Grid item xs={6} sm={4} md={2.4}>
+              <StatCard icon={<EmojiEventsIcon />} label="Milestones" value={outcomes.summary.totalMilestones || 0} color="success.main" />
+            </Grid>
+            <Grid item xs={6} sm={4} md={2.4}>
+              <StatCard icon={<WarningAmberIcon />} label="Crisis Alerts" value={outcomes.summary.totalCrisisAlerts || 0} color="error.main" />
+            </Grid>
+          </Grid>
+
+          {(outcomes.clients || []).length > 0 && (
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={600} gutterBottom>By Client</Typography>
+                <Box sx={{ overflowX: 'auto' }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Client</TableCell>
+                        <TableCell>Course Week</TableCell>
+                        <TableCell align="right">Assessments</TableCell>
+                        <TableCell align="right">Milestones</TableCell>
+                        <TableCell align="right">Crisis Alerts</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {outcomes.clients.map((oc) => {
+                        const roster = clients.find(c => c.id === oc.clientId);
+                        return (
+                          <TableRow key={oc.clientId} hover>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight={600}>{roster?.name || 'Client'}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              {oc.courseCompleted ? 'Completed' : oc.courseWeek != null ? `Week ${oc.courseWeek}` : 'Not enrolled'}
+                            </TableCell>
+                            <TableCell align="right">{oc.assessmentTypes || 0} types</TableCell>
+                            <TableCell align="right">
+                              <Typography variant="body2" color={oc.milestones ? 'success.main' : 'text.secondary'}>
+                                {oc.milestones || 0}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography variant="body2" color={oc.crisisAlerts ? 'error.main' : 'text.secondary'}>
+                                {oc.crisisAlerts || 0}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </Box>
+              </CardContent>
+            </Card>
+          )}
+        </Box>
+      )}
 
       {/* Alert Feed */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>

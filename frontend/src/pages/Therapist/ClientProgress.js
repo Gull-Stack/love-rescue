@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Card, CardContent, Grid, Button, Chip,
-  CircularProgress, Alert, Skeleton, IconButton, Tooltip,
+  Alert, Skeleton, IconButton,
 } from '@mui/material';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -13,9 +13,11 @@ import WhatshotIcon from '@mui/icons-material/Whatshot';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import ArticleIcon from '@mui/icons-material/Article';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import SentimentSatisfiedIcon from '@mui/icons-material/SentimentSatisfied';
 import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
 import SentimentNeutralIcon from '@mui/icons-material/SentimentNeutral';
+import SchoolIcon from '@mui/icons-material/School';
 import { useTheme } from '@mui/material/styles';
 import therapistService from '../../services/therapistService';
 import { AssessmentChart } from '../../components/therapist';
@@ -23,9 +25,35 @@ import { AssessmentChart } from '../../components/therapist';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
 
 const moodIcon = (val) => {
+  if (val == null) return <SentimentNeutralIcon sx={{ color: 'text.disabled' }} />;
   if (val >= 7) return <SentimentSatisfiedIcon sx={{ color: 'success.main' }} />;
   if (val >= 4) return <SentimentNeutralIcon sx={{ color: 'warning.main' }} />;
   return <SentimentDissatisfiedIcon sx={{ color: 'error.main' }} />;
+};
+
+/** Humanize an assessment type key like "gottman_checkup" → "Gottman Checkup". */
+const typeLabel = (type) =>
+  String(type || '')
+    .replace(/[_-]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+/**
+ * Group the flat assessment list ([{type, score, completedAt}]) into the
+ * series shape AssessmentChart expects: [{ type, label, scores: [{date, value}] }].
+ * Non-numeric scores (structured assessment results) are skipped.
+ */
+const groupAssessments = (assessments) => {
+  const byType = {};
+  for (const a of assessments) {
+    const value = typeof a.score === 'number' ? a.score : Number(a.score);
+    if (!Number.isFinite(value)) continue;
+    if (!byType[a.type]) byType[a.type] = { type: a.type, label: typeLabel(a.type), scores: [] };
+    byType[a.type].scores.push({ date: a.completedAt, value });
+  }
+  return Object.values(byType).map(series => ({
+    ...series,
+    scores: series.scores.sort((x, y) => new Date(x.date) - new Date(y.date)),
+  }));
 };
 
 const ClientProgress = () => {
@@ -51,7 +79,7 @@ const ClientProgress = () => {
         assessments: assessRes.data.assessments || [],
       });
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load client data');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to load client data');
     } finally {
       setLoading(false);
     }
@@ -85,13 +113,18 @@ const ClientProgress = () => {
   }
 
   const { client, progress, assessments } = data || {};
-  const weeklyActivity = progress?.weeklyActivity || [];
+  const activity = progress?.activityCompletion || {};
+  const course = progress?.courseProgress || null;
+  const moodTrends = progress?.moodTrends || [];
+  const latestMood = moodTrends.length > 0 ? moodTrends[moodTrends.length - 1].mood : null;
+  const weeklyStrategies = course?.weeklyStrategies || [];
+  const chartSeries = groupAssessments(assessments);
 
   const activityChartData = {
-    labels: weeklyActivity.map(w => w.week),
+    labels: weeklyStrategies.map(w => `Week ${w.weekNumber}`),
     datasets: [{
-      label: 'Completion Rate',
-      data: weeklyActivity.map(w => w.completionRate),
+      label: 'Days Completed',
+      data: weeklyStrategies.map(w => w.completedDays || 0),
       backgroundColor: theme.palette.primary.main + '44',
       borderColor: theme.palette.primary.main,
       borderWidth: 2,
@@ -117,57 +150,80 @@ const ClientProgress = () => {
       {/* Quick Stats */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={6} md={3}>
-          <Card>
+          <Card sx={{ height: '100%' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <WhatshotIcon sx={{ color: 'warning.main' }} />
-              <Typography variant="h4" fontWeight={700}>{progress?.streak || 0}</Typography>
+              <Typography variant="h4" fontWeight={700}>{activity.streak || 0}</Typography>
               <Typography variant="caption" color="text.secondary">Day Streak</Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={6} md={3}>
-          <Card>
+          <Card sx={{ height: '100%' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <AssignmentIcon sx={{ color: 'primary.main' }} />
-              <Typography variant="h4" fontWeight={700}>{progress?.totalActivities || 0}</Typography>
-              <Typography variant="caption" color="text.secondary">Activities Done</Typography>
+              <TaskAltIcon sx={{ color: 'primary.main' }} />
+              <Typography variant="h4" fontWeight={700}>
+                {activity.daysActive ?? 0}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Active Days ({activity.completionRate ?? 0}% of last {activity.totalDays ?? 90})
+              </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={6} md={3}>
-          <Card>
+          <Card sx={{ height: '100%' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              {moodIcon(progress?.currentMood || 5)}
-              <Typography variant="h4" fontWeight={700}>{progress?.currentMood || '—'}</Typography>
-              <Typography variant="caption" color="text.secondary">Current Mood</Typography>
+              {moodIcon(latestMood)}
+              <Typography variant="h4" fontWeight={700}>{latestMood ?? '—'}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {latestMood != null ? 'Latest Mood' : 'Mood (not shared)'}
+              </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={6} md={3}>
-          <Card>
+          <Card sx={{ height: '100%' }}>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant="body2" color="text.secondary">Phase {progress?.phase || '—'}</Typography>
-              <Typography variant="h5" fontWeight={700}>Week {progress?.week || '—'}</Typography>
-              <Typography variant="caption" color="text.secondary">Curriculum</Typography>
+              <SchoolIcon sx={{ color: 'secondary.main' }} />
+              <Typography variant="h4" fontWeight={700}>
+                {course ? `Wk ${course.currentWeek}` : '—'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {course ? (course.isActive ? 'Course Active' : 'Course Paused') : 'Not Enrolled'}
+              </Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
+      {/* Tasks summary */}
+      {(activity.tasksCompleted > 0 || activity.tasksPending > 0) && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Typography variant="h6" sx={{ flex: 1, minWidth: 180 }}>Assigned Tasks</Typography>
+            <Chip icon={<TaskAltIcon />} color="success" variant="outlined" label={`${activity.tasksCompleted || 0} completed`} />
+            <Chip icon={<AssignmentIcon />} color="warning" variant="outlined" label={`${activity.tasksPending || 0} pending`} />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Assessment Scores Over Time */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>Assessment Scores Over Time</Typography>
-          <AssessmentChart assessments={assessments} height={350} />
+          <AssessmentChart assessments={chartSeries} height={350} />
         </CardContent>
       </Card>
 
-      {/* Activity Completion by Week */}
+      {/* Course Activity by Week */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Typography variant="h6" gutterBottom>Weekly Activity Completion</Typography>
-          {weeklyActivity.length === 0 ? (
-            <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>No activity data yet</Typography>
+          <Typography variant="h6" gutterBottom>Course Practice by Week</Typography>
+          {weeklyStrategies.length === 0 ? (
+            <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+              {course ? 'No weekly practice data yet' : 'Client is not enrolled in the course'}
+            </Typography>
           ) : (
             <Box sx={{ height: 250 }}>
               <Bar
@@ -175,9 +231,19 @@ const ClientProgress = () => {
                 options={{
                   responsive: true,
                   maintainAspectRatio: false,
-                  plugins: { legend: { display: false } },
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                      callbacks: {
+                        afterLabel: (ctx) => {
+                          const ws = weeklyStrategies[ctx.dataIndex];
+                          return ws?.theme ? `Theme: ${ws.theme}` : '';
+                        },
+                      },
+                    },
+                  },
                   scales: {
-                    y: { beginAtZero: true, max: 100, title: { display: true, text: '%' } },
+                    y: { beginAtZero: true, max: 7, title: { display: true, text: 'Days practiced' }, ticks: { stepSize: 1 } },
                   },
                 }}
               />

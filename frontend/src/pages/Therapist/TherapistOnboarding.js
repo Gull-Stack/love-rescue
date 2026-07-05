@@ -304,12 +304,6 @@ const TherapistOnboarding = () => {
         >
           Go to Therapist Dashboard
         </Button>
-        <Button
-          variant="text"
-          onClick={() => navigate('/therapist')}
-        >
-          Go to Therapist Dashboard
-        </Button>
       </Box>
     </Box>
   );

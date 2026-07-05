@@ -69,14 +69,21 @@ const MyTherapistSection = () => {
   const [permissionDialog, setPermissionDialog] = useState(null);
   const [newPermission, setNewPermission] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   const fetchTherapists = useCallback(async () => {
+    setLoading(true);
+    setLoadError('');
     try {
       const response = await api.get('/client/therapists');
       setTherapists(response.data.therapists || []);
-    } catch {
-      // No therapists linked — that's fine
-      setTherapists([]);
+    } catch (err) {
+      if (err.response?.status === 404) {
+        // No therapists linked — that's fine
+        setTherapists([]);
+      } else {
+        setLoadError('Could not load your therapist connections.');
+      }
     } finally {
       setLoading(false);
     }
@@ -170,13 +177,24 @@ const MyTherapistSection = () => {
             </Typography>
           </Alert>
 
-          {therapists.length === 0 ? (
+          {loadError ? (
+            <Alert
+              severity="warning"
+              action={<Button color="inherit" size="small" onClick={fetchTherapists}>Retry</Button>}
+              sx={{ mb: 1 }}
+            >
+              {loadError}
+            </Alert>
+          ) : therapists.length === 0 ? (
             <Typography color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
               No therapists linked. If your therapist uses Love Rescue, they can send you an invite link.
             </Typography>
           ) : (
             therapists.map((t) => {
-              const level = PERMISSION_LEVELS.find((p) => p.value === t.permissionLevel) || PERMISSION_LEVELS[0];
+              // Tolerate either enum casing ('BASIC' from the API, 'basic' in the UI options).
+              const level = PERMISSION_LEVELS.find(
+                (p) => p.value === String(t.permissionLevel || '').toLowerCase()
+              ) || PERMISSION_LEVELS[0];
               return (
                 <Card key={t.id} variant="outlined" sx={{ mb: 2 }}>
                   <CardContent>
@@ -190,9 +208,11 @@ const MyTherapistSection = () => {
                             {t.practiceName}
                           </Typography>
                         )}
-                        <Typography variant="body2" color="text.secondary">
-                          Connected {new Date(t.connectedAt).toLocaleDateString()}
-                        </Typography>
+                        {t.connectedAt && !Number.isNaN(new Date(t.connectedAt).getTime()) && (
+                          <Typography variant="body2" color="text.secondary">
+                            Connected {new Date(t.connectedAt).toLocaleDateString()}
+                          </Typography>
+                        )}
                       </Box>
                       <Chip
                         label={`${level.label} Access`}

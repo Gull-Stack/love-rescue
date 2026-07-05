@@ -10,8 +10,6 @@ import {
   Alert,
   CircularProgress,
   Switch,
-  FormControlLabel,
-  FormGroup,
   Divider,
   Table,
   TableBody,
@@ -22,6 +20,7 @@ import {
   Chip,
   Pagination,
   Skeleton,
+  Tooltip,
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import HistoryIcon from '@mui/icons-material/History';
@@ -131,27 +130,6 @@ const TherapistSettings = () => {
       setError('Failed to save notification preferences');
     } finally {
       setSaving((prev) => ({ ...prev, notif: false }));
-    }
-  };
-
-  const handleExport = async (format) => {
-    setSaving((prev) => ({ ...prev, export: true }));
-    try {
-      const response = await api.get('/therapist/export', {
-        params: { format },
-        responseType: 'blob',
-      });
-      const url = URL.createObjectURL(response.data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `therapist-data-${new Date().toISOString().split('T')[0]}.${format}`;
-      a.click();
-      URL.revokeObjectURL(url);
-      setSuccess(`Data exported as ${format.toUpperCase()}`);
-    } catch {
-      setError('Failed to export data');
-    } finally {
-      setSaving((prev) => ({ ...prev, export: false }));
     }
   };
 
@@ -399,24 +377,15 @@ const TherapistSettings = () => {
           <Typography color="text.secondary" variant="body2" paragraph>
             Export client data for supervision or insurance documentation.
           </Typography>
-          <Box display="flex" gap={2} flexWrap="wrap">
-            <Button
-              variant="outlined"
-              startIcon={saving.export ? <CircularProgress size={16} /> : <DownloadIcon />}
-              onClick={() => handleExport('pdf')}
-              disabled={saving.export}
-            >
-              Export PDF
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={saving.export ? <CircularProgress size={16} /> : <DownloadIcon />}
-              onClick={() => handleExport('csv')}
-              disabled={saving.export}
-            >
-              Export CSV
-            </Button>
-          </Box>
+          <Tooltip title="Export is coming soon — we're building PDF and CSV formats now.">
+            {/* span wrapper so the tooltip works on a disabled button */}
+            <Box component="span" display="inline-block">
+              <Button variant="outlined" startIcon={<DownloadIcon />} disabled>
+                Export Data
+              </Button>
+            </Box>
+          </Tooltip>
+          <Chip label="Coming soon" size="small" variant="outlined" sx={{ ml: 1.5, verticalAlign: 'middle' }} />
         </CardContent>
       </Card>
     </Box>

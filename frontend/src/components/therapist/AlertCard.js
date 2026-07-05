@@ -5,6 +5,7 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ErrorIcon from '@mui/icons-material/Error';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import NotificationsIcon from '@mui/icons-material/Notifications';
 
 const typeIcons = {
   crisis: <ErrorIcon fontSize="small" />,
@@ -13,8 +14,20 @@ const typeIcons = {
   stagnation: <TrendingDownIcon fontSize="small" />,
 };
 
+/**
+ * Renders a therapist alert. The API returns uppercase enum values
+ * (alertType: CRISIS/RISK/MILESTONE/STAGNATION, severity: LOW/MEDIUM/HIGH/CRITICAL),
+ * a nested client object, and readAt (timestamp or null) — normalize them here.
+ */
 const AlertCard = ({ alert, onClick, compact = false }) => {
   const theme = useTheme();
+
+  const severity = String(alert.severity || '').toLowerCase();
+  const type = String(alert.alertType || alert.type || '').toLowerCase();
+  const clientName = alert.client
+    ? [alert.client.firstName, alert.client.lastName].filter(Boolean).join(' ') || 'Client'
+    : alert.clientName || 'Client';
+  const isRead = alert.readAt != null || alert.read === true;
 
   const severityColors = {
     critical: { bg: alpha(theme.palette.error.main, 0.06), border: theme.palette.error.main, text: theme.palette.error.dark },
@@ -23,30 +36,32 @@ const AlertCard = ({ alert, onClick, compact = false }) => {
     low: { bg: alpha(theme.palette.info.main, 0.06), border: theme.palette.info.main, text: theme.palette.info.dark },
   };
 
-  const colors = severityColors[alert.severity] || severityColors.low;
+  const colors = severityColors[severity] || severityColors.low;
 
   return (
     <Card
       sx={{
         borderLeft: `4px solid ${colors.border}`,
-        bgcolor: alert.read ? 'background.paper' : colors.bg,
-        opacity: alert.read ? 0.75 : 1,
+        bgcolor: isRead ? 'background.paper' : colors.bg,
+        opacity: isRead ? 0.75 : 1,
         mb: 1,
       }}
     >
       <CardActionArea
         onClick={onClick}
         sx={{ minHeight: 44 }}
-        aria-label={`${alert.severity} ${alert.type} alert for ${alert.clientName}: ${alert.message}`}
+        aria-label={`${severity} ${type} alert for ${clientName}: ${alert.message}`}
       >
         <CardContent sx={{ py: compact ? 1 : 2, '&:last-child': { pb: compact ? 1 : 2 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: compact ? 0 : 0.5 }}>
-            <Box sx={{ color: colors.text }}>{typeIcons[alert.type]}</Box>
+            <Box sx={{ color: colors.text, display: 'flex' }}>
+              {typeIcons[type] || <NotificationsIcon fontSize="small" />}
+            </Box>
             <Typography variant={compact ? 'body2' : 'subtitle2'} fontWeight={600} sx={{ flex: 1 }}>
-              {alert.clientName}
+              {clientName}
             </Typography>
             <Chip
-              label={alert.type}
+              label={type || 'alert'}
               size="small"
               sx={{
                 bgcolor: colors.border,
@@ -54,6 +69,7 @@ const AlertCard = ({ alert, onClick, compact = false }) => {
                 fontWeight: 600,
                 fontSize: '0.7rem',
                 height: 22,
+                textTransform: 'capitalize',
               }}
             />
           </Box>

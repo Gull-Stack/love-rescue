@@ -12,10 +12,6 @@ import {
   Chip,
   IconButton,
   Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Radio,
   RadioGroup,
   FormControlLabel,
@@ -360,6 +356,9 @@ const ClientLinkingAccept = ({ token: tokenProp }) => {
         <Typography color="text.secondary" paragraph>
           You can change your sharing preferences anytime from Settings.
         </Typography>
+        <Button variant="contained" size="large" sx={{ mt: 1 }} onClick={() => navigate('/')}>
+          Go to my dashboard
+        </Button>
       </Box>
     );
   }
