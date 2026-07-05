@@ -51,6 +51,58 @@ async function recordConsentChange(prisma, { userId, relationshipId, consentType
 }
 
 /**
+ * Kill every grant surface that could give this therapist access to this
+ * client's data. Revocation is not just a TherapistClient flag flip — legacy
+ * couples are gated by TherapistAssignment rows + the relationship's per-user
+ * consent flags (user1/user2TherapistConsent), and those read paths
+ * (GET /api/therapist/couple/:relationshipId, POST /assign) stay OPEN if we
+ * only touch the TherapistClient row. This helper closes all of them so a
+ * revoke means a revoke everywhere.
+ *
+ * @param {object} prisma
+ * @param {string} clientId - the revoking user
+ * @param {string} therapistId - the therapist losing access
+ */
+async function revokeTherapistAccess(prisma, clientId, therapistId) {
+  const now = new Date();
+
+  // 1. Live model: soft-revoke every non-revoked TherapistClient link for this
+  //    pair. The row stays as the consent audit trail; a pending invite code is
+  //    cleared so it can't be accepted after revocation.
+  await prisma.therapistClient.updateMany({
+    where: { clientId, therapistId, consentStatus: { not: 'REVOKED' } },
+    data: { consentStatus: 'REVOKED', consentRevokedAt: now, inviteCode: null },
+  });
+
+  // 2. Legacy surface: the client's relationships. Clear THIS user's consent
+  //    flag (requireBothConsent then denies) and drop sharedConsent, then revoke
+  //    the therapist's active assignments on those relationships (so
+  //    requireTherapistAssignment denies too).
+  const relationships = await prisma.relationship.findMany({
+    where: { OR: [{ user1Id: clientId }, { user2Id: clientId }] },
+    select: { id: true, user1Id: true },
+  });
+
+  await Promise.all(relationships.map((rel) => prisma.relationship.update({
+    where: { id: rel.id },
+    data: rel.user1Id === clientId
+      ? { user1TherapistConsent: false, sharedConsent: false }
+      : { user2TherapistConsent: false, sharedConsent: false },
+  })));
+
+  if (relationships.length > 0) {
+    await prisma.therapistAssignment.updateMany({
+      where: {
+        therapistId,
+        relationshipId: { in: relationships.map((r) => r.id) },
+        status: 'active',
+      },
+      data: { status: 'revoked', revokedAt: now },
+    });
+  }
+}
+
+/**
  * GET /api/client/therapists
  * List the client's therapist links (pending + granted) with therapist
  * name/practice, permission level, and consent status/dates.
@@ -165,14 +217,9 @@ router.delete('/therapists/:id', authenticate, async (req, res, next) => {
       return res.json({ message: 'Therapist access already revoked' });
     }
 
-    await req.prisma.therapistClient.update({
-      where: { id: link.id },
-      data: {
-        consentStatus: 'REVOKED',
-        consentRevokedAt: new Date(),
-        inviteCode: null, // a pending code must not be acceptable after revocation
-      },
-    });
+    // Revoke across EVERY grant surface (TherapistClient + legacy assignments +
+    // relationship consent flags) — not just this one link.
+    await revokeTherapistAccess(req.prisma, req.user.id, link.therapistId);
 
     await recordConsentChange(req.prisma, {
       userId: req.user.id,

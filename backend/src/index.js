@@ -304,7 +304,12 @@ let lastAlertScanDay = null;
 async function runTherapistAlertScan() {
   if (alertScanRunning) return; // don't overlap a slow run
   const now = new Date();
-  if (now.getUTCHours() !== ALERT_SCAN_UTC_HOUR) return;
+  // Run on the FIRST tick of each UTC day at or after the target hour. Using
+  // `< target` (not `!== target`) means a tick that drifts past the exact hour
+  // — e.g. boot jitter lands ticks at :07 and :52 and the :06-hour tick is
+  // missed — still triggers the scan later that same day. The same-day latch
+  // (lastAlertScanDay) guarantees it runs at most once per day.
+  if (now.getUTCHours() < ALERT_SCAN_UTC_HOUR) return; // not yet at target hour today
   const dayKey = now.toISOString().slice(0, 10);
   if (lastAlertScanDay === dayKey) return; // already ran today
   alertScanRunning = true;

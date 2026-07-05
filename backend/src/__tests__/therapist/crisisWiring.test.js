@@ -401,6 +401,62 @@ describe('therapist routing via TherapistClient', () => {
       'therapist-1-uuid', 'therapist-2-uuid',
     ]);
   });
+
+  // ── Permission-tier gating (consent matrix) ──
+  // mood_trends / crisis_alerts require STANDARD, so non-crisis alerts must NOT
+  // route to a BASIC-tier link — but CRISIS always routes (safety override).
+
+  it('does NOT route a MILESTONE alert to a BASIC-tier link', async () => {
+    prisma.therapistClient.findMany.mockResolvedValue([grantedLink({ permissionLevel: 'BASIC' })]);
+    prisma.relationship.findMany.mockResolvedValue([]);
+
+    const alerts = await triggerTherapistAlert(
+      CLIENT_ID, ALERT_TYPE.MILESTONE, ALERT_SEVERITY.LOW,
+      { title: 'Streak', summary: '30-day streak' }, prisma
+    );
+
+    expect(alerts).toEqual([]);
+    expect(prisma.therapistAlert.create).not.toHaveBeenCalled();
+  });
+
+  it('does NOT route a RISK alert to a BASIC-tier link', async () => {
+    prisma.therapistClient.findMany.mockResolvedValue([grantedLink({ permissionLevel: 'BASIC' })]);
+    prisma.relationship.findMany.mockResolvedValue([]);
+
+    const alerts = await triggerTherapistAlert(
+      CLIENT_ID, ALERT_TYPE.RISK, ALERT_SEVERITY.MEDIUM,
+      { title: 'Score drop', summary: 'x' }, prisma
+    );
+
+    expect(alerts).toEqual([]);
+  });
+
+  it('STILL routes a CRISIS alert to a BASIC-tier link (safety override)', async () => {
+    prisma.therapistClient.findMany.mockResolvedValue([grantedLink({ permissionLevel: 'BASIC' })]);
+    prisma.relationship.findMany.mockResolvedValue([]);
+
+    const alerts = await triggerTherapistAlert(
+      CLIENT_ID, ALERT_TYPE.CRISIS, ALERT_SEVERITY.CRITICAL,
+      { title: 'Crisis', summary: 'Level 3 crisis detected.' }, prisma
+    );
+
+    expect(alerts.length).toBe(1);
+    expect(alerts[0].therapistId).toBe('therapist-1-uuid');
+    expect(prisma.therapistAlert.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('routes a MILESTONE alert to a STANDARD-tier link', async () => {
+    prisma.therapistClient.findMany.mockResolvedValue([grantedLink({ permissionLevel: 'STANDARD' })]);
+    prisma.relationship.findMany.mockResolvedValue([]);
+
+    const alerts = await triggerTherapistAlert(
+      CLIENT_ID, ALERT_TYPE.MILESTONE, ALERT_SEVERITY.LOW,
+      { title: 'Streak', summary: '30-day streak' }, prisma
+    );
+
+    expect(alerts.length).toBe(1);
+    expect(alerts[0].alertType).toBe(ALERT_TYPE.MILESTONE);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════

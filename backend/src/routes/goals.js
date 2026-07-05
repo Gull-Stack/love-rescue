@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate, requireSubscription, loadRelationship } = require('../middleware/auth');
+const { detectCrisisAndNotify } = require('../utils/therapistAlerts');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -76,7 +77,23 @@ router.post('/', authenticate, requireSubscription, loadRelationship, async (req
       relationshipId: req.relationship.id
     });
 
-    res.status(201).json({ goal });
+    // Crisis detection on the goal free-text (title + description), AFTER the
+    // save succeeded. Detection is synchronous regex (so resources can ride the
+    // response); therapist alerting + audit logging run fire-and-forget inside
+    // the hook — a detector or DB failure can never break the user's save.
+    const crisis = detectCrisisAndNotify(
+      req.user.id,
+      [title, description].filter(Boolean).join(' '),
+      { prisma: req.prisma, source: 'goals' }
+    );
+
+    res.status(201).json({
+      goal,
+      // Present only when acute/emergency crisis language was detected — carries
+      // 988/DV-hotline resources so the app can show them immediately. Never
+      // echoes the goal text.
+      ...(crisis ? { crisis } : {})
+    });
   } catch (error) {
     next(error);
   }

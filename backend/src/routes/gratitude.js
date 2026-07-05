@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate, requireSubscription } = require('../middleware/auth');
+const { detectCrisisAndNotify } = require('../utils/therapistAlerts');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -103,9 +104,22 @@ router.post('/', authenticate, requireSubscription, async (req, res, next) => {
 
     logger.info('Gratitude entry saved', { userId: req.user.id, date: logDate });
 
+    // Crisis detection on the gratitude free-text, AFTER the save succeeded.
+    // Detection is synchronous regex (so resources can ride the response);
+    // therapist alerting + audit logging run fire-and-forget inside the hook —
+    // a detector or DB failure can never break the user's save.
+    const crisis = detectCrisisAndNotify(req.user.id, text, {
+      prisma: req.prisma,
+      source: 'gratitude',
+    });
+
     res.json({
       message: 'Gratitude entry saved',
-      entry
+      entry,
+      // Present only when acute/emergency crisis language was detected — carries
+      // 988/DV-hotline resources so the app can show them immediately. Never
+      // echoes the entry text.
+      ...(crisis ? { crisis } : {})
     });
   } catch (error) {
     next(error);

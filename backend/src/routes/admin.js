@@ -374,10 +374,30 @@ router.put('/users/:id', async (req, res) => {
       updateData.subscriptionStatus = subscriptionStatus;
     }
     if (isPlatformAdmin !== undefined) {
-      updateData.isPlatformAdmin = isPlatformAdmin;
-      // Track explicit demotion so the boot-time bootstrap never re-promotes
-      // this account; promotion clears the revocation marker.
-      updateData.adminRevokedAt = isPlatformAdmin ? null : new Date();
+      const desiredAdmin = isPlatformAdmin === true;
+      updateData.isPlatformAdmin = desiredAdmin;
+
+      // Only touch adminRevokedAt on an actual transition — never on a no-op
+      // edit (e.g. saving an unrelated field with isPlatformAdmin unchanged, or
+      // re-sending the same value). Over-stamping would either wrongly mark an
+      // admin as demoted (blocking the boot-time bootstrap) or wrongly clear a
+      // legitimate demotion marker.
+      const current = await req.prisma.user.findUnique({
+        where: { id },
+        select: { isPlatformAdmin: true },
+      });
+      if (!current) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      const wasAdmin = current.isPlatformAdmin === true;
+      if (wasAdmin && !desiredAdmin) {
+        // true → false: record the explicit demotion so bootstrap won't re-promote.
+        updateData.adminRevokedAt = new Date();
+      } else if (!wasAdmin && desiredAdmin) {
+        // false → true: promotion clears any prior revocation marker.
+        updateData.adminRevokedAt = null;
+      }
+      // No-op (unchanged): leave adminRevokedAt exactly as it is.
     }
 
     const user = await req.prisma.user.update({

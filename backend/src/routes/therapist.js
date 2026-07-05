@@ -24,6 +24,32 @@ const router = express.Router();
 const PERMISSION_ORDER = ['BASIC', 'STANDARD', 'FULL'];
 const VALID_ALERT_TYPES = ['CRISIS', 'RISK', 'MILESTONE', 'STAGNATION'];
 
+/**
+ * Bulk HIPAA access-log write for caseload-wide reads (GET /clients, /alerts,
+ * /outcomes). One createMany INSERT instead of N per-row inserts. Like
+ * logAccess it swallows errors — audit-write failure must never affect the
+ * request — and it is fired without awaiting so it does not block the response.
+ * @param {object} prisma
+ * @param {Array<object>} rows - accessLog.create data rows
+ */
+function logAccessBatch(prisma, rows) {
+  if (!rows || rows.length === 0) return;
+  const data = rows.map((r) => ({
+    accessorId: r.accessorId,
+    accessorRole: 'therapist',
+    resourceType: r.resourceType,
+    resourceId: r.resourceId || null,
+    resourceOwnerId: r.resourceOwnerId || null,
+    action: r.action || 'read',
+    accessGranted: r.accessGranted,
+    reason: r.reason || null,
+    ipAddress: r.ipAddress || null,
+  }));
+  // Promise.resolve wrapper tolerates a mock/impl returning undefined.
+  Promise.resolve(prisma.accessLog.createMany({ data }))
+    .catch((error) => logger.error('Failed to write bulk access log', { error: error.message }));
+}
+
 // Therapist access is gated: a user can only become a therapist if their email
 // is on the approved allowlist (set THERAPIST_ALLOWLIST on the backend, a
 // comma-separated list). Read at request time so the list can be updated via
@@ -960,8 +986,10 @@ router.get('/clients', authenticateTherapist, async (req, res, next) => {
       })
     );
 
-    // HIPAA audit: log the caseload read per client
-    await Promise.all(links.map((link) => logAccess(req.prisma, {
+    // HIPAA audit: log the caseload read in ONE bulk insert (was an N+1 —
+    // one INSERT per client). Fire-and-forget: audit writes never block the
+    // response and, like logAccess, a failure only logs (correctness unchanged).
+    logAccessBatch(req.prisma, links.map((link) => ({
       accessorId: req.therapist.id,
       resourceType: 'client_overview',
       resourceId: link.clientId,
@@ -1101,7 +1129,11 @@ router.get(
 
       // Reports are persisted rows — don't mint a new one on every page view.
       // Reuse a report generated within the last hour unless ?refresh=true.
-      if (req.query.refresh !== 'true') {
+      // BUT the cache key is only therapist+client+recency, so it would return a
+      // report scoped to the WRONG window if the caller passes a different
+      // ?lastSessionDate. When lastSessionDate is supplied, bypass the cache and
+      // always generate a report scoped to exactly that window.
+      if (req.query.refresh !== 'true' && !lastSessionDate) {
         const recent = await req.prisma.sessionPrepReport.findFirst({
           where: {
             therapistId: req.therapist.id,
@@ -1309,9 +1341,10 @@ router.get('/alerts', authenticateTherapist, async (req, res, next) => {
       take,
     });
 
-    // HIPAA audit: alerts contain client data — log the read per client
+    // HIPAA audit: alerts contain client data — log the read per client in ONE
+    // bulk insert (fire-and-forget; was an N+1 of one INSERT per client).
     const alertClientIds = [...new Set(alerts.map(a => a.clientId))];
-    await Promise.all(alertClientIds.map((clientId) => logAccess(req.prisma, {
+    logAccessBatch(req.prisma, alertClientIds.map((clientId) => ({
       accessorId: req.therapist.id,
       resourceType: 'crisis_alerts',
       resourceId: clientId,
@@ -1517,8 +1550,9 @@ router.get('/outcomes', authenticateTherapist, async (req, res, next) => {
         : null,
     };
 
-    // HIPAA audit: log the caseload outcomes read per client
-    await Promise.all(clientIds.map((clientId) => logAccess(req.prisma, {
+    // HIPAA audit: log the caseload outcomes read in ONE bulk insert
+    // (fire-and-forget; was an N+1 of one INSERT per client).
+    logAccessBatch(req.prisma, clientIds.map((clientId) => ({
       accessorId: req.therapist.id,
       resourceType: 'outcomes',
       resourceId: clientId,
@@ -1868,31 +1902,38 @@ router.get('/clients/invites', authenticateTherapist, async (req, res, next) => 
 // writes the HIPAA access log entry.
 router.get('/clients/:id', authenticateTherapist, requireClientAccess(), async (req, res, next) => {
   try {
-    const link = await req.prisma.therapistClient.findFirst({
-      where: { therapistId: req.therapist.id, clientId: req.params.id, consentStatus: 'GRANTED' },
-      include: {
-        client: {
-          select: { id: true, firstName: true, lastName: true, email: true, createdAt: true },
-        },
-        couple: {
-          select: {
-            id: true, status: true,
-            user1: { select: { id: true, firstName: true, lastName: true } },
-            user2: { select: { id: true, firstName: true, lastName: true } },
-          },
-        },
-      },
-    });
-    if (!link) return res.status(404).json({ error: 'Client not found' });
+    // requireClientAccess already found + attached the GRANTED link — reuse it
+    // instead of re-running the same consent-gated findFirst. We only need to
+    // resolve the client user and (optional) couple detail for the response.
+    const link = req.therapistClient;
+
+    const [client, couple] = await Promise.all([
+      req.prisma.user.findUnique({
+        where: { id: link.clientId },
+        select: { id: true, firstName: true, lastName: true, email: true, createdAt: true },
+      }),
+      link.coupleId
+        ? req.prisma.relationship.findUnique({
+            where: { id: link.coupleId },
+            select: {
+              id: true, status: true,
+              user1: { select: { id: true, firstName: true, lastName: true } },
+              user2: { select: { id: true, firstName: true, lastName: true } },
+            },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    if (!client) return res.status(404).json({ error: 'Client not found' });
     res.json({
-      id: link.client.id,
-      name: [link.client.firstName, link.client.lastName].filter(Boolean).join(' ') || link.client.email,
-      email: link.client.email,
+      id: client.id,
+      name: [client.firstName, client.lastName].filter(Boolean).join(' ') || client.email,
+      email: client.email,
       consentStatus: link.consentStatus,
       permissionLevel: link.permissionLevel,
-      coupleStatus: link.couple ? link.couple.status : null,
-      couple: link.couple || null,
-      joinedAt: link.client.createdAt,
+      coupleStatus: couple ? couple.status : null,
+      couple: couple || null,
+      joinedAt: client.createdAt,
     });
   } catch (error) { next(error); }
 });
@@ -1924,8 +1965,7 @@ router.post('/clients/invite', authenticateTherapist, async (req, res, next) => 
     const jwt = require('jsonwebtoken');
     const secret = process.env.JWT_SECRET;
 
-    // Stateless JWT invite — no DB row needed until the client accepts.
-    // clientId is NOT NULL in TherapistClient, so we can't pre-create the row.
+    // Stateless JWT invite — anyone with the link can accept it.
     const token = jwt.sign(
       {
         therapistId: req.therapist.id,
@@ -1938,7 +1978,56 @@ router.post('/clients/invite', authenticateTherapist, async (req, res, next) => 
     );
 
     const inviteLink = `${process.env.FRONTEND_URL || 'https://loverescue.app'}/therapist/join/${token}`;
-    res.json({ inviteLink, permissionLevel, expiresIn: '7 days' });
+
+    // Persist a PENDING TherapistClient row so the invite is listable in
+    // GET /clients/invites (and the client's My-Therapist screen). clientId is
+    // NOT NULL, so the row can only be created when the invited email resolves
+    // to an existing user; the stateless JWT link above still works for anyone.
+    //
+    // SAFETY: PENDING grants ZERO read access — every data-gating lookup
+    // requires consentStatus === 'GRANTED'. The row only becomes readable once
+    // the client accepts (PENDING → GRANTED via /clients/invite/:token/accept).
+    let linkId = null;
+    const clientEmail = req.body.clientEmail;
+    if (clientEmail) {
+      const clientUser = await req.prisma.user.findUnique({
+        where: { email: String(clientEmail).toLowerCase() },
+      });
+      if (clientUser) {
+        const existing = await req.prisma.therapistClient.findFirst({
+          where: { therapistId: req.therapist.id, clientId: clientUser.id },
+        });
+        if (existing) {
+          // Don't disturb an already-active connection; otherwise (re)mark PENDING.
+          if (existing.consentStatus !== 'GRANTED') {
+            const updated = await req.prisma.therapistClient.update({
+              where: { id: existing.id },
+              data: {
+                consentStatus: 'PENDING',
+                permissionLevel,
+                consentRevokedAt: null,
+                consentDeclinedAt: null,
+              },
+            });
+            linkId = updated.id;
+          } else {
+            linkId = existing.id;
+          }
+        } else {
+          const created = await req.prisma.therapistClient.create({
+            data: {
+              therapistId: req.therapist.id,
+              clientId: clientUser.id,
+              consentStatus: 'PENDING',
+              permissionLevel,
+            },
+          });
+          linkId = created.id;
+        }
+      }
+    }
+
+    res.json({ inviteLink, permissionLevel, expiresIn: '7 days', ...(linkId ? { linkId } : {}) });
   } catch (error) { next(error); }
 });
 

@@ -119,12 +119,13 @@ describe('Therapist consent enforcement', () => {
     });
 
     test('GET /clients/:id → 200 + audit log when consent is GRANTED', async () => {
-      const link = {
-        ...grantedLink(CLIENT_A),
-        client: { id: CLIENT_A, firstName: 'Alex', lastName: 'A', email: 'a@example.com', createdAt: new Date() },
-        couple: null
-      };
-      mockPrisma.therapistClient.findFirst.mockResolvedValue(link);
+      // requireClientAccess attaches the GRANTED link; the handler reuses it and
+      // resolves the client user (+ optional couple) directly.
+      mockPrisma.therapistClient.findFirst.mockResolvedValue(grantedLink(CLIENT_A));
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: CLIENT_A, firstName: 'Alex', lastName: 'A', email: 'a@example.com', createdAt: new Date(),
+      });
+      mockPrisma.relationship.findUnique.mockResolvedValue(null);
 
       const res = await asTherapist(request(app).get(`/api/therapist/clients/${CLIENT_A}`));
 

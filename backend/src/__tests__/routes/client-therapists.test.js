@@ -127,6 +127,28 @@ describe('Client therapist-consent controls', () => {
       Object.assign(link, data);
       return { ...link };
     });
+    // updateMany mutates every matching link in the in-memory store. Supports
+    // the `consentStatus: { not: 'REVOKED' }` clause the revoke helper uses.
+    mockPrisma.therapistClient.updateMany.mockImplementation(async ({ where = {}, data = {} }) => {
+      let count = 0;
+      for (const l of links) {
+        if (where.clientId !== undefined && l.clientId !== where.clientId) continue;
+        if (where.therapistId !== undefined && l.therapistId !== where.therapistId) continue;
+        if (where.consentStatus && typeof where.consentStatus === 'object' && 'not' in where.consentStatus) {
+          if (l.consentStatus === where.consentStatus.not) continue;
+        }
+        Object.assign(l, data);
+        count++;
+      }
+      return { count };
+    });
+
+    // Legacy grant surfaces touched by revokeTherapistAccess. Default: the
+    // client has no relationships, so these are inert (the dedicated legacy
+    // describe below installs stateful versions).
+    mockPrisma.relationship.findMany.mockResolvedValue([]);
+    mockPrisma.relationship.update.mockResolvedValue({});
+    mockPrisma.therapistAssignment.updateMany.mockResolvedValue({ count: 0 });
 
     // Auth mocks
     mockPrisma.user.findUnique.mockResolvedValue(CLIENT_USER);
@@ -332,5 +354,242 @@ describe('Client therapist-consent controls', () => {
         })
       );
     });
+  });
+});
+
+/**
+ * Revocation must close EVERY grant surface, not just the TherapistClient row.
+ * The legacy couple read path (GET /api/therapist/couple/:relationshipId) is
+ * gated by requireTherapistAssignment (active TherapistAssignment) +
+ * requireBothConsent (relationship.user1/user2TherapistConsent). A revoke that
+ * only flipped the TherapistClient row would leave this path OPEN.
+ */
+describe('Revoke closes the legacy grant surface', () => {
+  let mockPrisma;
+  let app;
+  let clientToken;
+  let links;
+  let relationship;
+  let assignment;
+
+  const REL_ID = 'rel-legacy';
+  const PARTNER_ID = 'partner-2';
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    mockPrisma = createMockPrisma();
+    app = createApp(mockPrisma);
+    clientToken = generateToken(CLIENT_ID);
+
+    links = [{
+      id: LINK_ID,
+      therapistId: THERAPIST_ID,
+      clientId: CLIENT_ID,
+      coupleId: REL_ID,
+      inviteCode: null,
+      consentStatus: 'GRANTED',
+      consentGrantedAt: new Date('2026-06-01'),
+      consentRevokedAt: null,
+      consentDeclinedAt: null,
+      permissionLevel: 'STANDARD',
+      createdAt: new Date('2026-05-30'),
+      updatedAt: new Date('2026-06-01'),
+    }];
+
+    relationship = {
+      id: REL_ID,
+      user1Id: CLIENT_ID,
+      user2Id: PARTNER_ID,
+      status: 'active',
+      user1TherapistConsent: true,
+      user2TherapistConsent: true,
+      sharedConsent: true,
+      user1: { id: CLIENT_ID, firstName: 'Casey', lastName: 'Client' },
+      user2: { id: PARTNER_ID, firstName: 'Pat', lastName: 'Partner' },
+    };
+
+    assignment = { id: 'asg-1', therapistId: THERAPIST_ID, relationshipId: REL_ID, status: 'active' };
+
+    // ── Stateful TherapistClient store ──
+    mockPrisma.therapistClient.findFirst.mockImplementation(async ({ where = {} } = {}) =>
+      links.find(l => matchesWhere(l, where)) || null
+    );
+    mockPrisma.therapistClient.updateMany.mockImplementation(async ({ where = {}, data = {} }) => {
+      let count = 0;
+      for (const l of links) {
+        if (where.clientId !== undefined && l.clientId !== where.clientId) continue;
+        if (where.therapistId !== undefined && l.therapistId !== where.therapistId) continue;
+        if (where.consentStatus?.not && l.consentStatus === where.consentStatus.not) continue;
+        Object.assign(l, data);
+        count++;
+      }
+      return { count };
+    });
+
+    // ── Stateful Relationship store ──
+    mockPrisma.relationship.findUnique.mockImplementation(async () => relationship);
+    mockPrisma.relationship.findMany.mockImplementation(async () => [relationship]);
+    mockPrisma.relationship.update.mockImplementation(async ({ data }) => {
+      Object.assign(relationship, data);
+      return { ...relationship };
+    });
+
+    // ── Stateful TherapistAssignment store ──
+    mockPrisma.therapistAssignment.findFirst.mockImplementation(async ({ where = {} } = {}) => {
+      if (assignment.status !== 'active') return null;
+      if (where.status && where.status !== assignment.status) return null;
+      if (where.therapistId && where.therapistId !== assignment.therapistId) return null;
+      if (where.relationshipId && where.relationshipId !== assignment.relationshipId) return null;
+      return assignment;
+    });
+    mockPrisma.therapistAssignment.updateMany.mockImplementation(async ({ where = {}, data = {} }) => {
+      const relIds = where.relationshipId?.in || [];
+      if (where.therapistId === assignment.therapistId
+          && relIds.includes(assignment.relationshipId)
+          && assignment.status === (where.status || assignment.status)) {
+        Object.assign(assignment, data);
+        return { count: 1 };
+      }
+      return { count: 0 };
+    });
+
+    // Couple-endpoint data queries (all empty) + auth
+    mockPrisma.assessment.findMany.mockResolvedValue([]);
+    mockPrisma.matchup.findMany.mockResolvedValue([]);
+    mockPrisma.dailyLog.findMany.mockResolvedValue([]);
+    mockPrisma.therapistTask.findMany.mockResolvedValue([]);
+    mockPrisma.sharedGoal.findMany.mockResolvedValue([]);
+    mockPrisma.accessLog.create.mockResolvedValue({});
+    mockPrisma.consentLog.create.mockResolvedValue({});
+
+    mockPrisma.user.findUnique.mockResolvedValue(CLIENT_USER);
+    const hashedApiKey = await bcrypt.hash(THERAPIST_API_KEY, 10);
+    mockPrisma.therapist.findMany.mockResolvedValue([{ ...THERAPIST_PROFILE, apiKeyHash: hashedApiKey }]);
+  });
+
+  test('legacy couple endpoint is reachable before revoke, then 403 after', async () => {
+    // Before revoke: assignment active + both consent → couple view accessible
+    const before = await request(app)
+      .get(`/api/therapist/couple/${REL_ID}`)
+      .set('x-therapist-api-key', THERAPIST_API_KEY);
+    expect(before.status).toBe(200);
+
+    // Client revokes
+    const revoke = await request(app)
+      .delete(`/api/client/therapists/${LINK_ID}`)
+      .set('Authorization', `Bearer ${clientToken}`);
+    expect(revoke.status).toBe(200);
+
+    // The legacy surfaces were closed by the revoke helper
+    expect(relationship.user1TherapistConsent).toBe(false);
+    expect(relationship.sharedConsent).toBe(false);
+    expect(assignment.status).toBe('revoked');
+    expect(links[0].consentStatus).toBe('REVOKED');
+
+    // After revoke: the legacy couple endpoint denies access
+    const after = await request(app)
+      .get(`/api/therapist/couple/${REL_ID}`)
+      .set('x-therapist-api-key', THERAPIST_API_KEY);
+    expect(after.status).toBe(403);
+  });
+});
+
+/**
+ * POST /clients/invite must persist a PENDING TherapistClient row so pending
+ * invites are listable — but PENDING must grant ZERO data access (every data
+ * read requires consentStatus === 'GRANTED').
+ */
+describe('Pending invite is listable but grants no data access', () => {
+  let mockPrisma;
+  let app;
+  let store; // in-memory TherapistClient rows
+
+  const INVITED_USER = {
+    id: 'invited-1',
+    email: 'invitee@example.com',
+    firstName: 'Ivy',
+    lastName: 'Invitee',
+    createdAt: new Date('2026-06-10'),
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    mockPrisma = createMockPrisma();
+    app = createApp(mockPrisma);
+
+    store = [];
+
+    mockPrisma.user.findUnique.mockResolvedValue(INVITED_USER);
+
+    mockPrisma.therapistClient.create.mockImplementation(async ({ data }) => {
+      const row = {
+        id: `tc-${store.length + 1}`,
+        coupleId: null,
+        inviteCode: null,
+        consentGrantedAt: null,
+        consentRevokedAt: null,
+        consentDeclinedAt: null,
+        permissionLevel: 'BASIC',
+        createdAt: new Date('2026-06-11'),
+        updatedAt: new Date('2026-06-11'),
+        ...data,
+        client: INVITED_USER,
+        couple: null,
+      };
+      store.push(row);
+      return row;
+    });
+    mockPrisma.therapistClient.findFirst.mockImplementation(async ({ where = {} } = {}) =>
+      store.find(l => matchesWhere(l, where)) || null
+    );
+    mockPrisma.therapistClient.findMany.mockImplementation(async ({ where = {} } = {}) =>
+      store.filter(l => matchesWhere(l, where))
+    );
+
+    mockPrisma.accessLog.create.mockResolvedValue({});
+    const hashedApiKey = await bcrypt.hash(THERAPIST_API_KEY, 10);
+    mockPrisma.therapist.findMany.mockResolvedValue([{ ...THERAPIST_PROFILE, apiKeyHash: hashedApiKey }]);
+  });
+
+  test('invite creates a PENDING row that shows in the invites list', async () => {
+    const inviteRes = await request(app)
+      .post('/api/therapist/clients/invite')
+      .set('x-therapist-api-key', THERAPIST_API_KEY)
+      .send({ permissionLevel: 'STANDARD', clientEmail: INVITED_USER.email });
+
+    expect(inviteRes.status).toBe(200);
+    expect(inviteRes.body.inviteLink).toBeDefined();
+    expect(inviteRes.body.linkId).toBeDefined();
+
+    // A PENDING row was persisted with the chosen ceiling
+    expect(store).toHaveLength(1);
+    expect(store[0].consentStatus).toBe('PENDING');
+    expect(store[0].permissionLevel).toBe('STANDARD');
+
+    const listRes = await request(app)
+      .get('/api/therapist/clients/invites')
+      .set('x-therapist-api-key', THERAPIST_API_KEY);
+
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.invites).toHaveLength(1);
+    expect(listRes.body.invites[0]).toMatchObject({
+      clientEmail: INVITED_USER.email,
+      status: 'pending',
+      permissionLevel: 'STANDARD',
+    });
+  });
+
+  test('PENDING grants no data access — GET /clients/:id returns 403', async () => {
+    await request(app)
+      .post('/api/therapist/clients/invite')
+      .set('x-therapist-api-key', THERAPIST_API_KEY)
+      .send({ permissionLevel: 'STANDARD', clientEmail: INVITED_USER.email });
+
+    const res = await request(app)
+      .get(`/api/therapist/clients/${INVITED_USER.id}`)
+      .set('x-therapist-api-key', THERAPIST_API_KEY);
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('CONSENT_REQUIRED');
   });
 });

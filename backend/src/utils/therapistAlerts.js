@@ -20,6 +20,9 @@
 'use strict';
 
 const logger = require('./logger');
+// Reuse the single source of truth for the consent permission matrix so alert
+// routing honours the same tiers as the dashboard data-access checks.
+const { hasPermission } = require('../middleware/therapistAccess');
 
 /**
  * Module-level prisma reference, set via init().
@@ -176,11 +179,31 @@ async function triggerTherapistAlert(clientId, alertType, severity, data, prisma
 
   try {
     // 1. Find all therapists linked to this client with active assignments
-    const linkedTherapists = await _findLinkedTherapists(clientId, db);
+    let linkedTherapists = await _findLinkedTherapists(clientId, db);
+
+    // Permission-tier gating.
+    //
+    // CRISIS: ALWAYS delivered, regardless of the client's consent tier. This
+    // is a deliberate safety / duty-of-care override of the permission matrix —
+    // a client in acute crisis must reach their therapist even on a BASIC link.
+    // It is privacy-safe because the alert row + email carry ONLY minimum
+    // metadata (level, category, timestamp, client name) and NEVER any journal
+    // or Real Talk free-text (see _persistAlert and _sendEmailNotification).
+    //
+    // Non-crisis (RISK / MILESTONE / STAGNATION): these expose mood/progress
+    // detail, which the matrix (therapistAccess.js: mood_trends & crisis_alerts
+    // require STANDARD) gates. Drop any therapist whose consent tier is below
+    // STANDARD so a BASIC client never routes these alerts.
+    if (alertType !== ALERT_TYPE.CRISIS) {
+      linkedTherapists = linkedTherapists.filter((t) =>
+        hasPermission(t.permissionLevel, 'crisis_alerts'));
+    }
 
     if (linkedTherapists.length === 0) {
-      // No linked therapists — log but don't error
-      logger.info('No linked therapists for client, alert not delivered', { clientId });
+      // No linked therapists (or none at the required tier) — log but don't error
+      logger.info('No linked therapists for client at required tier, alert not delivered', {
+        clientId, alertType,
+      });
       return [];
     }
 
@@ -716,6 +739,7 @@ async function _findLinkedTherapists(clientId, db) {
       select: {
         therapistId: true,
         coupleId: true,
+        permissionLevel: true,
         therapist: {
           select: { email: true, firstName: true, lastName: true, isActive: true },
         },
@@ -727,6 +751,9 @@ async function _findLinkedTherapists(clientId, db) {
       byTherapistId.set(link.therapistId, {
         therapistId: link.therapistId,
         relationshipId: link.coupleId || null,
+        // Consent tier gates non-crisis alerts. Schema default is BASIC, so a
+        // missing value is treated as BASIC (the most restrictive).
+        permissionLevel: link.permissionLevel || 'BASIC',
         therapistEmail: link.therapist?.email || null,
         therapistName: link.therapist
           ? `${link.therapist.firstName || ''} ${link.therapist.lastName || ''}`.trim() || null
@@ -770,6 +797,10 @@ async function _findLinkedTherapists(clientId, db) {
         byTherapistId.set(assignment.therapistId, {
           therapistId: assignment.therapistId,
           relationshipId: assignment.relationshipId,
+          // Legacy assignments predate the consent-tier model and were gated by
+          // requireBothConsent, which granted full couple-data access. Treat
+          // them as FULL so they keep receiving non-crisis alerts.
+          permissionLevel: 'FULL',
           therapistEmail: assignment.therapist?.email || null,
           therapistName: assignment.therapist
             ? `${assignment.therapist.firstName || ''} ${assignment.therapist.lastName || ''}`.trim() || null
