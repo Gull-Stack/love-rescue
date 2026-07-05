@@ -577,6 +577,15 @@ describe('Payments webhook hardening', () => {
       .send(JSON.stringify(event));
   }
 
+  // The atomic watermark guard every entitlement write must carry: match the
+  // user only when this event is not older than the last one we processed.
+  function staleGuardedWhere(id = userId, createdAt = eventCreatedDate) {
+    return {
+      id,
+      OR: [{ lastStripeEventAt: null }, { lastStripeEventAt: { lt: createdAt } }]
+    };
+  }
+
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.STRIPE_PREMIUM_PRICE_ID = 'price_premium_test';
@@ -585,9 +594,12 @@ describe('Payments webhook hardening', () => {
     mockPrisma = {
       user: {
         findUnique: jest.fn().mockResolvedValue({ ...baseUser }),
-        update: jest.fn().mockResolvedValue({ ...baseUser })
+        update: jest.fn().mockResolvedValue({ ...baseUser }),
+        // Atomic watermark-gated write. Default: the row matched (applied).
+        updateMany: jest.fn().mockResolvedValue({ count: 1 })
       },
       webhookEvent: {
+        findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue({ id: 'evt_upd_1' })
       }
     };
@@ -602,37 +614,79 @@ describe('Payments webhook hardening', () => {
 
   // ── Idempotency ──────────────────────────────────────────────────────────
   describe('idempotency (webhook_events dedupe)', () => {
-    test('records the event id before processing', async () => {
+    test('records the event id only after successful handling', async () => {
       const event = subscriptionUpdatedEvent({ id: 'evt_once' });
       const res = await postWebhook(event);
 
       expect(res.status).toBe(200);
+      // The entitlement write happened...
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledTimes(1);
+      // ...and only then was the event recorded on the ledger.
       expect(mockPrisma.webhookEvent.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           id: 'evt_once',
           type: 'customer.subscription.updated'
         })
       });
+      const updateManyOrder = mockPrisma.user.updateMany.mock.invocationCallOrder[0];
+      const createOrder = mockPrisma.webhookEvent.create.mock.invocationCallOrder[0];
+      expect(createOrder).toBeGreaterThan(updateManyOrder);
     });
 
-    test('same event id delivered twice is processed only once', async () => {
+    test('a redelivery already on the ledger short-circuits without reprocessing', async () => {
       const event = subscriptionUpdatedEvent({ id: 'evt_dupe' });
 
       const first = await postWebhook(event);
       expect(first.status).toBe(200);
       expect(first.body.received).toBe(true);
-      expect(mockPrisma.user.update).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledTimes(1);
 
-      // Redelivery: unique constraint on WebhookEvent.id fires (P2002)
-      const uniqueViolation = Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
-      mockPrisma.webhookEvent.create.mockRejectedValueOnce(uniqueViolation);
+      // Redelivery: the pre-check finds the event already recorded.
+      mockPrisma.webhookEvent.findUnique.mockResolvedValueOnce({ id: 'evt_dupe' });
 
       const second = await postWebhook(event);
       expect(second.status).toBe(200);
       expect(second.body.received).toBe(true);
       expect(second.body.duplicate).toBe(true);
-      // No second entitlement mutation
-      expect(mockPrisma.user.update).toHaveBeenCalledTimes(1);
+      // No second entitlement mutation, no second ledger insert.
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.webhookEvent.create).toHaveBeenCalledTimes(1);
+    });
+
+    test('a concurrent redelivery losing the P2002 race is still acked as duplicate', async () => {
+      const event = subscriptionUpdatedEvent({ id: 'evt_race' });
+
+      // Pre-check misses (both deliveries raced past it), but the ledger insert
+      // loses the unique-constraint race.
+      const uniqueViolation = Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
+      mockPrisma.webhookEvent.create.mockRejectedValueOnce(uniqueViolation);
+
+      const res = await postWebhook(event);
+      expect(res.status).toBe(200);
+      expect(res.body.duplicate).toBe(true);
+    });
+
+    test('a handler failure does NOT record the event, so the retry reprocesses', async () => {
+      const event = subscriptionUpdatedEvent({ id: 'evt_transient' });
+
+      // First delivery: a transient DB error mid-handling.
+      mockPrisma.user.updateMany.mockRejectedValueOnce(
+        Object.assign(new Error('connection reset'), { code: undefined })
+      );
+
+      const first = await postWebhook(event);
+      expect(first.status).toBe(500);
+      // The event was NOT written to the ledger — otherwise the retry below
+      // would be swallowed as a duplicate and the state change lost forever.
+      expect(mockPrisma.webhookEvent.create).not.toHaveBeenCalled();
+
+      // Stripe retries. The pre-check still misses (nothing was recorded), so
+      // the handler runs again — this time succeeding.
+      const second = await postWebhook(event);
+      expect(second.status).toBe(200);
+      expect(second.body.received).toBe(true);
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledTimes(2);
+      expect(mockPrisma.webhookEvent.create).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -642,8 +696,8 @@ describe('Payments webhook hardening', () => {
       const res = await postWebhook(subscriptionUpdatedEvent({ status: 'active', priceId: 'price_premium_test' }));
 
       expect(res.status).toBe(200);
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
-        where: { id: userId },
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
         data: { subscriptionStatus: 'premium', lastStripeEventAt: eventCreatedDate }
       });
     });
@@ -652,8 +706,8 @@ describe('Payments webhook hardening', () => {
       const res = await postWebhook(subscriptionUpdatedEvent({ status: 'trialing', priceId: 'price_standard_test' }));
 
       expect(res.status).toBe(200);
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
-        where: { id: userId },
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
         data: { subscriptionStatus: 'paid', lastStripeEventAt: eventCreatedDate }
       });
     });
@@ -663,11 +717,11 @@ describe('Payments webhook hardening', () => {
 
       expect(res.status).toBe(200);
       // Watermark advances, but subscriptionStatus is NOT touched
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
-        where: { id: userId },
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
         data: { lastStripeEventAt: eventCreatedDate }
       });
-      const updateData = mockPrisma.user.update.mock.calls[0][0].data;
+      const updateData = mockPrisma.user.updateMany.mock.calls[0][0].data;
       expect(updateData).not.toHaveProperty('subscriptionStatus');
       expect(logger.warn).toHaveBeenCalledWith(
         expect.stringContaining('past_due'),
@@ -679,8 +733,8 @@ describe('Payments webhook hardening', () => {
       const res = await postWebhook(subscriptionUpdatedEvent({ status: stripeStatus }));
 
       expect(res.status).toBe(200);
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
-        where: { id: userId },
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
         data: { subscriptionStatus: 'expired', lastStripeEventAt: eventCreatedDate }
       });
     });
@@ -689,39 +743,40 @@ describe('Payments webhook hardening', () => {
       const res = await postWebhook(subscriptionUpdatedEvent({ status: 'incomplete' }));
 
       expect(res.status).toBe(200);
-      const updateData = mockPrisma.user.update.mock.calls[0][0].data;
+      const updateData = mockPrisma.user.updateMany.mock.calls[0][0].data;
       expect(updateData).not.toHaveProperty('subscriptionStatus');
     });
   });
 
   // ── Out-of-order protection ──────────────────────────────────────────────
   describe('out-of-order protection', () => {
-    test('skips an event older than the last processed one for the user', async () => {
-      // The user already processed an event newer than this delivery
-      mockPrisma.user.findUnique.mockResolvedValue({
-        ...baseUser,
-        lastStripeEventAt: new Date((EVENT_CREATED + 600) * 1000)
-      });
+    test('atomic stale skip: updateMany matching 0 rows is a no-op (200, no reprocess)', async () => {
+      // The DB row fails the watermark guard (a newer event was already
+      // processed), so the atomic write matches nothing.
+      mockPrisma.user.updateMany.mockResolvedValue({ count: 0 });
 
       const res = await postWebhook(subscriptionUpdatedEvent({ id: 'evt_stale', created: EVENT_CREATED, status: 'canceled' }));
 
       expect(res.status).toBe(200);
       expect(res.body.received).toBe(true);
-      // The stale 'canceled' must NOT clobber the newer state
-      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      // The staleness check is folded into the write: it carries the watermark
+      // guard, and count 0 tells us the stale 'canceled' did NOT clobber state.
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
+        data: { subscriptionStatus: 'expired', lastStripeEventAt: eventCreatedDate }
+      });
+      // No pre-read of the user; the single guarded write is the whole gate.
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
     });
 
     test('processes an event newer than the stored watermark', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({
-        ...baseUser,
-        lastStripeEventAt: new Date((EVENT_CREATED - 600) * 1000)
-      });
+      mockPrisma.user.updateMany.mockResolvedValue({ count: 1 });
 
       const res = await postWebhook(subscriptionUpdatedEvent({ id: 'evt_fresh', created: EVENT_CREATED, status: 'canceled' }));
 
       expect(res.status).toBe(200);
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
-        where: { id: userId },
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
         data: { subscriptionStatus: 'expired', lastStripeEventAt: eventCreatedDate }
       });
     });
@@ -747,8 +802,9 @@ describe('Payments webhook hardening', () => {
         to: baseUser.email,
         subject: expect.stringMatching(/payment/i)
       }));
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
-        where: { id: userId },
+      // Watermark advanced atomically via the guarded write.
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
         data: { lastStripeEventAt: eventCreatedDate }
       });
     });
@@ -760,7 +816,42 @@ describe('Payments webhook hardening', () => {
 
       expect(res.status).toBe(200);
       expect(sendEmail).not.toHaveBeenCalled();
-      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockPrisma.user.updateMany).not.toHaveBeenCalled();
+    });
+
+    test('stale redelivery (updateMany count 0) skips the dunning email', async () => {
+      mockPrisma.user.updateMany.mockResolvedValue({ count: 0 });
+
+      const res = await postWebhook(paymentFailedEvent);
+
+      expect(res.status).toBe(200);
+      // Watermark write was attempted, matched nothing, and no email was sent.
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledTimes(1);
+      expect(sendEmail).not.toHaveBeenCalled();
+    });
+
+    test('a failing/slow dunning email does not fail the webhook', async () => {
+      // SMTP is down: sendEmail rejects. Because it is fire-and-forget AFTER
+      // the DB write, the webhook must still return 200 and never throw.
+      sendEmail.mockRejectedValueOnce(new Error('SMTP connection timed out'));
+
+      const res = await postWebhook(paymentFailedEvent);
+
+      expect(res.status).toBe(200);
+      expect(res.body.received).toBe(true);
+      // Watermark still advanced, and the event was recorded as processed.
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
+        data: { lastStripeEventAt: eventCreatedDate }
+      });
+      expect(mockPrisma.webhookEvent.create).toHaveBeenCalledTimes(1);
+
+      // Let the rejected send settle; its failure is logged, not surfaced.
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringMatching(/dunning email/i),
+        expect.objectContaining({ userId })
+      );
     });
   });
 });

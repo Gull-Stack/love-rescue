@@ -21,13 +21,32 @@ function entitlementForSubscription(subscription) {
 }
 
 /**
- * Out-of-order protection: true when this event was created before the last
- * Stripe event we already processed for this user. Stripe does not guarantee
- * delivery order, so a stale `customer.subscription.updated` must never
- * overwrite the effect of a newer one.
+ * Apply an entitlement change to a user, gated on the out-of-order watermark,
+ * in a single atomic write.
+ *
+ * `updateMany` matches the row only when it still exists AND this event is not
+ * older than the last one we processed (`lastStripeEventAt` null or < the
+ * event's `created`). That folds the unknown-user check, the staleness check
+ * and the write into one query — no read-then-write race, and every caller is
+ * forced to stamp the watermark, so no event case can forget it. Stripe does
+ * not guarantee delivery order, so a stale `customer.subscription.updated`
+ * must never overwrite the effect of a newer one.
+ *
+ * Returns true when the write applied, false when it was a no-op (user gone or
+ * a stale/redelivered event) so the caller can skip any follow-up work.
  */
-function isStaleEvent(user, eventCreatedAt) {
-  return Boolean(user.lastStripeEventAt && user.lastStripeEventAt > eventCreatedAt);
+async function applyUserEntitlement(prisma, userId, eventCreatedAt, dataToSet) {
+  const { count } = await prisma.user.updateMany({
+    where: {
+      id: userId,
+      OR: [
+        { lastStripeEventAt: null },
+        { lastStripeEventAt: { lt: eventCreatedAt } }
+      ]
+    },
+    data: { ...dataToSet, lastStripeEventAt: eventCreatedAt }
+  });
+  return count > 0;
 }
 
 /**
@@ -61,28 +80,18 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   const eventCreatedAt = new Date((event.created || Math.floor(Date.now() / 1000)) * 1000);
 
   try {
-    // ── Idempotency: record the event id BEFORE processing. Stripe retries
-    // deliveries, so the unique primary key on WebhookEvent.id turns a
-    // redelivered event into a no-op — we acknowledge with 200 and skip.
+    // ── Idempotency pre-check. Stripe retries deliveries, so a redelivered
+    // event must be a no-op. We look the event up by its id (the WebhookEvent
+    // primary key) and, if it's already on the ledger, acknowledge with 200
+    // and skip. Crucially, we DO NOT record the event here — it's recorded
+    // only AFTER the handler succeeds (below). That way a transient failure
+    // mid-handling leaves no ledger row, returns non-2xx, and Stripe's retry
+    // genuinely reprocesses the event instead of being acked as a duplicate.
     if (event.id) {
-      try {
-        await req.prisma.webhookEvent.create({
-          data: {
-            id: event.id,
-            type: event.type,
-            payloadSummary: {
-              created: event.created || null,
-              objectId: event.data?.object?.id || null
-            }
-          }
-        });
-      } catch (err) {
-        if (err.code === 'P2002') {
-          // Unique constraint violation = we already saw this event.
-          logger.info('Duplicate webhook event skipped', { eventId: event.id, type: event.type });
-          return res.json({ received: true, duplicate: true });
-        }
-        throw err;
+      const existing = await req.prisma.webhookEvent.findUnique({ where: { id: event.id } });
+      if (existing) {
+        logger.info('Duplicate webhook event skipped', { eventId: event.id, type: event.type });
+        return res.json({ received: true, duplicate: true });
       }
     }
 
@@ -93,31 +102,17 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const tier = session.metadata?.tier;
 
         if (userId) {
-          const user = await req.prisma.user.findUnique({
-            where: { id: userId },
-            select: { lastStripeEventAt: true }
-          });
-          if (!user) {
-            logger.warn('Webhook for unknown user skipped', { userId, eventId: event.id, type: event.type });
-            break;
-          }
-          if (isStaleEvent(user, eventCreatedAt)) {
-            logger.info('Out-of-order webhook event skipped', { userId, eventId: event.id, type: event.type });
-            break;
-          }
-
           let status = 'paid';
-          if (tier === 'annual') status = 'premium';
-          else if (tier === 'premium') status = 'premium';
+          if (tier === 'annual' || tier === 'premium') status = 'premium';
 
-          await req.prisma.user.update({
-            where: { id: userId },
-            data: {
-              subscriptionStatus: status,
-              stripeCustomerId: session.customer,
-              lastStripeEventAt: eventCreatedAt
-            }
+          const applied = await applyUserEntitlement(req.prisma, userId, eventCreatedAt, {
+            subscriptionStatus: status,
+            stripeCustomerId: session.customer
           });
+          if (!applied) {
+            logger.info('Webhook skipped (unknown user or stale event)', { userId, eventId: event.id, type: event.type });
+            break;
+          }
 
           logger.info('Subscription activated', { userId, tier });
         }
@@ -130,21 +125,8 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const userId = customer.metadata?.userId;
 
         if (userId) {
-          const user = await req.prisma.user.findUnique({
-            where: { id: userId },
-            select: { lastStripeEventAt: true, subscriptionStatus: true }
-          });
-          if (!user) {
-            logger.warn('Webhook for unknown user skipped', { userId, eventId: event.id, type: event.type });
-            break;
-          }
-          if (isStaleEvent(user, eventCreatedAt)) {
-            logger.info('Out-of-order webhook event skipped', { userId, eventId: event.id, type: event.type });
-            break;
-          }
-
           // Full Stripe subscription-status mapping. `undefined` = leave the
-          // user's current entitlement untouched.
+          // user's current entitlement untouched (watermark still advances).
           let status;
           switch (subscription.status) {
             // Entitled: the subscription is in good standing. `trialing`
@@ -163,8 +145,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
             case 'past_due':
               logger.warn('Subscription past_due — keeping current entitlement during grace period', {
                 userId,
-                subscriptionId: subscription.id,
-                currentStatus: user.subscriptionStatus
+                subscriptionId: subscription.id
               });
               break;
 
@@ -197,14 +178,15 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
               });
           }
 
-          const data = { lastStripeEventAt: eventCreatedAt };
-          if (status) data.subscriptionStatus = status;
-          await req.prisma.user.update({
-            where: { id: userId },
-            data
-          });
+          const entitlement = {};
+          if (status) entitlement.subscriptionStatus = status;
+          const applied = await applyUserEntitlement(req.prisma, userId, eventCreatedAt, entitlement);
+          if (!applied) {
+            logger.info('Webhook skipped (unknown user or stale event)', { userId, eventId: event.id, type: event.type });
+            break;
+          }
 
-          logger.info('Subscription updated', { userId, status: status || user.subscriptionStatus, stripeStatus: subscription.status });
+          logger.info('Subscription updated', { userId, status: status || 'unchanged', stripeStatus: subscription.status });
         }
         break;
       }
@@ -215,23 +197,13 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const userId = customer.metadata?.userId;
 
         if (userId) {
-          const user = await req.prisma.user.findUnique({
-            where: { id: userId },
-            select: { lastStripeEventAt: true }
+          const applied = await applyUserEntitlement(req.prisma, userId, eventCreatedAt, {
+            subscriptionStatus: 'expired'
           });
-          if (!user) {
-            logger.warn('Webhook for unknown user skipped', { userId, eventId: event.id, type: event.type });
+          if (!applied) {
+            logger.info('Webhook skipped (unknown user or stale event)', { userId, eventId: event.id, type: event.type });
             break;
           }
-          if (isStaleEvent(user, eventCreatedAt)) {
-            logger.info('Out-of-order webhook event skipped', { userId, eventId: event.id, type: event.type });
-            break;
-          }
-
-          await req.prisma.user.update({
-            where: { id: userId },
-            data: { subscriptionStatus: 'expired', lastStripeEventAt: eventCreatedAt }
-          });
 
           logger.info('Subscription cancelled', { userId });
         }
@@ -248,24 +220,32 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
           // Dunning email: this event only fires for a real Stripe
           // subscription, so if it arrives billing is genuinely in play.
-          // Guard: only send when the user actually exists and the event
-          // isn't a stale redelivery from before a newer state change.
+          // Load the user for their email/name; skip if they no longer exist.
           const user = await req.prisma.user.findUnique({
             where: { id: userId },
-            select: { email: true, firstName: true, lastStripeEventAt: true }
+            select: { email: true, firstName: true }
           });
           if (!user) {
             logger.warn('Payment-failed webhook for unknown user — no dunning email sent', { userId, invoiceId: invoice.id });
             break;
           }
-          if (isStaleEvent(user, eventCreatedAt)) {
-            logger.info('Out-of-order webhook event skipped', { userId, eventId: event.id, type: event.type });
+
+          // Advance the watermark atomically first. A no-op (count 0) means a
+          // stale redelivery from before a newer state change — skip the email
+          // so we never re-send a dunning notice for an outdated failure.
+          const applied = await applyUserEntitlement(req.prisma, userId, eventCreatedAt, {});
+          if (!applied) {
+            logger.info('Out-of-order payment-failed webhook skipped', { userId, eventId: event.id, type: event.type });
             break;
           }
 
+          // Fire-and-forget the email AFTER the DB write: a slow or down SMTP
+          // host must never delay the 200 or trigger a Stripe timeout-retry.
+          // Failures are logged, not surfaced — the watermark is already set,
+          // so a retry would be deduped anyway.
           const name = user.firstName || 'there';
           const portalUrl = `${process.env.FRONTEND_URL || 'https://loverescue.app'}/settings`;
-          await sendEmail({
+          sendEmail({
             to: user.email,
             subject: 'Love Rescue - We couldn\'t process your payment',
             text: `Hey ${name},\n\nWe tried to renew your Love Rescue subscription, but your payment didn't go through. This usually just means a card expired or was replaced.\n\nUpdate your payment method here and you're all set: ${portalUrl}\n\nWe'll retry automatically over the next few days, and your access stays active in the meantime. If the payment keeps failing, your subscription will pause — and we'd hate to interrupt your progress.\n\n— Love Rescue`,
@@ -280,11 +260,8 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
                 <p style="color: #9FB0C0; font-size: 13px;">Questions? Just reply to this email.</p>
               </div>
             `
-          });
-
-          await req.prisma.user.update({
-            where: { id: userId },
-            data: { lastStripeEventAt: eventCreatedAt }
+          }).catch((err) => {
+            logger.error('Dunning email delivery failed', { userId, invoiceId: invoice.id, error: err.message });
           });
         }
         break;
@@ -292,6 +269,32 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
       default:
         logger.info('Unhandled webhook event', { type: event.type });
+    }
+
+    // ── Record the event as processed only now that handling succeeded, so a
+    // throw above never leaves a ledger row (and Stripe's retry reprocesses).
+    // A P2002 here means a concurrent redelivery recorded it first — that's
+    // still a duplicate, so ack it. The atomic watermark keeps the entitlement
+    // correct even if both deliveries reached the handler.
+    if (event.id) {
+      try {
+        await req.prisma.webhookEvent.create({
+          data: {
+            id: event.id,
+            type: event.type,
+            payloadSummary: {
+              created: event.created || null,
+              objectId: event.data?.object?.id || null
+            }
+          }
+        });
+      } catch (err) {
+        if (err.code === 'P2002') {
+          logger.info('Duplicate webhook event skipped', { eventId: event.id, type: event.type });
+          return res.json({ received: true, duplicate: true });
+        }
+        throw err;
+      }
     }
 
     res.json({ received: true });
