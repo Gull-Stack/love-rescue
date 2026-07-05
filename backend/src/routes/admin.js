@@ -375,6 +375,9 @@ router.put('/users/:id', async (req, res) => {
     }
     if (isPlatformAdmin !== undefined) {
       updateData.isPlatformAdmin = isPlatformAdmin;
+      // Track explicit demotion so the boot-time bootstrap never re-promotes
+      // this account; promotion clears the revocation marker.
+      updateData.adminRevokedAt = isPlatformAdmin ? null : new Date();
     }
 
     const user = await req.prisma.user.update({
@@ -1065,5 +1068,163 @@ router.post('/link-partners', async (req, res) => {
   } catch (error) {
     console.error('Link partners error:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ─── Integration Partner ↔ Therapist Bindings ─────────────────────
+// Integration partners can only mint tokens for therapists they are bound to
+// (enforced in POST /api/integration/auth). These endpoints manage bindings.
+
+/**
+ * GET /api/admin/integration-partners/:partnerId/therapists
+ * List a partner's therapist bindings
+ */
+router.get('/integration-partners/:partnerId/therapists', async (req, res) => {
+  try {
+    const { partnerId } = req.params;
+
+    const partner = await req.prisma.integrationPartner.findUnique({
+      where: { id: partnerId },
+      select: { id: true, name: true, status: true }
+    });
+    if (!partner) {
+      return res.status(404).json({ error: 'Integration partner not found' });
+    }
+
+    const bindings = await req.prisma.integrationPartnerTherapist.findMany({
+      where: { partnerId },
+      include: {
+        therapist: {
+          select: { id: true, email: true, firstName: true, lastName: true, isActive: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ partner, bindings, total: bindings.length });
+  } catch (error) {
+    logger.error('Admin list partner bindings error', { error: error.message, partnerId: req.params.partnerId });
+    res.status(500).json({ error: 'Failed to fetch partner bindings' });
+  }
+});
+
+/**
+ * POST /api/admin/integration-partners/:partnerId/therapists
+ * Bind an integration partner to a therapist
+ * Body: { therapistId }
+ */
+router.post('/integration-partners/:partnerId/therapists', async (req, res) => {
+  try {
+    const { partnerId } = req.params;
+    const { therapistId } = req.body;
+
+    if (!therapistId) {
+      return res.status(400).json({ error: 'therapistId is required' });
+    }
+
+    const [partner, therapist] = await Promise.all([
+      req.prisma.integrationPartner.findUnique({
+        where: { id: partnerId },
+        select: { id: true, name: true }
+      }),
+      req.prisma.therapist.findUnique({
+        where: { id: therapistId },
+        select: { id: true, email: true }
+      })
+    ]);
+    if (!partner) {
+      return res.status(404).json({ error: 'Integration partner not found' });
+    }
+    if (!therapist) {
+      return res.status(404).json({ error: 'Therapist not found' });
+    }
+
+    const existing = await req.prisma.integrationPartnerTherapist.findFirst({
+      where: { partnerId, therapistId }
+    });
+    if (existing) {
+      return res.status(409).json({ error: 'Binding already exists', bindingId: existing.id });
+    }
+
+    const binding = await req.prisma.integrationPartnerTherapist.create({
+      data: { partnerId, therapistId, createdBy: req.user.id }
+    });
+
+    // Audit log
+    await req.prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'ADMIN_INTEGRATION_BINDING_CREATE',
+        resource: 'integration_partner_therapist',
+        resourceId: binding.id,
+        metadata: {
+          createdBy: req.user.email,
+          partnerId,
+          partnerName: partner.name,
+          therapistId,
+          therapistEmail: therapist.email
+        },
+        ipAddress: req.ip
+      }
+    });
+
+    logger.info('Admin created integration partner binding', {
+      adminId: req.user.id,
+      partnerId,
+      therapistId
+    });
+
+    res.status(201).json({ message: 'Binding created', binding });
+  } catch (error) {
+    logger.error('Admin create partner binding error', { error: error.message, partnerId: req.params.partnerId });
+    res.status(500).json({ error: 'Failed to create partner binding' });
+  }
+});
+
+/**
+ * DELETE /api/admin/integration-partners/:partnerId/therapists/:therapistId
+ * Remove an integration partner's therapist binding
+ */
+router.delete('/integration-partners/:partnerId/therapists/:therapistId', async (req, res) => {
+  try {
+    const { partnerId, therapistId } = req.params;
+
+    const binding = await req.prisma.integrationPartnerTherapist.findFirst({
+      where: { partnerId, therapistId }
+    });
+    if (!binding) {
+      return res.status(404).json({ error: 'Binding not found' });
+    }
+
+    await req.prisma.integrationPartnerTherapist.delete({
+      where: { id: binding.id }
+    });
+
+    // Audit log
+    await req.prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'ADMIN_INTEGRATION_BINDING_DELETE',
+        resource: 'integration_partner_therapist',
+        resourceId: binding.id,
+        metadata: {
+          deletedBy: req.user.email,
+          partnerId,
+          therapistId
+        },
+        ipAddress: req.ip
+      }
+    });
+
+    logger.info('Admin deleted integration partner binding', {
+      adminId: req.user.id,
+      partnerId,
+      therapistId
+    });
+
+    res.json({ message: 'Binding removed' });
+  } catch (error) {
+    logger.error('Admin delete partner binding error', { error: error.message, partnerId: req.params.partnerId });
+    res.status(500).json({ error: 'Failed to delete partner binding' });
   }
 });

@@ -34,6 +34,7 @@ const authenticate = async (req, res, next) => {
         subscriptionStatus: true,
         stripeCustomerId: true,
         isPlatformAdmin: true,
+        tokenVersion: true,
         createdAt: true
       }
     });
@@ -42,8 +43,18 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ error: 'User not found' });
     }
 
+    // Session revocation: reject tokens issued before the last password
+    // change/reset or logout. Legacy tokens without the claim are treated as
+    // version 0 (grace period) — they die as soon as the user's tokenVersion
+    // is bumped for the first time.
+    const tokenVersion = decoded.tokenVersion ?? 0;
+    if (tokenVersion !== (user.tokenVersion ?? 0)) {
+      return res.status(401).json({ error: 'Token revoked', code: 'TOKEN_REVOKED' });
+    }
+
     // App is free — treat all users as premium regardless of DB status
-    req.user = { ...user, subscriptionStatus: 'premium' };
+    const { tokenVersion: _tv, ...safeUser } = user;
+    req.user = { ...safeUser, subscriptionStatus: 'premium' };
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -84,12 +95,15 @@ const optionalAuth = async (req, res, next) => {
           firstName: true,
           lastName: true,
           role: true,
-          subscriptionStatus: true
+          subscriptionStatus: true,
+          tokenVersion: true
         }
       });
 
-      if (user) {
-        req.user = user;
+      // Same revocation check as authenticate (missing claim = legacy version 0)
+      if (user && (decoded.tokenVersion ?? 0) === (user.tokenVersion ?? 0)) {
+        const { tokenVersion: _tv, ...safeUser } = user;
+        req.user = safeUser;
       }
     }
   } catch (error) {

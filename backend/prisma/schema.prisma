@@ -143,6 +143,11 @@ model User {
   trialEndsAt        DateTime?          @map("trial_ends_at")
   stripeCustomerId   String?            @map("stripe_customer_id") @db.VarChar(255)
   isPlatformAdmin    Boolean            @default(false) @map("is_platform_admin")
+  adminRevokedAt     DateTime?          @map("admin_revoked_at") // set when an operator explicitly demotes; bootstrap never re-promotes
+  tokenVersion       Int                @default(0) @map("token_version") // bumped to revoke all outstanding access tokens
+  failedLoginCount   Int                @default(0) @map("failed_login_count") // DB-backed lockout fallback (no Redis)
+  lastFailedLoginAt  DateTime?          @map("last_failed_login_at")
+  lockedUntil        DateTime?          @map("locked_until")
   pushToken          String?            @map("push_token") @db.VarChar(500)
   pushPlatform       String?            @map("push_platform") @db.VarChar(10) // ios, android, web
   subscriptionSource SubscriptionSource @default(NONE) @map("subscription_source")
@@ -198,6 +203,7 @@ model Therapist {
   clientLinks    TherapistClient[]
   alerts         TherapistAlert[]
   sessionReports SessionPrepReport[]
+  integrationPartnerLinks IntegrationPartnerTherapist[]
 
   @@map("therapists")
   @@index([email])
@@ -536,6 +542,7 @@ model Token {
   email     String   @db.VarChar(255)
   token     String   @unique @db.VarChar(255)
   type      String   @db.VarChar(50) // 'email_verify', 'password_reset', 'invite'
+  attempts  Int      @default(0) // failed verification attempts (password reset codes lock after 5)
   expiresAt DateTime @map("expires_at")
   usedAt    DateTime? @map("used_at")
   createdAt DateTime @default(now()) @map("created_at")
@@ -802,11 +809,31 @@ model IntegrationPartner {
   updatedAt       DateTime                 @updatedAt @map("updated_at")
 
   // Relations
-  accessLogs IntegrationAccessLog[]
+  accessLogs     IntegrationAccessLog[]
+  therapistLinks IntegrationPartnerTherapist[]
 
   @@map("integration_partners")
   @@index([apiKey])
   @@index([status])
+}
+
+// Binds an integration partner to the specific therapists it may act for.
+// Partners with zero bindings can mint no integration tokens (fail closed).
+model IntegrationPartnerTherapist {
+  id          String   @id @default(uuid()) @db.Uuid
+  partnerId   String   @map("partner_id") @db.Uuid
+  therapistId String   @map("therapist_id") @db.Uuid
+  createdBy   String?  @map("created_by") @db.Uuid // platform admin user id
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  partner   IntegrationPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  therapist Therapist          @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerId, therapistId])
+  @@map("integration_partner_therapists")
+  @@index([partnerId])
+  @@index([therapistId])
 }
 
 // HIPAA-compliant integration access logging

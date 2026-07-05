@@ -13,6 +13,8 @@ const RECOMMENDED_ENV_VARS = [
   'ALLOWED_ORIGINS',
   'FRONTEND_URL',
   'INTEGRATION_JWT_SECRET',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
 ];
 
 const missing = REQUIRED_ENV_VARS.filter(key => !process.env[key]);
@@ -28,6 +30,9 @@ if (missingRecommended.length > 0) {
   console.warn('⚠️  WARNING: Missing recommended environment variables:');
   missingRecommended.forEach(key => console.warn(`   - ${key}`));
   console.warn('Some features may not work correctly.\n');
+  if (missingRecommended.includes('STRIPE_SECRET_KEY') || missingRecommended.includes('STRIPE_WEBHOOK_SECRET')) {
+    console.warn('⚠️  Stripe payments/webhooks will not work until STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are configured.\n');
+  }
 }
 // ============================================
 
@@ -87,14 +92,18 @@ if (process.env.NODE_ENV === 'production') {
 
 // Security middleware
 // HIGH-NEW-03: Configure Helmet with CSP to protect against XSS
+// NOTE: this API serves JSON only (no HTML/inline scripts — the SPA is deployed
+// separately on Vercel with its own headers), so the CSP here is defense-in-depth.
+// 'unsafe-inline' removed from scriptSrc; js.stripe.com removed (no Stripe.js is
+// loaded from any page served by this backend).
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://accounts.google.com", "https://js.stripe.com"],
+      scriptSrc: ["'self'", "https://accounts.google.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      frameSrc: ["https://accounts.google.com", "https://js.stripe.com"],
+      frameSrc: ["https://accounts.google.com"],
       connectSrc: ["'self'", "https://loverescue.app", "https://www.loverescue.app", "https://accounts.google.com"],
       imgSrc: ["'self'", "data:", "https:"],
     }
@@ -120,7 +129,10 @@ const limiter = rateLimit({
   max: Number(process.env.RATE_LIMIT_MAX) || 1000,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests, please try again later.' }
+  message: { error: 'Too many requests, please try again later.' },
+  // Stripe webhooks are signature-verified and can burst well beyond per-IP
+  // limits (all events come from Stripe's IPs) — exempt them from this limiter.
+  skip: (req) => req.originalUrl === '/api/payments/webhook' || req.originalUrl.startsWith('/api/stripe/webhook')
 });
 app.use('/api/', limiter);
 
@@ -138,6 +150,9 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/signup', authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth/reset-password', authLimiter);
+// Biometric login endpoints are unauthenticated credential probes too
+app.use('/api/auth/webauthn/login/options', authLimiter);
+app.use('/api/auth/webauthn/login/verify', authLimiter);
 
 // CRIT-02: Conditionally skip JSON parsing for Stripe webhook (needs raw body)
 app.use((req, res, next) => {
@@ -310,43 +325,47 @@ async function verifyDatabaseSchema() {
   }
 }
 
-// Platform admin emails that should always have access
-const PLATFORM_ADMIN_EMAILS = [
-  'josh@gullstack.com',
-  'bryce@gullstack.com',
-];
+// SECURITY FIX (CRIT): platform admins are no longer hardcoded or self-healing.
+// The allowlist comes from the PLATFORM_ADMIN_EMAILS env var (comma-separated,
+// same var middleware/auth.js uses for its request-time check). Boot-time
+// promotion is opt-in via PLATFORM_ADMIN_BOOTSTRAP=true and:
+//   - never CREATES accounts (the person must sign up first),
+//   - never re-promotes an account an operator explicitly demoted
+//     (tracked via User.adminRevokedAt, set by PUT /api/admin/users/:id).
+const { PLATFORM_ADMIN_EMAILS } = require('./middleware/auth');
 
-// Self-healing bootstrap: ensures platform admins can always log in
 async function bootstrapPlatformAdmins() {
+  if (process.env.PLATFORM_ADMIN_BOOTSTRAP !== 'true') {
+    logger.info('[Bootstrap] Platform admin bootstrap disabled (set PLATFORM_ADMIN_BOOTSTRAP=true to enable)');
+    return;
+  }
+
+  if (PLATFORM_ADMIN_EMAILS.length === 0) {
+    logger.warn('[Bootstrap] PLATFORM_ADMIN_BOOTSTRAP=true but PLATFORM_ADMIN_EMAILS is empty — nothing to promote');
+    return;
+  }
+
   logger.info('[Bootstrap] Checking platform admin accounts...');
-  
+
   try {
     for (const email of PLATFORM_ADMIN_EMAILS) {
       const existingUser = await prisma.user.findUnique({
         where: { email },
       });
-      
+
       if (!existingUser) {
-        logger.info(`[Bootstrap] Creating platform admin: ${email}`);
-        const nameParts = email.split('@')[0].split('.');
-        const firstName = nameParts[0]?.charAt(0).toUpperCase() + nameParts[0]?.slice(1) || 'Admin';
-        
-        // Create with a placeholder password - they'll need to reset or use Google OAuth
-        const bcrypt = require('bcryptjs');
-        const tempPassword = await bcrypt.hash(require('crypto').randomBytes(32).toString('hex'), 10);
-        
-        await prisma.user.create({
-          data: {
-            email,
-            passwordHash: tempPassword, // SECURITY FIX: matches Prisma schema field name
-            firstName,
-            lastName: 'Admin',
-            isPlatformAdmin: true,
-            emailVerified: true, // Skip verification for admins
-          },
-        });
-      } else if (!existingUser.isPlatformAdmin) {
-        // Ensure admin flag is set
+        // Do NOT auto-create accounts — the admin must sign up normally first.
+        logger.warn(`[Bootstrap] Allowlisted admin has no account (skipping): ${email}`);
+        continue;
+      }
+
+      if (existingUser.adminRevokedAt) {
+        // An operator explicitly demoted this account — never re-promote.
+        logger.warn(`[Bootstrap] Admin was explicitly revoked, not re-promoting: ${email}`);
+        continue;
+      }
+
+      if (!existingUser.isPlatformAdmin) {
         logger.info(`[Bootstrap] Promoting to platform admin: ${email}`);
         await prisma.user.update({
           where: { email },
@@ -354,7 +373,7 @@ async function bootstrapPlatformAdmins() {
         });
       }
     }
-    
+
     logger.info('[Bootstrap] Platform admin check complete.');
   } catch (error) {
     logger.error('[Bootstrap] Error (non-fatal):', { error: error.message });
@@ -371,7 +390,7 @@ async function startServer() {
     // Verify critical tables exist (fail fast if schema is broken)
     await verifyDatabaseSchema();
 
-    // Self-healing: ensure platform admins always exist
+    // Opt-in (PLATFORM_ADMIN_BOOTSTRAP=true): promote allowlisted existing accounts
     await bootstrapPlatformAdmins();
 
     // Clean expired tokens on startup

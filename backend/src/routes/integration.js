@@ -86,6 +86,30 @@ router.post('/auth', async (req, res, next) => {
       return res.status(404).json({ error: 'Therapist not found or inactive' });
     }
 
+    // SECURITY FIX (HIGH): partners may only act for therapists they are
+    // explicitly bound to (IntegrationPartnerTherapist, managed via the
+    // platform-admin API). Fails closed: a partner with zero bindings can
+    // mint no tokens at all.
+    const binding = await req.prisma.integrationPartnerTherapist.findFirst({
+      where: { partnerId: partner.id, therapistId: therapist.id },
+      select: { id: true },
+    });
+
+    if (!binding) {
+      await logIntegrationAccess(req.prisma, {
+        partnerId: partner.id,
+        endpoint: 'POST /api/integration/auth',
+        clientId: null,
+        responseCode: 403,
+        ipAddress: req.ip,
+      });
+      logger.warn('Integration auth denied — partner not bound to therapist', {
+        partnerId: partner.id,
+        therapistId,
+      });
+      return res.status(403).json({ error: 'Partner is not authorized for this therapist' });
+    }
+
     // Issue integration JWT
     const token = jwt.sign(
       {

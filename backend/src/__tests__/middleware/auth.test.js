@@ -124,12 +124,81 @@ describe('authenticate', () => {
         subscriptionStatus: true,
         stripeCustomerId: true,
         isPlatformAdmin: true,
+        tokenVersion: true,
         createdAt: true
       }
     });
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({ error: 'User not found' });
     expect(next).not.toHaveBeenCalled();
+  });
+
+  test('rejects token whose tokenVersion no longer matches the DB (revoked session)', async () => {
+    // Token minted before a password change/reset or logout (version 0),
+    // but the user's tokenVersion has since been bumped to 1.
+    const token = createToken({ userId: 'user-123', tokenVersion: 0 });
+    req.headers.authorization = `Bearer ${token}`;
+    req.prisma.user.findUnique.mockResolvedValue({
+      id: 'user-123',
+      email: 'test@example.com',
+      tokenVersion: 1
+    });
+
+    await authenticate(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Token revoked', code: 'TOKEN_REVOKED' });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('treats legacy token without tokenVersion claim as version 0 (grace period)', async () => {
+    // Legacy tokens (issued before this change) carry no claim → version 0.
+    // They stay valid while the user is still at version 0...
+    const legacyToken = createToken({ userId: 'user-123' });
+    req.headers.authorization = `Bearer ${legacyToken}`;
+    req.prisma.user.findUnique.mockResolvedValue({
+      id: 'user-123',
+      email: 'test@example.com',
+      tokenVersion: 0
+    });
+
+    await authenticate(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  test('rejects legacy token once the user tokenVersion has been bumped', async () => {
+    // ...and die as soon as the version is bumped for the first time.
+    const legacyToken = createToken({ userId: 'user-123' });
+    req.headers.authorization = `Bearer ${legacyToken}`;
+    req.prisma.user.findUnique.mockResolvedValue({
+      id: 'user-123',
+      email: 'test@example.com',
+      tokenVersion: 2
+    });
+
+    await authenticate(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Token revoked', code: 'TOKEN_REVOKED' });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('accepts token whose tokenVersion matches the DB value', async () => {
+    const token = createToken({ userId: 'user-123', tokenVersion: 3 });
+    req.headers.authorization = `Bearer ${token}`;
+    req.prisma.user.findUnique.mockResolvedValue({
+      id: 'user-123',
+      email: 'test@example.com',
+      tokenVersion: 3
+    });
+
+    await authenticate(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    // tokenVersion is an internal field — it must not leak onto req.user
+    expect(req.user.tokenVersion).toBeUndefined();
   });
 
   test('sets req.user and calls next on valid token', async () => {

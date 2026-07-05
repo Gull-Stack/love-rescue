@@ -9,7 +9,7 @@ jest.mock('../../utils/logger', () => ({
 }));
 
 const logger = require('../../utils/logger');
-const { auditLogger } = require('../../middleware/auditLogger');
+const { auditLogger, redactQuery } = require('../../middleware/auditLogger');
 
 /**
  * Helper: create a mock Express request object.
@@ -136,6 +136,39 @@ describe('auditLogger', () => {
 
     // But the database create should NOT have been called
     expect(req.prisma.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  test('redacts sensitive query params (OAuth codes, tokens, secrets) before persisting', async () => {
+    req.path = '/api/calendar/callback';
+    req.query = {
+      code: '4/0AbCdOAuthCode',
+      state: 'oauth-state-value',
+      token: 'reset-token',
+      api_key: 'sk_live_abc',
+      clientSecret: 'shh',
+      page: '2'
+    };
+
+    await auditLogger(req, res, next);
+    res.emit('finish');
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const persisted = req.prisma.auditLog.create.mock.calls[0][0].data.metadata.query;
+    expect(persisted.code).toBe('[REDACTED]');
+    expect(persisted.state).toBe('[REDACTED]');
+    expect(persisted.token).toBe('[REDACTED]');
+    expect(persisted.api_key).toBe('[REDACTED]');
+    expect(persisted.clientSecret).toBe('[REDACTED]');
+    // Non-sensitive params survive
+    expect(persisted.page).toBe('2');
+  });
+
+  test('redactQuery leaves the original query object untouched', () => {
+    const query = { code: 'abc', page: '1' };
+    const redacted = redactQuery(query);
+
+    expect(redacted).toEqual({ code: '[REDACTED]', page: '1' });
+    expect(query.code).toBe('abc');
   });
 
   test('handles errors in audit log creation gracefully', async () => {
