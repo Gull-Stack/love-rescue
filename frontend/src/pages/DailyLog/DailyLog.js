@@ -7,6 +7,11 @@ import {
   Slider,
   IconButton,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Link,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -505,6 +510,99 @@ const AlreadyLoggedCard = ({ streakData, onEdit }) => (
   </Box>
 );
 
+// ---- CRISIS SUPPORT DIALOG (module scope) ----
+// Shown after a successful save when the backend's crisis detection returns
+// `crisis: {detected, message, resources, ...}` on the daily-log response.
+// It replaces the confetti celebration for that submit — warm, resource-first,
+// never alarmist or shaming. Visual style mirrors RealTalk's safety dialog.
+// Hoisted to module scope (props-bag pattern) like the cards above.
+
+// Turn a resource contact string ("Call or text 988", "Text HOME to 741741",
+// "Call 1-800-799-7233 or text START to 88788") into tappable tel:/sms: links.
+// Returns [] when nothing parseable is found; caller falls back to plain text.
+const getContactActions = (contact = '') => {
+  const actions = [];
+  const call = contact.match(/call(?:\s+or\s+text)?\s+(\d[\d-]*\d|\d+)/i);
+  if (call) {
+    actions.push({ label: `Call ${call[1]}`, href: `tel:${call[1]}` });
+  }
+  const text = contact.match(/text\s+(?:([A-Za-z]+)\s+to\s+)?(\d[\d-]*\d|\d+)/i);
+  if (text) {
+    const [, keyword, number] = text;
+    actions.push({
+      label: keyword ? `Text ${keyword} to ${number}` : `Text ${number}`,
+      href: `sms:${number}${keyword ? `?&body=${keyword}` : ''}`,
+    });
+  }
+  return actions;
+};
+
+const CrisisSupportDialog = ({ open, crisis, onDismiss }) => (
+  <Dialog
+    open={open}
+    onClose={onDismiss}
+    PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+  >
+    <DialogTitle sx={{ fontWeight: 700 }}>
+      Before you go — we're here
+    </DialogTitle>
+    <DialogContent>
+      <Typography variant="body1" sx={{ mb: 2 }}>
+        {crisis?.message ||
+          "It sounds like you're carrying something heavy right now. You don't have to hold it alone."}
+      </Typography>
+      <Typography variant="body1" sx={{ mb: 2 }}>
+        If you'd like to talk to someone, these people are ready to listen — anytime, for free:
+      </Typography>
+      {(crisis?.resources || []).map((resource) => {
+        const actions = getContactActions(resource?.contact || '');
+        return (
+          <Box key={resource?.name || resource?.contact} sx={{ mb: 2 }}>
+            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+              {resource?.url ? (
+                <Link href={resource.url} target="_blank" rel="noopener noreferrer" underline="hover">
+                  {resource?.name}
+                </Link>
+              ) : (
+                resource?.name
+              )}
+            </Typography>
+            {actions.length > 0 ? (
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                {actions.map((action) => (
+                  <Link key={action.href} href={action.href} variant="body1" sx={{ fontWeight: 600 }}>
+                    {action.label}
+                  </Link>
+                ))}
+              </Box>
+            ) : (
+              <Typography variant="body1">{resource?.contact}</Typography>
+            )}
+            {resource?.available && (
+              <Typography variant="body2" color="text.secondary">
+                Available {resource.available}
+              </Typography>
+            )}
+          </Box>
+        );
+      })}
+      <Typography variant="body2" color="text.secondary">
+        Confidential, judgment-free, and there whenever you need them. Your check-in
+        is saved — nothing you wrote changes that.
+      </Typography>
+    </DialogContent>
+    <DialogActions>
+      <Button
+        variant="contained"
+        onClick={onDismiss}
+        sx={{ textTransform: 'none', fontWeight: 'bold' }}
+      >
+        I'm safe — continue
+      </Button>
+    </DialogActions>
+  </Dialog>
+);
+
 const cards = [MoodCard, ConnectionCard, InteractionsCard, GratitudeCard, EmotionsCard, ReflectionCard, DoneCard];
 
 const DailyLog = () => {
@@ -543,6 +641,11 @@ const DailyLog = () => {
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationType, setCelebrationType] = useState('dailyLog');
   const [streakMilestone, setStreakMilestone] = useState(null);
+
+  // Crisis support — populated when the save response carries a `crisis`
+  // payload; while set, the confetti celebration is suppressed.
+  const [crisisData, setCrisisData] = useState(null);
+  const [showCrisisDialog, setShowCrisisDialog] = useState(false);
 
   // Daily-reminder opt-in offered at the peak-goodwill moment (just after a log).
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscribe: subscribePush } = usePushNotifications();
@@ -655,7 +758,13 @@ const DailyLog = () => {
     const wasFirstLogToday = !hasLoggedToday;
 
     try {
-      await logsApi.submitDaily({ ...formData, emotions: selectedEmotions });
+      const res = await logsApi.submitDaily({ ...formData, emotions: selectedEmotions });
+
+      // Backend crisis detection on the journal text — when it fires we show
+      // supportive resources instead of confetti (celebrating over a crisis
+      // disclosure would be tone-deaf). The save itself succeeded either way.
+      const crisis = res?.data?.crisis;
+      const crisisDetected = Boolean(crisis?.detected);
 
       // Submit gratitude entry if provided
       if (gratitudeText.trim()) {
@@ -671,23 +780,32 @@ const DailyLog = () => {
       setHasLoggedToday(true);
       setSubmitted(true);
 
+      if (crisisDetected) {
+        setCrisisData(crisis);
+        setShowCrisisDialog(true);
+      }
+
       if (wasFirstLogToday) {
-        celebrate({ big: true });
+        if (!crisisDetected) {
+          celebrate({ big: true });
+        }
 
         const streakRes = await streaksApi.getStreak();
         const newStreak = streakRes.data;
         setStreakData(newStreak);
 
-        const milestone = checkStreakMilestones(newStreak.currentStreak);
-        if (milestone) {
-          setCelebrationType('streak');
-          setStreakMilestone(milestone);
-        } else {
-          setCelebrationType('dailyLog');
-          setStreakMilestone(null);
-        }
+        if (!crisisDetected) {
+          const milestone = checkStreakMilestones(newStreak.currentStreak);
+          if (milestone) {
+            setCelebrationType('streak');
+            setStreakMilestone(milestone);
+          } else {
+            setCelebrationType('dailyLog');
+            setStreakMilestone(null);
+          }
 
-        setShowCelebration(true);
+          setShowCelebration(true);
+        }
       }
     } catch (err) {
       setError(err.response?.data?.error || "Couldn't save your check-in — check your connection and try again.");
@@ -826,6 +944,14 @@ const DailyLog = () => {
         onClose={() => setShowCelebration(false)}
         type={celebrationType}
         streakDay={streakMilestone}
+      />
+
+      {/* Crisis support — shown instead of the celebration when the backend
+          detected crisis language in the journal entry */}
+      <CrisisSupportDialog
+        open={showCrisisDialog}
+        crisis={crisisData}
+        onDismiss={() => setShowCrisisDialog(false)}
       />
 
       {/* Card with slide transition */}

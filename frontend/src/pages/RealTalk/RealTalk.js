@@ -52,6 +52,98 @@ const EXPERT_QUOTES = {
   },
 };
 
+// ---- SAFETY DIALOG COPY (module scope) ----
+// The backend flags two different kinds of safety responses on POST /api/real-talk:
+//   1. The legacy abuse-keyword check — `safety: true` with hotline/textLine/url
+//      but NO `crisis` payload → domestic-violence wording.
+//   2. The crisis-detection hook — `safety: true` PLUS a `crisis` payload
+//      ({detected, level, primaryType, safetyRisk, resources, ...}). Suicide /
+//      self-harm indicators set `crisis.safetyRisk`, and those detections must
+//      lead with 988, not DV wording.
+const SAFETY_COPY = {
+  suicide: {
+    title: 'You Matter',
+    body: "It sounds like you're carrying something heavy right now. You don't have to face it alone — trained counselors are ready to listen, right now.",
+    resourceName: '988 Suicide & Crisis Lifeline',
+    callLine: 'Call or text 988',
+    textLine: 'Text HOME to 741741 (Crisis Text Line)',
+    url: 'https://988lifeline.org',
+  },
+  abuse: {
+    title: 'Your Safety Matters',
+    body: 'It sounds like you may be experiencing abuse. You deserve to be safe.',
+    resourceName: 'National Domestic Violence Hotline',
+    callLine: 'Call: 1-800-799-7233',
+    textLine: 'Text START to 88788',
+    url: 'https://www.thehotline.org',
+  },
+  generic: {
+    title: 'Support Is Available',
+    body: "It sounds like you're going through something really hard. You don't have to carry it alone — someone caring is available to talk any time.",
+    resourceName: '988 Suicide & Crisis Lifeline',
+    callLine: 'Call or text 988',
+    textLine: 'Text HOME to 741741 (Crisis Text Line)',
+    url: 'https://988lifeline.org',
+  },
+};
+
+const getSafetyCopy = (data) => {
+  const crisis = data?.crisis;
+  // Suicide / self-harm indicators take precedence — 988 first.
+  if (crisis?.safetyRisk) return SAFETY_COPY.suicide;
+  // No crisis payload = the abuse-keyword early return → keep DV wording.
+  if (!crisis) return SAFETY_COPY.abuse;
+  // Crisis detections that carry the DV hotline (escalated physical conflict)
+  // also get the abuse wording.
+  const hasDvResource = (crisis.resources || []).some(
+    (r) => /domestic violence/i.test(r?.name || '')
+  );
+  if (hasDvResource || crisis.primaryType === 'ESCALATED_CONFLICT') return SAFETY_COPY.abuse;
+  return SAFETY_COPY.generic;
+};
+
+// Resolve the exact lines the safety dialog shows — the branched copy above,
+// overridden by whatever resources the backend actually returned.
+const getSafetyDisplay = (data) => {
+  const copy = getSafetyCopy(data);
+  const crisis = data?.crisis;
+  const display = { ...copy };
+
+  if (crisis) {
+    const resources = crisis.resources || [];
+    // Pick the resource matching the wording branch (DV hotline for abuse,
+    // 988 otherwise), falling back to the backend's primary resource.
+    const primary =
+      (copy === SAFETY_COPY.abuse
+        ? resources.find((r) => /domestic violence/i.test(r?.name || ''))
+        : resources.find((r) => /988/.test(r?.name || ''))) || resources[0];
+    if (primary) {
+      display.resourceName = primary.name || display.resourceName;
+      display.callLine = primary.contact || display.callLine;
+      display.url = primary.url || display.url;
+    }
+    const secondary = resources.find((r) => r !== primary && /\btext\b/i.test(r?.contact || ''));
+    if (secondary) {
+      display.textLine = `${secondary.contact}${secondary.name ? ` (${secondary.name})` : ''}`;
+    } else if (primary && /\btext\b/i.test(primary.contact || '')) {
+      // Primary line already covers texting (e.g. "Call or text 988").
+      display.textLine = '';
+    }
+  } else {
+    // Legacy abuse-keyword response: bare hotline number + text line + url.
+    if (data?.hotline) display.callLine = `Call: ${data.hotline}`;
+    if (data?.textLine) display.textLine = data.textLine;
+    if (data?.url) display.url = data.url;
+  }
+
+  try {
+    display.urlLabel = `Visit ${new URL(display.url).hostname.replace(/^www\./, '')}`;
+  } catch {
+    display.urlLabel = 'Open support website';
+  }
+  return display;
+};
+
 const whiteTextFieldSx = {
   '& .MuiOutlinedInput-root': {
     color: '#fff',
@@ -612,6 +704,9 @@ const RealTalk = () => {
 
   const CurrentStepComponent = steps[currentStep];
 
+  // Safety-dialog copy, branched on the shape of the safety response.
+  const safetyDisplay = getSafetyDisplay(safetyData);
+
   // Everything the hoisted step components need — state + handlers via props
   // so the component types themselves stay stable across renders.
   const stepProps = {
@@ -660,28 +755,32 @@ const RealTalk = () => {
         </motion.div>
       </AnimatePresence>
 
-      {/* Safety Dialog */}
+      {/* Safety Dialog — copy branches on the response type: suicide/self-harm
+          detections (crisis.safetyRisk) lead with 988, DV detections keep the
+          abuse wording, everything else gets a generic supportive fallback. */}
       <Dialog
         open={safetyDialog}
         onClose={() => setSafetyDialog(false)}
         PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
       >
         <DialogTitle sx={{ fontWeight: 700 }}>
-          Your Safety Matters
+          {safetyDisplay.title}
         </DialogTitle>
         <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
-            It sounds like you may be experiencing abuse. You deserve to be safe.
+            {safetyDisplay.body}
           </Typography>
           <Typography variant="body1" sx={{ mb: 1, fontWeight: 600 }}>
-            National Domestic Violence Hotline
+            {safetyDisplay.resourceName}
           </Typography>
           <Typography variant="body1" sx={{ mb: 0.5 }}>
-            Call: {safetyData?.hotline || '1-800-799-7233'}
+            {safetyDisplay.callLine}
           </Typography>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            {safetyData?.textLine || 'Text START to 88788'}
-          </Typography>
+          {safetyDisplay.textLine && (
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              {safetyDisplay.textLine}
+            </Typography>
+          )}
           <Typography variant="body2" color="text.secondary">
             Available 24/7. Confidential. Free.
           </Typography>
@@ -692,10 +791,10 @@ const RealTalk = () => {
           </Button>
           <Button
             variant="contained"
-            onClick={() => window.open(safetyData?.url || 'https://www.thehotline.org', '_blank')}
+            onClick={() => window.open(safetyDisplay.url, '_blank')}
             sx={{ textTransform: 'none' }}
           >
-            Visit thehotline.org
+            {safetyDisplay.urlLabel}
           </Button>
         </DialogActions>
       </Dialog>
