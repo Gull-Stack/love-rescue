@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -13,9 +13,10 @@ import {
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import axios from 'axios';
+import api from '../../services/api';
 
 const ForgotPassword = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -27,7 +28,10 @@ const ForgotPassword = () => {
     setError('');
 
     try {
-      await axios.post('/api/auth/forgot-password', { email });
+      await api.post('/auth/forgot-password', { email });
+      // Reset codes are scoped to the email, so the reset step needs it too —
+      // remember it so the user doesn't have to retype it after the email hop.
+      try { sessionStorage.setItem('lr_reset_email', email); } catch { /* ignore */ }
       setSuccess(true);
     } catch (err) {
       setError(err.response?.data?.error || 'Something went wrong. Please try again.');
@@ -67,11 +71,21 @@ const ForgotPassword = () => {
           {success ? (
             <Box textAlign="center">
               <Alert severity="success" sx={{ mb: 3 }}>
-                Check your email for a reset link
+                Check your email for a reset code
               </Alert>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                If an account exists with that email, you'll receive a password reset link shortly.
+                If an account exists with that email, you'll receive a 6-digit
+                reset code shortly. Enter it on the next screen to choose a new
+                password.
               </Typography>
+              <Button
+                variant="contained"
+                fullWidth
+                sx={{ mb: 2 }}
+                onClick={() => navigate('/reset-password')}
+              >
+                I have my code
+              </Button>
               <Link component={RouterLink} to="/login" color="primary">
                 <Button startIcon={<ArrowBackIcon />} variant="outlined" fullWidth>
                   Back to Login

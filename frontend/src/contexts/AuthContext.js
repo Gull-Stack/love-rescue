@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import api, { setTokens, getToken, clearTokens, biometricApi } from '../services/api';
+import api, { setTokens, getToken, getRefreshToken, clearTokens, biometricApi } from '../services/api';
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import { Capacitor } from '@capacitor/core';
-import { registerNativePush, setupPushListeners } from '../utils/capacitor-init';
+import { registerNativePushIfGranted, setupPushListeners } from '../utils/capacitor-init';
 import { trackEvent } from '../utils/analytics';
 
 // TODO: HIGH-01 — Move JWT storage from localStorage to httpOnly cookies.
@@ -91,9 +91,12 @@ export const AuthProvider = ({ children }) => {
       setUser(response.data.user);
       setRelationship(response.data.relationship);
 
-      // Register for native push notifications after successful auth
+      // Refresh the native push device token after successful auth — but only
+      // if the user already granted push permission. First-time opt-in is an
+      // explicit action (Settings toggle / DailyLog post-check-in prompt), so
+      // this never triggers the iOS permission dialog on login.
       if (Capacitor.isNativePlatform()) {
-        registerNativePush().then((token) => {
+        registerNativePushIfGranted().then((token) => {
           if (token) {
             api.post('/push/register-device', {
               token,
@@ -101,6 +104,7 @@ export const AuthProvider = ({ children }) => {
             }).catch((err) => console.warn('Push register failed:', err));
           }
         });
+        // Guarded internally — attaches foreground listeners at most once.
         setupPushListeners((notification) => {
           console.log('Foreground push:', notification);
         });
@@ -240,6 +244,20 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Best-effort server-side logout: revokes the refresh token and bumps
+    // tokenVersion so access tokens die on ALL devices, not just this one.
+    // Fire-and-forget — local logout must never be blocked by a network
+    // failure. Auth header is pinned explicitly because tokens are cleared
+    // from storage synchronously below, before the request is dispatched.
+    const token = getToken();
+    if (token) {
+      api.post(
+        '/auth/logout',
+        { refreshToken: getRefreshToken() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      ).catch(() => { /* already logged out locally; server revoke is best-effort */ });
+    }
+
     clearTokens();
     setUser(null);
     setRelationship(null);

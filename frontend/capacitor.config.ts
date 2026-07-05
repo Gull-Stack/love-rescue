@@ -4,21 +4,19 @@ const config: CapacitorConfig = {
   appId: 'com.gullstack.loverescue',
   appName: 'Love Rescue',
   webDir: 'build',
-  server: {
-    // Point to local backend for testing
-    cleartext: true,
-  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,
-      backgroundColor: '#E91E63',
+      backgroundColor: '#1B2735',
       showSpinner: false,
       splashFullScreen: true,
       splashImmersive: true,
     },
     Keyboard: {
-      resize: 'none' as any,
+      // 'native' lets iOS resize the web view when the keyboard shows, so
+      // focused inputs stay visible without any CSS-var plumbing in the app.
+      resize: 'native' as any,
       style: 'dark' as any,
       resizeOnFullScreen: false,
     },

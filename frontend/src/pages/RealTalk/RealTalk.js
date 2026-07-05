@@ -80,6 +80,369 @@ const slideVariants = {
   }),
 };
 
+// ---- STEP COMPONENTS (module scope) ----
+// Hoisted out of RealTalk so their component identity is stable across
+// renders. Defining them inside the component body made React remount the
+// step (and its TextFields) on every keystroke, dropping input focus.
+// State and handlers arrive via props.
+
+// Progress dots
+const ProgressDots = ({ currentStep }) => (
+  <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, pt: 2, pb: 1 }}>
+    {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+      <Box
+        key={i}
+        sx={{
+          width: i === currentStep ? 12 : 8,
+          height: i === currentStep ? 12 : 8,
+          borderRadius: '50%',
+          bgcolor: i === currentStep ? '#fff' : 'transparent',
+          border: '2px solid #fff',
+          transition: 'all 0.3s ease',
+          opacity: i <= currentStep ? 1 : 0.4,
+        }}
+      />
+    ))}
+  </Box>
+);
+
+// Card shell matching DailyLog pattern
+const CardShell = ({ children, gradient, showBack, currentStep, goBack, navigate }) => (
+  <Box
+    sx={{
+      minHeight: 'calc(100vh - 120px)',
+      background: gradient,
+      borderRadius: 4,
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'relative',
+      overflow: 'hidden',
+    }}
+  >
+    <Box sx={{ display: 'flex', alignItems: 'center', px: 1, pt: 1 }}>
+      {showBack ? (
+        <IconButton aria-label="Go back" onClick={goBack} sx={{ color: '#fff' }}>
+          <ArrowBackIcon />
+        </IconButton>
+      ) : (
+        <IconButton aria-label="Go back" onClick={() => navigate(-1)} sx={{ color: '#fff' }}>
+          <ArrowBackIcon />
+        </IconButton>
+      )}
+
+      <Box sx={{ flex: 1 }}>
+        <ProgressDots currentStep={currentStep} />
+      </Box>
+
+      <IconButton aria-label="View history" onClick={() => navigate('/real-talk/history')} sx={{ color: '#fff' }}>
+        <HistoryIcon />
+      </IconButton>
+    </Box>
+
+    <Box sx={{
+      flex: 1, display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      px: 3, pb: 4,
+    }}>
+      {children}
+    </Box>
+  </Box>
+);
+
+const NextButton = ({ label = 'Next', onClick, disabled, canProceed, handleStepAction }) => (
+  <Button
+    variant="contained"
+    onClick={onClick || handleStepAction}
+    disabled={disabled || !canProceed()}
+    sx={{
+      mt: 4, px: 6, py: 1.5,
+      bgcolor: '#fff',
+      color: '#333',
+      fontWeight: 'bold',
+      fontSize: '1.1rem',
+      borderRadius: 3,
+      textTransform: 'none',
+      '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+      '&.Mui-disabled': { bgcolor: 'rgba(255,255,255,0.3)', color: 'rgba(255,255,255,0.5)' },
+    }}
+  >
+    {label}
+  </Button>
+);
+
+// --- STEP RENDERS ---
+
+const IssueStep = (props) => {
+  const { issue, setIssue, result, canProceed, handleStepAction } = props;
+  return (
+    <CardShell {...props} gradient={STEP_GRADIENTS[0]} showBack={false}>
+      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 1, textAlign: 'center' }}>
+        What happened?
+      </Typography>
+      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', mb: 3, textAlign: 'center', maxWidth: 360 }}>
+        Describe the specific behavior — not their character
+      </Typography>
+      <TextField
+        multiline
+        rows={3}
+        fullWidth
+        placeholder='"You were on your phone during dinner every night this week"'
+        value={issue}
+        onChange={(e) => setIssue(e.target.value)}
+        sx={{ ...whiteTextFieldSx, maxWidth: 400 }}
+        helperText="Focus on what happened, not who they are"
+      />
+
+      {result?.warnings?.length > 0 && (
+        <Alert severity="warning" sx={{ mt: 2, maxWidth: 400 }}>
+          {result.warnings[0]}
+        </Alert>
+      )}
+
+      <NextButton canProceed={canProceed} handleStepAction={handleStepAction} />
+    </CardShell>
+  );
+};
+
+const FeelingStep = (props) => {
+  const { selectedEmotions, toggleEmotion, customFeeling, setCustomFeeling, canProceed, handleStepAction } = props;
+  return (
+    <CardShell {...props} gradient={STEP_GRADIENTS[1]} showBack>
+      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 1, textAlign: 'center' }}>
+        How does it make you feel?
+      </Typography>
+      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', mb: 3, textAlign: 'center', maxWidth: 360 }}>
+        Your emotion — not an accusation
+      </Typography>
+
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center', maxWidth: 400, mb: 3 }}>
+        {EMOTIONS.map(emotion => (
+          <Chip
+            key={emotion}
+            label={emotion}
+            onClick={() => toggleEmotion(emotion)}
+            variant={selectedEmotions.includes(emotion) ? 'filled' : 'outlined'}
+            sx={{
+              borderColor: 'rgba(255,255,255,0.6)',
+              color: '#fff',
+              fontSize: '0.95rem',
+              py: 0.5,
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' },
+              ...(selectedEmotions.includes(emotion) && {
+                bgcolor: 'rgba(255,255,255,0.25)',
+                borderColor: '#fff',
+                fontWeight: 'bold',
+              }),
+            }}
+          />
+        ))}
+      </Box>
+
+      <TextField
+        fullWidth
+        placeholder="Or describe in your own words..."
+        value={customFeeling}
+        onChange={(e) => setCustomFeeling(e.target.value)}
+        sx={{ ...whiteTextFieldSx, maxWidth: 400 }}
+      />
+
+      <NextButton canProceed={canProceed} handleStepAction={handleStepAction} />
+    </CardShell>
+  );
+};
+
+const NeedStep = (props) => {
+  const { need, setNeed, loading, canProceed, handleStepAction } = props;
+  return (
+    <CardShell {...props} gradient={STEP_GRADIENTS[2]} showBack>
+      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 1, textAlign: 'center' }}>
+        What do you need?
+      </Typography>
+      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', mb: 3, textAlign: 'center', maxWidth: 360 }}>
+        A specific, doable request — not a demand
+      </Typography>
+      <TextField
+        multiline
+        rows={3}
+        fullWidth
+        placeholder='"15 minutes of distraction-free time to connect"'
+        value={need}
+        onChange={(e) => setNeed(e.target.value)}
+        sx={{ ...whiteTextFieldSx, maxWidth: 400 }}
+        helperText="Make it something they can actually do"
+      />
+      <NextButton
+        label={loading ? 'Generating...' : 'Generate Gentle Startup'}
+        disabled={loading}
+        canProceed={canProceed}
+        handleStepAction={handleStepAction}
+      />
+      {loading && <CircularProgress sx={{ color: '#fff', mt: 2 }} size={32} />}
+    </CardShell>
+  );
+};
+
+const ResultStep = (props) => {
+  const {
+    result, copied, handleCopy, expertQuote,
+    effectivenessRated, handleEffectiveness,
+    error, onRetry, onReset,
+  } = props;
+  return (
+    <CardShell {...props} gradient={STEP_GRADIENTS[3]} showBack>
+      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 3, textAlign: 'center' }}>
+        Your Gentle Startup
+      </Typography>
+
+      {result?.realTalk && (
+        <>
+          <Box
+            sx={{
+              bgcolor: 'rgba(255,255,255,0.15)',
+              borderRadius: 3,
+              p: 3,
+              maxWidth: 400,
+              width: '100%',
+              border: '1px solid rgba(255,255,255,0.3)',
+              mb: 2,
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{ color: '#fff', fontWeight: 600, lineHeight: 1.6, fontStyle: 'italic' }}
+            >
+              &ldquo;{result.realTalk.generatedStartup}&rdquo;
+            </Typography>
+          </Box>
+
+          {/* Copy button */}
+          <Button
+            variant="contained"
+            startIcon={copied ? <CheckCircleIcon /> : <ContentCopyIcon />}
+            onClick={handleCopy}
+            sx={{
+              bgcolor: '#fff',
+              color: '#333',
+              fontWeight: 'bold',
+              borderRadius: 3,
+              textTransform: 'none',
+              px: 4,
+              py: 1.5,
+              mb: 3,
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+            }}
+          >
+            {copied ? 'Copied!' : 'Copy to Clipboard'}
+          </Button>
+
+          {/* Why this works */}
+          <Box sx={{ maxWidth: 400, width: '100%', mb: 3 }}>
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)', mb: 0.5 }}>
+              Why this works:
+            </Typography>
+            {[
+              'No attack on their character',
+              'You own your feelings',
+              'Specific, doable request',
+              'Invites collaboration',
+            ].map(point => (
+              <Typography key={point} variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', pl: 1 }}>
+                {point}
+              </Typography>
+            ))}
+          </Box>
+
+          {/* Expert quote */}
+          {expertQuote && (
+            <Box
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.1)',
+                borderRadius: 2,
+                p: 2,
+                maxWidth: 400,
+                width: '100%',
+                borderLeft: '3px solid rgba(255,255,255,0.5)',
+                mb: 3,
+              }}
+            >
+              <Typography variant="body2" sx={{ color: '#fff', fontStyle: 'italic', mb: 0.5 }}>
+                &ldquo;{expertQuote.text}&rdquo;
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                — {expertQuote.author}
+              </Typography>
+            </Box>
+          )}
+
+          {/* Effectiveness rating */}
+          {!effectivenessRated ? (
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 1.5 }}>
+                After you use it, let us know how it went:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {[
+                  { value: 'effective', label: 'It worked', emoji: '' },
+                  { value: 'somewhat', label: 'Somewhat', emoji: '' },
+                  { value: 'ineffective', label: 'Not this time', emoji: '' },
+                ].map(opt => (
+                  <Button
+                    key={opt.value}
+                    variant="outlined"
+                    onClick={() => handleEffectiveness(opt.value)}
+                    sx={{
+                      borderColor: 'rgba(255,255,255,0.5)',
+                      color: '#fff',
+                      textTransform: 'none',
+                      borderRadius: 2,
+                      '&:hover': { bgcolor: 'rgba(255,255,255,0.1)', borderColor: '#fff' },
+                    }}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </Box>
+            </Box>
+          ) : (
+            <Box sx={{ textAlign: 'center' }}>
+              <CheckCircleIcon sx={{ color: '#fff', fontSize: 32, mb: 1 }} />
+              <Typography variant="body2" sx={{ color: '#fff' }}>
+                Rating saved
+              </Typography>
+            </Box>
+          )}
+
+          {/* Start new */}
+          <Button
+            onClick={onReset}
+            sx={{ color: '#fff', mt: 3, textTransform: 'none' }}
+          >
+            Start a new Real Talk
+          </Button>
+        </>
+      )}
+
+      {error && (
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography variant="body1" sx={{ color: '#fff', mb: 2 }}>{error}</Typography>
+          <Button
+            variant="contained"
+            onClick={onRetry}
+            sx={{
+              bgcolor: '#fff', color: '#333', fontWeight: 'bold',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+            }}
+          >
+            Retry
+          </Button>
+        </Box>
+      )}
+    </CardShell>
+  );
+};
+
+const steps = [IssueStep, FeelingStep, NeedStep, ResultStep];
+
 const RealTalk = () => {
   const navigate = useNavigate();
   useEffect(() => { document.title = 'Real Talk | Love Rescue'; }, []);
@@ -212,6 +575,23 @@ const RealTalk = () => {
     );
   };
 
+  const handleReset = () => {
+    setCurrentStep(0);
+    setIssue('');
+    setSelectedEmotions([]);
+    setCustomFeeling('');
+    setNeed('');
+    setResult(null);
+    setEffectivenessRated(false);
+    setExpertQuote(null);
+    setError('');
+  };
+
+  const handleRetry = () => {
+    setError('');
+    handleSubmit();
+  };
+
   // Touch swipe
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
@@ -230,352 +610,35 @@ const RealTalk = () => {
     }
   };
 
-  // Progress dots
-  const ProgressDots = () => (
-    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, pt: 2, pb: 1 }}>
-      {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-        <Box
-          key={i}
-          sx={{
-            width: i === currentStep ? 12 : 8,
-            height: i === currentStep ? 12 : 8,
-            borderRadius: '50%',
-            bgcolor: i === currentStep ? '#fff' : 'transparent',
-            border: '2px solid #fff',
-            transition: 'all 0.3s ease',
-            opacity: i <= currentStep ? 1 : 0.4,
-          }}
-        />
-      ))}
-    </Box>
-  );
-
-  // Card shell matching DailyLog pattern
-  const CardShell = ({ children, gradient, showBack }) => (
-    <Box
-      sx={{
-        minHeight: 'calc(100vh - 120px)',
-        background: gradient,
-        borderRadius: 4,
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'center', px: 1, pt: 1 }}>
-        {showBack ? (
-          <IconButton aria-label="Go back" onClick={goBack} sx={{ color: '#fff' }}>
-            <ArrowBackIcon />
-          </IconButton>
-        ) : (
-          <IconButton aria-label="Go back" onClick={() => navigate(-1)} sx={{ color: '#fff' }}>
-            <ArrowBackIcon />
-          </IconButton>
-        )}
-
-        <Box sx={{ flex: 1 }}>
-          <ProgressDots />
-        </Box>
-
-        <IconButton aria-label="View history" onClick={() => navigate('/real-talk/history')} sx={{ color: '#fff' }}>
-          <HistoryIcon />
-        </IconButton>
-      </Box>
-
-      <Box sx={{
-        flex: 1, display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        px: 3, pb: 4,
-      }}>
-        {children}
-      </Box>
-    </Box>
-  );
-
-  const NextButton = ({ label = 'Next', onClick, disabled }) => (
-    <Button
-      variant="contained"
-      onClick={onClick || handleStepAction}
-      disabled={disabled || !canProceed()}
-      sx={{
-        mt: 4, px: 6, py: 1.5,
-        bgcolor: '#fff',
-        color: '#333',
-        fontWeight: 'bold',
-        fontSize: '1.1rem',
-        borderRadius: 3,
-        textTransform: 'none',
-        '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
-        '&.Mui-disabled': { bgcolor: 'rgba(255,255,255,0.3)', color: 'rgba(255,255,255,0.5)' },
-      }}
-    >
-      {label}
-    </Button>
-  );
-
-  // --- STEP RENDERS ---
-
-  const IssueStep = () => (
-    <CardShell gradient={STEP_GRADIENTS[0]} showBack={false}>
-      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 1, textAlign: 'center' }}>
-        What happened?
-      </Typography>
-      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', mb: 3, textAlign: 'center', maxWidth: 360 }}>
-        Describe the specific behavior — not their character
-      </Typography>
-      <TextField
-        multiline
-        rows={3}
-        fullWidth
-        placeholder='"You were on your phone during dinner every night this week"'
-        value={issue}
-        onChange={(e) => setIssue(e.target.value)}
-        sx={{ ...whiteTextFieldSx, maxWidth: 400 }}
-        helperText="Focus on what happened, not who they are"
-      />
-
-      {result?.warnings?.length > 0 && (
-        <Alert severity="warning" sx={{ mt: 2, maxWidth: 400 }}>
-          {result.warnings[0]}
-        </Alert>
-      )}
-
-      <NextButton />
-    </CardShell>
-  );
-
-  const FeelingStep = () => (
-    <CardShell gradient={STEP_GRADIENTS[1]} showBack>
-      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 1, textAlign: 'center' }}>
-        How does it make you feel?
-      </Typography>
-      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', mb: 3, textAlign: 'center', maxWidth: 360 }}>
-        Your emotion — not an accusation
-      </Typography>
-
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center', maxWidth: 400, mb: 3 }}>
-        {EMOTIONS.map(emotion => (
-          <Chip
-            key={emotion}
-            label={emotion}
-            onClick={() => toggleEmotion(emotion)}
-            variant={selectedEmotions.includes(emotion) ? 'filled' : 'outlined'}
-            sx={{
-              borderColor: 'rgba(255,255,255,0.6)',
-              color: '#fff',
-              fontSize: '0.95rem',
-              py: 0.5,
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' },
-              ...(selectedEmotions.includes(emotion) && {
-                bgcolor: 'rgba(255,255,255,0.25)',
-                borderColor: '#fff',
-                fontWeight: 'bold',
-              }),
-            }}
-          />
-        ))}
-      </Box>
-
-      <TextField
-        fullWidth
-        placeholder="Or describe in your own words..."
-        value={customFeeling}
-        onChange={(e) => setCustomFeeling(e.target.value)}
-        sx={{ ...whiteTextFieldSx, maxWidth: 400 }}
-      />
-
-      <NextButton />
-    </CardShell>
-  );
-
-  const NeedStep = () => (
-    <CardShell gradient={STEP_GRADIENTS[2]} showBack>
-      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 1, textAlign: 'center' }}>
-        What do you need?
-      </Typography>
-      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', mb: 3, textAlign: 'center', maxWidth: 360 }}>
-        A specific, doable request — not a demand
-      </Typography>
-      <TextField
-        multiline
-        rows={3}
-        fullWidth
-        placeholder='"15 minutes of distraction-free time to connect"'
-        value={need}
-        onChange={(e) => setNeed(e.target.value)}
-        sx={{ ...whiteTextFieldSx, maxWidth: 400 }}
-        helperText="Make it something they can actually do"
-      />
-      <NextButton label={loading ? 'Generating...' : 'Generate Gentle Startup'} disabled={loading} />
-      {loading && <CircularProgress sx={{ color: '#fff', mt: 2 }} size={32} />}
-    </CardShell>
-  );
-
-  const ResultStep = () => (
-    <CardShell gradient={STEP_GRADIENTS[3]} showBack>
-      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 3, textAlign: 'center' }}>
-        Your Gentle Startup
-      </Typography>
-
-      {result?.realTalk && (
-        <>
-          <Box
-            sx={{
-              bgcolor: 'rgba(255,255,255,0.15)',
-              borderRadius: 3,
-              p: 3,
-              maxWidth: 400,
-              width: '100%',
-              border: '1px solid rgba(255,255,255,0.3)',
-              mb: 2,
-            }}
-          >
-            <Typography
-              variant="h6"
-              sx={{ color: '#fff', fontWeight: 600, lineHeight: 1.6, fontStyle: 'italic' }}
-            >
-              &ldquo;{result.realTalk.generatedStartup}&rdquo;
-            </Typography>
-          </Box>
-
-          {/* Copy button */}
-          <Button
-            variant="contained"
-            startIcon={copied ? <CheckCircleIcon /> : <ContentCopyIcon />}
-            onClick={handleCopy}
-            sx={{
-              bgcolor: '#fff',
-              color: '#333',
-              fontWeight: 'bold',
-              borderRadius: 3,
-              textTransform: 'none',
-              px: 4,
-              py: 1.5,
-              mb: 3,
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
-            }}
-          >
-            {copied ? 'Copied!' : 'Copy to Clipboard'}
-          </Button>
-
-          {/* Why this works */}
-          <Box sx={{ maxWidth: 400, width: '100%', mb: 3 }}>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)', mb: 0.5 }}>
-              Why this works:
-            </Typography>
-            {[
-              'No attack on their character',
-              'You own your feelings',
-              'Specific, doable request',
-              'Invites collaboration',
-            ].map(point => (
-              <Typography key={point} variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', pl: 1 }}>
-                {point}
-              </Typography>
-            ))}
-          </Box>
-
-          {/* Expert quote */}
-          {expertQuote && (
-            <Box
-              sx={{
-                bgcolor: 'rgba(255,255,255,0.1)',
-                borderRadius: 2,
-                p: 2,
-                maxWidth: 400,
-                width: '100%',
-                borderLeft: '3px solid rgba(255,255,255,0.5)',
-                mb: 3,
-              }}
-            >
-              <Typography variant="body2" sx={{ color: '#fff', fontStyle: 'italic', mb: 0.5 }}>
-                &ldquo;{expertQuote.text}&rdquo;
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-                — {expertQuote.author}
-              </Typography>
-            </Box>
-          )}
-
-          {/* Effectiveness rating */}
-          {!effectivenessRated ? (
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 1.5 }}>
-                After you use it, let us know how it went:
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
-                {[
-                  { value: 'effective', label: 'It worked', emoji: '' },
-                  { value: 'somewhat', label: 'Somewhat', emoji: '' },
-                  { value: 'ineffective', label: 'Not this time', emoji: '' },
-                ].map(opt => (
-                  <Button
-                    key={opt.value}
-                    variant="outlined"
-                    onClick={() => handleEffectiveness(opt.value)}
-                    sx={{
-                      borderColor: 'rgba(255,255,255,0.5)',
-                      color: '#fff',
-                      textTransform: 'none',
-                      borderRadius: 2,
-                      '&:hover': { bgcolor: 'rgba(255,255,255,0.1)', borderColor: '#fff' },
-                    }}
-                  >
-                    {opt.label}
-                  </Button>
-                ))}
-              </Box>
-            </Box>
-          ) : (
-            <Box sx={{ textAlign: 'center' }}>
-              <CheckCircleIcon sx={{ color: '#fff', fontSize: 32, mb: 1 }} />
-              <Typography variant="body2" sx={{ color: '#fff' }}>
-                Rating saved
-              </Typography>
-            </Box>
-          )}
-
-          {/* Start new */}
-          <Button
-            onClick={() => {
-              setCurrentStep(0);
-              setIssue('');
-              setSelectedEmotions([]);
-              setCustomFeeling('');
-              setNeed('');
-              setResult(null);
-              setEffectivenessRated(false);
-              setExpertQuote(null);
-              setError('');
-            }}
-            sx={{ color: '#fff', mt: 3, textTransform: 'none' }}
-          >
-            Start a new Real Talk
-          </Button>
-        </>
-      )}
-
-      {error && (
-        <Box sx={{ textAlign: 'center' }}>
-          <Typography variant="body1" sx={{ color: '#fff', mb: 2 }}>{error}</Typography>
-          <Button
-            variant="contained"
-            onClick={() => { setError(''); handleSubmit(); }}
-            sx={{
-              bgcolor: '#fff', color: '#333', fontWeight: 'bold',
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
-            }}
-          >
-            Retry
-          </Button>
-        </Box>
-      )}
-    </CardShell>
-  );
-
-  const steps = [IssueStep, FeelingStep, NeedStep, ResultStep];
   const CurrentStepComponent = steps[currentStep];
+
+  // Everything the hoisted step components need — state + handlers via props
+  // so the component types themselves stay stable across renders.
+  const stepProps = {
+    currentStep,
+    goBack,
+    navigate,
+    canProceed,
+    handleStepAction,
+    issue,
+    setIssue,
+    selectedEmotions,
+    toggleEmotion,
+    customFeeling,
+    setCustomFeeling,
+    need,
+    setNeed,
+    loading,
+    result,
+    copied,
+    handleCopy,
+    expertQuote,
+    effectivenessRated,
+    handleEffectiveness,
+    error,
+    onRetry: handleRetry,
+    onReset: handleReset,
+  };
 
   return (
     <Box
@@ -593,7 +656,7 @@ const RealTalk = () => {
           exit="exit"
           transition={{ duration: 0.3, ease: 'easeInOut' }}
         >
-          <CurrentStepComponent />
+          <CurrentStepComponent {...stepProps} />
         </motion.div>
       </AnimatePresence>
 

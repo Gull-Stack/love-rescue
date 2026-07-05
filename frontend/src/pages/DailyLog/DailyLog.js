@@ -68,6 +68,445 @@ const whiteTextFieldSx = {
   '& .MuiInputBase-input::placeholder': { color: 'rgba(255,255,255,0.5)' },
 };
 
+// ---- CARD COMPONENTS (module scope) ----
+// These are hoisted out of DailyLog so their component identity is stable
+// across renders. Defining them inside the component body made React treat
+// every render as a brand-new component type, unmounting/remounting the card
+// and dropping TextField focus on each keystroke. State and handlers come in
+// via props instead.
+
+// Progress dots
+const ProgressDots = ({ currentCard }) => (
+  <Box sx={{
+    display: 'flex', justifyContent: 'center', gap: 1,
+    pt: 2, pb: 1,
+  }}>
+    {Array.from({ length: TOTAL_CARDS }).map((_, i) => (
+      <Box
+        key={i}
+        sx={{
+          width: i === currentCard ? 12 : 8,
+          height: i === currentCard ? 12 : 8,
+          borderRadius: '50%',
+          bgcolor: i === currentCard ? '#fff' : 'transparent',
+          border: '2px solid #fff',
+          transition: 'all 0.3s ease',
+          opacity: i <= currentCard ? 1 : 0.4,
+        }}
+      />
+    ))}
+  </Box>
+);
+
+// Card wrapper with gradient background
+const CardShell = ({ children, gradient, showBack, showSkip, onSkip, currentCard, goBack, goNext }) => (
+  <Box
+    sx={{
+      height: 'calc(100vh - 120px)',
+      height: 'calc(100dvh - 120px)',
+      background: gradient,
+      borderRadius: 4,
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'relative',
+      overflow: 'hidden',
+    }}
+  >
+    {/* Top bar: back + dots + skip */}
+    <Box sx={{ display: 'flex', alignItems: 'center', px: 1, pt: 1 }}>
+      {showBack ? (
+        <IconButton onClick={goBack} aria-label="Go back to previous step" sx={{ color: '#fff', '&:active': { transform: 'scale(0.96)' } }}>
+          <ArrowBackIcon />
+        </IconButton>
+      ) : <Box sx={{ width: 48 }} />}
+
+      <Box sx={{ flex: 1 }}>
+        <ProgressDots currentCard={currentCard} />
+      </Box>
+
+      {showSkip ? (
+        <Button
+          onClick={onSkip || goNext}
+          sx={{ color: '#fff', fontWeight: 600, textTransform: 'none', minWidth: 'auto' }}
+        >
+          Skip
+        </Button>
+      ) : <Box sx={{ width: 48 }} />}
+    </Box>
+
+    {/* Card content */}
+    <Box sx={{
+      flex: 1, display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      px: 3, pb: 4,
+    }}>
+      {children}
+    </Box>
+  </Box>
+);
+
+// Next button (white on gradient)
+const NextButton = ({ label = 'Next', onClick, goNext }) => (
+  <Button
+    variant="contained"
+    onClick={onClick || goNext}
+    sx={{
+      mt: 4, px: 6, py: 1.5,
+      bgcolor: '#fff',
+      color: '#0F1722',
+      fontWeight: 'bold',
+      fontSize: '1.1rem',
+      borderRadius: 3,
+      textTransform: 'none',
+      '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+      '&:active': { transform: 'scale(0.96)' },
+    }}
+  >
+    {label}
+  </Button>
+);
+
+// ---- CARD RENDERS ----
+
+const MoodCard = (props) => {
+  const { formData, handleMoodChange } = props;
+  return (
+    <CardShell {...props} gradient={cardGradients[0]} showBack={false}>
+      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 4, textAlign: 'center' }}>
+        How are you feeling?
+      </Typography>
+      <Box sx={{ width: '100%', maxWidth: 320 }}>
+        <MoodEmojiSlider
+          value={formData.mood}
+          onChange={handleMoodChange}
+        />
+      </Box>
+      <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)', mt: 3 }}>
+        Auto-advances after selection
+      </Typography>
+    </CardShell>
+  );
+};
+
+const ConnectionCard = (props) => {
+  const { formData, setFormData, partnerName, goNext } = props;
+  return (
+    <CardShell {...props} gradient={cardGradients[1]} showBack>
+      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 2, textAlign: 'center' }}>
+        How close did you feel to {partnerName} today?
+      </Typography>
+      <Box sx={{ width: '100%', maxWidth: 340, mt: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+          <Typography sx={{ fontSize: '2rem' }}>🧊</Typography>
+          <Typography sx={{ fontSize: '2rem' }}>🔥</Typography>
+        </Box>
+        <Slider
+          value={formData.closenessScore}
+          onChange={(_, value) => setFormData((prev) => ({ ...prev, closenessScore: value }))}
+          min={0}
+          max={10}
+          marks
+          valueLabelDisplay="auto"
+          sx={whiteSliderSx}
+        />
+        <Typography variant="h2" sx={{ color: '#fff', textAlign: 'center', mt: 2, fontWeight: 700 }}>
+          {formData.closenessScore}
+        </Typography>
+      </Box>
+      <NextButton goNext={goNext} />
+    </CardShell>
+  );
+};
+
+const InteractionsCard = (props) => {
+  const { formData, handleCountChange, goNext } = props;
+  return (
+    <CardShell {...props} gradient={cardGradients[2]} showBack>
+      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 4, textAlign: 'center' }}>
+        Today's moments
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+        {/* Positive */}
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography variant="body1" sx={{ color: '#fff', fontWeight: 600, mb: 2 }}>
+            Positive
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <IconButton
+              onClick={() => handleCountChange('positiveCount', -1)}
+              disabled={formData.positiveCount === 0}
+              aria-label="Remove one positive moment"
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', width: 56, height: 56,
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
+                '&:active': { transform: 'scale(0.96)' },
+                '&.Mui-disabled': { color: 'rgba(255,255,255,0.3)' },
+              }}
+            >
+              <RemoveIcon sx={{ fontSize: 28 }} />
+            </IconButton>
+            <Typography variant="h2" sx={{ color: '#fff', fontWeight: 700, minWidth: 48, textAlign: 'center' }}>
+              {formData.positiveCount}
+            </Typography>
+            <IconButton
+              onClick={() => handleCountChange('positiveCount', 1)}
+              aria-label="Add a positive moment"
+              sx={{
+                bgcolor: '#fff', color: '#0E9F8E', width: 56, height: 56,
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+                '&:active': { transform: 'scale(0.96)' },
+              }}
+            >
+              <AddIcon sx={{ fontSize: 28 }} />
+            </IconButton>
+          </Box>
+        </Box>
+
+        {/* Difficult */}
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography variant="body1" sx={{ color: '#fff', fontWeight: 600, mb: 2 }}>
+            Difficult
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <IconButton
+              onClick={() => handleCountChange('negativeCount', -1)}
+              disabled={formData.negativeCount === 0}
+              aria-label="Remove one difficult moment"
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', width: 56, height: 56,
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
+                '&:active': { transform: 'scale(0.96)' },
+                '&.Mui-disabled': { color: 'rgba(255,255,255,0.3)' },
+              }}
+            >
+              <RemoveIcon sx={{ fontSize: 28 }} />
+            </IconButton>
+            <Typography variant="h2" sx={{ color: '#fff', fontWeight: 700, minWidth: 48, textAlign: 'center' }}>
+              {formData.negativeCount}
+            </Typography>
+            <IconButton
+              onClick={() => handleCountChange('negativeCount', 1)}
+              aria-label="Add a difficult moment"
+              sx={{
+                bgcolor: '#fff', color: '#33455B', width: 56, height: 56,
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+                '&:active': { transform: 'scale(0.96)' },
+              }}
+            >
+              <AddIcon sx={{ fontSize: 28 }} />
+            </IconButton>
+          </Box>
+        </Box>
+      </Box>
+      <NextButton goNext={goNext} />
+    </CardShell>
+  );
+};
+
+const GratitudeCard = (props) => {
+  const { partnerName, gratitudeText, setGratitudeText, goNext } = props;
+  return (
+    <CardShell {...props} gradient={cardGradients[3]} showBack showSkip>
+      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 2, textAlign: 'center', textShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
+        One thing you appreciate about {partnerName}
+      </Typography>
+      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.85)', mb: 3, textAlign: 'center', textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}>
+        Optional — but noticing the good rewires everything
+      </Typography>
+      <TextField
+        multiline
+        maxRows={2}
+        fullWidth
+        placeholder={`What did ${partnerName} do that mattered?`}
+        value={gratitudeText}
+        onChange={(e) => setGratitudeText(e.target.value)}
+        sx={{ ...whiteTextFieldSx, maxWidth: 400 }}
+      />
+      <NextButton goNext={goNext} />
+    </CardShell>
+  );
+};
+
+const EmotionsCard = (props) => {
+  const { selectedEmotions, setSelectedEmotions, goNext } = props;
+  return (
+    <CardShell {...props} gradient={cardGradients[4]} showBack showSkip>
+      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 3, textAlign: 'center' }}>
+        What did you feel?
+      </Typography>
+      <Box sx={{
+        maxWidth: 400, width: '100%',
+        '& .MuiChip-root': {
+          borderColor: 'rgba(255,255,255,0.6)',
+          color: '#fff',
+          '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' },
+        },
+        '& .MuiChip-filled': {
+          bgcolor: 'rgba(255,255,255,0.25)',
+          borderColor: '#fff',
+          fontWeight: 'bold',
+        },
+        '& .MuiTypography-root': { color: '#fff' },
+      }}>
+        <EmotionChips selected={selectedEmotions} onChange={setSelectedEmotions} />
+      </Box>
+      <NextButton goNext={goNext} />
+    </CardShell>
+  );
+};
+
+const ReflectionCard = (props) => {
+  const { formData, setFormData, goNext } = props;
+  return (
+    <CardShell {...props} gradient={cardGradients[5]} showBack showSkip>
+      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 2, textAlign: 'center' }}>
+        Anything to remember about today?
+      </Typography>
+      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)', mb: 3, textAlign: 'center' }}>
+        Optional — a sentence is enough
+      </Typography>
+      <TextField
+        multiline
+        rows={4}
+        fullWidth
+        placeholder="What happened, how you felt, what you learned..."
+        value={formData.journalEntry}
+        onChange={(e) => setFormData((prev) => ({ ...prev, journalEntry: e.target.value }))}
+        sx={{ ...whiteTextFieldSx, maxWidth: 400 }}
+      />
+      <NextButton label="Finish" goNext={goNext} />
+    </CardShell>
+  );
+};
+
+const DoneCard = (props) => {
+  const {
+    hasLoggedToday, submitted, saving, error,
+    showSaveCheck, setShowSaveCheck, streakData,
+    pushSupported, pushSubscribed, reminderOptIn, handleEnableReminders,
+    onRetry,
+  } = props;
+  return (
+    <CardShell {...props} gradient={cardGradients[6]} showBack={!hasLoggedToday || submitted}>
+      <Box sx={{ textAlign: 'center' }}>
+        {saving ? (
+          <CircularProgress sx={{ color: '#fff', mb: 3 }} size={60} />
+        ) : (
+          <>
+            <SaveCheckmark show={showSaveCheck} onDone={() => setShowSaveCheck(false)} />
+            <Typography sx={{ fontSize: '4rem', mb: 2 }}>✓</Typography>
+          </>
+        )}
+        <Typography variant="h3" sx={{ color: '#fff', fontWeight: 700, mb: 2 }}>
+          {saving ? 'Saving...' : error ? 'Something went wrong' : 'Done'}
+        </Typography>
+
+        {error && (
+          <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', mb: 2 }}>
+            {error}
+          </Typography>
+        )}
+
+        {!saving && !error && (
+          <>
+            <Box sx={{ mb: 3 }}>
+              <StreakFlames streak={streakData.currentStreak} />
+            </Box>
+            <Typography variant="h5" sx={{ color: '#fff', fontWeight: 600, mb: 1 }}>
+              Day {streakData.currentStreak} 🔥
+            </Typography>
+            <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+              See you tomorrow.
+            </Typography>
+
+            {pushSupported && !pushSubscribed && streakData.currentStreak <= 2 && reminderOptIn !== 'on' && (
+              <Box sx={{ mt: 4, maxWidth: 320 }}>
+                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)', mb: 1.5 }}>
+                  Want a gentle nudge each day so you don't break your streak?
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={handleEnableReminders}
+                  disabled={reminderOptIn === 'asking'}
+                  startIcon={<NotificationsActiveIcon />}
+                  sx={{
+                    bgcolor: '#fff', color: '#0F1722', fontWeight: 'bold',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+                  }}
+                >
+                  {reminderOptIn === 'asking' ? 'Turning on…' : 'Turn on daily reminders'}
+                </Button>
+              </Box>
+            )}
+            {reminderOptIn === 'on' && (
+              <Typography variant="body2" sx={{ mt: 3, color: 'rgba(255,255,255,0.9)' }}>
+                🔔 Reminders on. We'll keep you on track.
+              </Typography>
+            )}
+          </>
+        )}
+
+        {error && (
+          <Button
+            variant="contained"
+            onClick={onRetry}
+            sx={{
+              mt: 3, bgcolor: '#fff', color: '#0F1722', fontWeight: 'bold',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+            }}
+          >
+            Retry
+          </Button>
+        )}
+      </Box>
+    </CardShell>
+  );
+};
+
+// If already logged today, show DONE card with edit option
+const AlreadyLoggedCard = ({ streakData, onEdit }) => (
+  <Box
+    sx={{
+      minHeight: 'calc(100vh - 120px)',
+      background: cardGradients[6],
+      borderRadius: 4,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      px: 3,
+    }}
+  >
+    <Typography sx={{ fontSize: '4rem', mb: 2 }}>✓</Typography>
+    <Typography variant="h3" sx={{ color: '#fff', fontWeight: 700, mb: 2 }}>
+      Logged today
+    </Typography>
+    <Box sx={{ mb: 3 }}>
+      <StreakFlames streak={streakData.currentStreak} />
+    </Box>
+    <Typography variant="h5" sx={{ color: '#fff', fontWeight: 600, mb: 1 }}>
+      Day {streakData.currentStreak} 🔥
+    </Typography>
+    <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', mb: 4 }}>
+      See you tomorrow.
+    </Typography>
+    <Button
+      variant="contained"
+      startIcon={<EditIcon />}
+      onClick={onEdit}
+      sx={{
+        bgcolor: '#fff', color: '#0F1722', fontWeight: 'bold',
+        px: 4, py: 1.5, borderRadius: 3, textTransform: 'none',
+        '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+      }}
+    >
+      Edit today's log
+    </Button>
+  </Box>
+);
+
+const cards = [MoodCard, ConnectionCard, InteractionsCard, GratitudeCard, EmotionsCard, ReflectionCard, DoneCard];
+
 const DailyLog = () => {
   const { user, relationship } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -309,416 +748,17 @@ const DailyLog = () => {
     }, 1500);
   };
 
-  // Progress dots
-  const ProgressDots = () => (
-    <Box sx={{
-      display: 'flex', justifyContent: 'center', gap: 1,
-      pt: 2, pb: 1,
-    }}>
-      {Array.from({ length: TOTAL_CARDS }).map((_, i) => (
-        <Box
-          key={i}
-          sx={{
-            width: i === currentCard ? 12 : 8,
-            height: i === currentCard ? 12 : 8,
-            borderRadius: '50%',
-            bgcolor: i === currentCard ? '#fff' : 'transparent',
-            border: '2px solid #fff',
-            transition: 'all 0.3s ease',
-            opacity: i <= currentCard ? 1 : 0.4,
-          }}
-        />
-      ))}
-    </Box>
-  );
+  const handleRetry = () => {
+    hasSubmittedRef.current = false;
+    handleSubmit();
+  };
 
-  // Card wrapper with gradient background
-  const CardShell = ({ children, gradient, showBack, showSkip, onSkip }) => (
-    <Box
-      sx={{
-        height: 'calc(100vh - 120px)',
-        height: 'calc(100dvh - 120px)',
-        background: gradient,
-        borderRadius: 4,
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Top bar: back + dots + skip */}
-      <Box sx={{ display: 'flex', alignItems: 'center', px: 1, pt: 1 }}>
-        {showBack ? (
-          <IconButton onClick={goBack} aria-label="Go back to previous step" sx={{ color: '#fff', '&:active': { transform: 'scale(0.96)' } }}>
-            <ArrowBackIcon />
-          </IconButton>
-        ) : <Box sx={{ width: 48 }} />}
-
-        <Box sx={{ flex: 1 }}>
-          <ProgressDots />
-        </Box>
-
-        {showSkip ? (
-          <Button
-            onClick={onSkip || goNext}
-            sx={{ color: '#fff', fontWeight: 600, textTransform: 'none', minWidth: 'auto' }}
-          >
-            Skip
-          </Button>
-        ) : <Box sx={{ width: 48 }} />}
-      </Box>
-
-      {/* Card content */}
-      <Box sx={{
-        flex: 1, display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        px: 3, pb: 4,
-      }}>
-        {children}
-      </Box>
-    </Box>
-  );
-
-  // Next button (white on gradient)
-  const NextButton = ({ label = 'Next', onClick }) => (
-    <Button
-      variant="contained"
-      onClick={onClick || goNext}
-      sx={{
-        mt: 4, px: 6, py: 1.5,
-        bgcolor: '#fff',
-        color: '#0F1722',
-        fontWeight: 'bold',
-        fontSize: '1.1rem',
-        borderRadius: 3,
-        textTransform: 'none',
-        '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
-        '&:active': { transform: 'scale(0.96)' },
-      }}
-    >
-      {label}
-    </Button>
-  );
-
-  // ---- CARD RENDERS ----
-
-  const MoodCard = () => (
-    <CardShell gradient={cardGradients[0]} showBack={false}>
-      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 4, textAlign: 'center' }}>
-        How are you feeling?
-      </Typography>
-      <Box sx={{ width: '100%', maxWidth: 320 }}>
-        <MoodEmojiSlider
-          value={formData.mood}
-          onChange={handleMoodChange}
-        />
-      </Box>
-      <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)', mt: 3 }}>
-        Auto-advances after selection
-      </Typography>
-    </CardShell>
-  );
-
-  const ConnectionCard = () => (
-    <CardShell gradient={cardGradients[1]} showBack>
-      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 2, textAlign: 'center' }}>
-        How close did you feel to {partnerName} today?
-      </Typography>
-      <Box sx={{ width: '100%', maxWidth: 340, mt: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-          <Typography sx={{ fontSize: '2rem' }}>🧊</Typography>
-          <Typography sx={{ fontSize: '2rem' }}>🔥</Typography>
-        </Box>
-        <Slider
-          value={formData.closenessScore}
-          onChange={(_, value) => setFormData((prev) => ({ ...prev, closenessScore: value }))}
-          min={0}
-          max={10}
-          marks
-          valueLabelDisplay="auto"
-          sx={whiteSliderSx}
-        />
-        <Typography variant="h2" sx={{ color: '#fff', textAlign: 'center', mt: 2, fontWeight: 700 }}>
-          {formData.closenessScore}
-        </Typography>
-      </Box>
-      <NextButton />
-    </CardShell>
-  );
-
-  const InteractionsCard = () => (
-    <CardShell gradient={cardGradients[2]} showBack>
-      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 4, textAlign: 'center' }}>
-        Today's moments
-      </Typography>
-      <Box sx={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-        {/* Positive */}
-        <Box sx={{ textAlign: 'center' }}>
-          <Typography variant="body1" sx={{ color: '#fff', fontWeight: 600, mb: 2 }}>
-            Positive
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <IconButton
-              onClick={() => handleCountChange('positiveCount', -1)}
-              disabled={formData.positiveCount === 0}
-              aria-label="Remove one positive moment"
-              sx={{
-                bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', width: 56, height: 56,
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
-                '&:active': { transform: 'scale(0.96)' },
-                '&.Mui-disabled': { color: 'rgba(255,255,255,0.3)' },
-              }}
-            >
-              <RemoveIcon sx={{ fontSize: 28 }} />
-            </IconButton>
-            <Typography variant="h2" sx={{ color: '#fff', fontWeight: 700, minWidth: 48, textAlign: 'center' }}>
-              {formData.positiveCount}
-            </Typography>
-            <IconButton
-              onClick={() => handleCountChange('positiveCount', 1)}
-              aria-label="Add a positive moment"
-              sx={{
-                bgcolor: '#fff', color: '#0E9F8E', width: 56, height: 56,
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
-                '&:active': { transform: 'scale(0.96)' },
-              }}
-            >
-              <AddIcon sx={{ fontSize: 28 }} />
-            </IconButton>
-          </Box>
-        </Box>
-
-        {/* Difficult */}
-        <Box sx={{ textAlign: 'center' }}>
-          <Typography variant="body1" sx={{ color: '#fff', fontWeight: 600, mb: 2 }}>
-            Difficult
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <IconButton
-              onClick={() => handleCountChange('negativeCount', -1)}
-              disabled={formData.negativeCount === 0}
-              aria-label="Remove one difficult moment"
-              sx={{
-                bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', width: 56, height: 56,
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
-                '&:active': { transform: 'scale(0.96)' },
-                '&.Mui-disabled': { color: 'rgba(255,255,255,0.3)' },
-              }}
-            >
-              <RemoveIcon sx={{ fontSize: 28 }} />
-            </IconButton>
-            <Typography variant="h2" sx={{ color: '#fff', fontWeight: 700, minWidth: 48, textAlign: 'center' }}>
-              {formData.negativeCount}
-            </Typography>
-            <IconButton
-              onClick={() => handleCountChange('negativeCount', 1)}
-              aria-label="Add a difficult moment"
-              sx={{
-                bgcolor: '#fff', color: '#33455B', width: 56, height: 56,
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
-                '&:active': { transform: 'scale(0.96)' },
-              }}
-            >
-              <AddIcon sx={{ fontSize: 28 }} />
-            </IconButton>
-          </Box>
-        </Box>
-      </Box>
-      <NextButton />
-    </CardShell>
-  );
-
-  const GratitudeCard = () => (
-    <CardShell gradient={cardGradients[3]} showBack showSkip>
-      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 2, textAlign: 'center', textShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
-        One thing you appreciate about {partnerName}
-      </Typography>
-      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.85)', mb: 3, textAlign: 'center', textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}>
-        Optional — but noticing the good rewires everything
-      </Typography>
-      <TextField
-        multiline
-        maxRows={2}
-        fullWidth
-        placeholder={`What did ${partnerName} do that mattered?`}
-        value={gratitudeText}
-        onChange={(e) => setGratitudeText(e.target.value)}
-        sx={{ ...whiteTextFieldSx, maxWidth: 400 }}
-      />
-      <NextButton />
-    </CardShell>
-  );
-
-  const EmotionsCard = () => (
-    <CardShell gradient={cardGradients[4]} showBack showSkip>
-      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 3, textAlign: 'center' }}>
-        What did you feel?
-      </Typography>
-      <Box sx={{
-        maxWidth: 400, width: '100%',
-        '& .MuiChip-root': {
-          borderColor: 'rgba(255,255,255,0.6)',
-          color: '#fff',
-          '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' },
-        },
-        '& .MuiChip-filled': {
-          bgcolor: 'rgba(255,255,255,0.25)',
-          borderColor: '#fff',
-          fontWeight: 'bold',
-        },
-        '& .MuiTypography-root': { color: '#fff' },
-      }}>
-        <EmotionChips selected={selectedEmotions} onChange={setSelectedEmotions} />
-      </Box>
-      <NextButton />
-    </CardShell>
-  );
-
-  const ReflectionCard = () => (
-    <CardShell gradient={cardGradients[5]} showBack showSkip>
-      <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, mb: 2, textAlign: 'center' }}>
-        Anything to remember about today?
-      </Typography>
-      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)', mb: 3, textAlign: 'center' }}>
-        Optional — a sentence is enough
-      </Typography>
-      <TextField
-        multiline
-        rows={4}
-        fullWidth
-        placeholder="What happened, how you felt, what you learned..."
-        value={formData.journalEntry}
-        onChange={(e) => setFormData((prev) => ({ ...prev, journalEntry: e.target.value }))}
-        sx={{ ...whiteTextFieldSx, maxWidth: 400 }}
-      />
-      <NextButton label="Finish" />
-    </CardShell>
-  );
-
-  const DoneCard = () => (
-    <CardShell gradient={cardGradients[6]} showBack={!hasLoggedToday || submitted}>
-      <Box sx={{ textAlign: 'center' }}>
-        {saving ? (
-          <CircularProgress sx={{ color: '#fff', mb: 3 }} size={60} />
-        ) : (
-          <>
-            <SaveCheckmark show={showSaveCheck} onDone={() => setShowSaveCheck(false)} />
-            <Typography sx={{ fontSize: '4rem', mb: 2 }}>✓</Typography>
-          </>
-        )}
-        <Typography variant="h3" sx={{ color: '#fff', fontWeight: 700, mb: 2 }}>
-          {saving ? 'Saving...' : error ? 'Something went wrong' : 'Done'}
-        </Typography>
-
-        {error && (
-          <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', mb: 2 }}>
-            {error}
-          </Typography>
-        )}
-
-        {!saving && !error && (
-          <>
-            <Box sx={{ mb: 3 }}>
-              <StreakFlames streak={streakData.currentStreak} />
-            </Box>
-            <Typography variant="h5" sx={{ color: '#fff', fontWeight: 600, mb: 1 }}>
-              Day {streakData.currentStreak} 🔥
-            </Typography>
-            <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-              See you tomorrow.
-            </Typography>
-
-            {pushSupported && !pushSubscribed && streakData.currentStreak <= 2 && reminderOptIn !== 'on' && (
-              <Box sx={{ mt: 4, maxWidth: 320 }}>
-                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)', mb: 1.5 }}>
-                  Want a gentle nudge each day so you don't break your streak?
-                </Typography>
-                <Button
-                  variant="contained"
-                  onClick={handleEnableReminders}
-                  disabled={reminderOptIn === 'asking'}
-                  startIcon={<NotificationsActiveIcon />}
-                  sx={{
-                    bgcolor: '#fff', color: '#0F1722', fontWeight: 'bold',
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
-                  }}
-                >
-                  {reminderOptIn === 'asking' ? 'Turning on…' : 'Turn on daily reminders'}
-                </Button>
-              </Box>
-            )}
-            {reminderOptIn === 'on' && (
-              <Typography variant="body2" sx={{ mt: 3, color: 'rgba(255,255,255,0.9)' }}>
-                🔔 Reminders on. We'll keep you on track.
-              </Typography>
-            )}
-          </>
-        )}
-
-        {error && (
-          <Button
-            variant="contained"
-            onClick={() => { hasSubmittedRef.current = false; handleSubmit(); }}
-            sx={{
-              mt: 3, bgcolor: '#fff', color: '#0F1722', fontWeight: 'bold',
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
-            }}
-          >
-            Retry
-          </Button>
-        )}
-      </Box>
-    </CardShell>
-  );
-
-  // If already logged today, show DONE card with edit option
-  const AlreadyLoggedCard = () => (
-    <Box
-      sx={{
-        minHeight: 'calc(100vh - 120px)',
-        background: cardGradients[6],
-        borderRadius: 4,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        px: 3,
-      }}
-    >
-      <Typography sx={{ fontSize: '4rem', mb: 2 }}>✓</Typography>
-      <Typography variant="h3" sx={{ color: '#fff', fontWeight: 700, mb: 2 }}>
-        Logged today
-      </Typography>
-      <Box sx={{ mb: 3 }}>
-        <StreakFlames streak={streakData.currentStreak} />
-      </Box>
-      <Typography variant="h5" sx={{ color: '#fff', fontWeight: 600, mb: 1 }}>
-        Day {streakData.currentStreak} 🔥
-      </Typography>
-      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', mb: 4 }}>
-        See you tomorrow.
-      </Typography>
-      <Button
-        variant="contained"
-        startIcon={<EditIcon />}
-        onClick={() => {
-          setHasLoggedToday(false);
-          setSubmitted(false);
-          hasSubmittedRef.current = false;
-          setCurrentCard(0);
-        }}
-        sx={{
-          bgcolor: '#fff', color: '#0F1722', fontWeight: 'bold',
-          px: 4, py: 1.5, borderRadius: 3, textTransform: 'none',
-          '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
-        }}
-      >
-        Edit today's log
-      </Button>
-    </Box>
-  );
-
-  const cards = [MoodCard, ConnectionCard, InteractionsCard, GratitudeCard, EmotionsCard, ReflectionCard, DoneCard];
+  const handleEditToday = () => {
+    setHasLoggedToday(false);
+    setSubmitted(false);
+    hasSubmittedRef.current = false;
+    setCurrentCard(0);
+  };
 
   if (loading) {
     return (
@@ -738,12 +778,41 @@ const DailyLog = () => {
           type={celebrationType}
           streakDay={streakMilestone}
         />
-        <AlreadyLoggedCard />
+        <AlreadyLoggedCard streakData={streakData} onEdit={handleEditToday} />
       </Box>
     );
   }
 
   const CurrentCardComponent = cards[currentCard];
+
+  // Everything the hoisted card components need — state + handlers via props
+  // so the component types themselves stay stable across renders.
+  const cardProps = {
+    currentCard,
+    goBack,
+    goNext,
+    formData,
+    setFormData,
+    handleMoodChange,
+    handleCountChange,
+    partnerName,
+    gratitudeText,
+    setGratitudeText,
+    selectedEmotions,
+    setSelectedEmotions,
+    hasLoggedToday,
+    submitted,
+    saving,
+    error,
+    showSaveCheck,
+    setShowSaveCheck,
+    streakData,
+    pushSupported,
+    pushSubscribed,
+    reminderOptIn,
+    handleEnableReminders,
+    onRetry: handleRetry,
+  };
 
   return (
     <Box
@@ -769,7 +838,7 @@ const DailyLog = () => {
           opacity: direction !== 0 ? 0 : 1,
         }}
       >
-        <CurrentCardComponent />
+        <CurrentCardComponent {...cardProps} />
       </Box>
     </Box>
   );

@@ -27,6 +27,7 @@ import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useAuth } from '../../contexts/AuthContext';
 import api, { calendarApi, therapistApi, progressRingsApi } from '../../services/api';
+import { isNative } from '../../utils/platform';
 import MyTherapistSection from './MyTherapistSection';
 import NotificationSettings from '../../components/NotificationSettings';
 
@@ -528,6 +529,15 @@ const Settings = () => {
                 Disconnect
               </Button>
             </Box>
+          ) : isNative() ? (
+            /* Google's OAuth page blocks embedded webviews (403: disallowed_useragent)
+               and the OAuth callback redirects to the website, so the flow can't
+               complete inside the app. Point users at the web app instead. */
+            <Typography variant="body2" color="text.secondary">
+              Connecting Google Calendar isn't available inside the app. Sign in
+              at <strong>loverescue.app</strong> in your browser to connect it —
+              once connected, your activities sync everywhere, including here.
+            </Typography>
           ) : calendarStatus?.calendarAvailable === false ? (
             <Tooltip title="Google Calendar integration is not yet configured by the administrator.">
               <span>

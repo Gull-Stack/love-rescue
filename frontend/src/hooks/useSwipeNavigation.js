@@ -8,8 +8,11 @@ const SWIPE_THRESHOLD = 50;
 const VELOCITY_THRESHOLD = 0.3;
 const EDGE_EXCLUSION = 20; // px from left edge to avoid browser back gesture
 
-// Routes where swipe nav should be disabled (forms, quizzes, etc.)
-const DISABLED_PATTERNS = ['/assessments/', '/meetings/', '/signup', '/login', '/join'];
+// Routes where swipe nav should be disabled (forms, quizzes, etc.).
+// /daily and /real-talk stay in TAB_ROUTES (nav order) but are disabled here:
+// their card flows use in-page horizontal swipes that must not trigger tab
+// navigation mid-flow.
+const DISABLED_PATTERNS = ['/assessments/', '/meetings/', '/signup', '/login', '/join', '/daily', '/real-talk'];
 
 export default function useSwipeNavigation() {
   const navigate = useNavigate();

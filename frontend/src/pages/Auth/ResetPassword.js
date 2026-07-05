@@ -12,13 +12,25 @@ import {
   CircularProgress,
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import axios from 'axios';
+import api from '../../services/api';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const token = searchParams.get('token');
 
+  // Reset codes are scoped to the email they were issued to, so the API
+  // requires both. Prefill from the URL when present, then from the email
+  // remembered by the forgot-password step, and let the user edit either.
+  const [email, setEmail] = useState(() => {
+    const fromUrl = searchParams.get('email');
+    if (fromUrl) return fromUrl;
+    try {
+      return sessionStorage.getItem('lr_reset_email') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [code, setCode] = useState(searchParams.get('token') || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,36 +54,20 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
-      await axios.post('/api/auth/reset-password', { token, newPassword });
+      await api.post('/auth/reset-password', {
+        email: email.trim(),
+        token: code.trim(),
+        newPassword,
+      });
+      try { sessionStorage.removeItem('lr_reset_email'); } catch { /* ignore */ }
       setSuccess(true);
       setTimeout(() => navigate('/login'), 3000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to reset password. The link may be expired or invalid.');
+      setError(err.response?.data?.error || 'Failed to reset password. The code may be expired or invalid.');
     } finally {
       setLoading(false);
     }
   };
-
-  if (!token) {
-    return (
-      <Container maxWidth="sm">
-        <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', py: 4 }}>
-          <Paper elevation={0} sx={{ p: 4, border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
-            <FavoriteIcon color="primary" sx={{ fontSize: 48, mb: 1 }} />
-            <Typography variant="h5" fontWeight="bold" gutterBottom>
-              Invalid Reset Link
-            </Typography>
-            <Typography color="text.secondary" sx={{ mb: 3 }}>
-              This password reset link is invalid or missing a token.
-            </Typography>
-            <Link component={RouterLink} to="/forgot-password" color="primary">
-              Request a new reset link
-            </Link>
-          </Paper>
-        </Box>
-      </Container>
-    );
-  }
 
   return (
     <Container maxWidth="sm">
@@ -91,7 +87,7 @@ const ResetPassword = () => {
               Reset Password
             </Typography>
             <Typography color="text.secondary">
-              Enter your new password
+              Enter the reset code we emailed you and choose a new password
             </Typography>
           </Box>
 
@@ -111,6 +107,29 @@ const ResetPassword = () => {
             <form onSubmit={handleSubmit}>
               <TextField
                 fullWidth
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                margin="normal"
+                required
+                autoComplete="email"
+                autoFocus={!email}
+              />
+              <TextField
+                fullWidth
+                label="Reset Code"
+                value={code}
+                onChange={(e) => { setCode(e.target.value); setError(''); }}
+                margin="normal"
+                required
+                autoComplete="one-time-code"
+                inputProps={{ inputMode: 'numeric' }}
+                helperText="The 6-digit code from your email — it expires in 1 hour"
+                autoFocus={!!email}
+              />
+              <TextField
+                fullWidth
                 label="New Password"
                 type="password"
                 value={newPassword}
@@ -118,7 +137,6 @@ const ResetPassword = () => {
                 margin="normal"
                 required
                 autoComplete="new-password"
-                autoFocus
               />
               <TextField
                 fullWidth
@@ -143,6 +161,9 @@ const ResetPassword = () => {
               </Button>
 
               <Box textAlign="center">
+                <Link component={RouterLink} to="/forgot-password" color="text.secondary" variant="body2" sx={{ mr: 2 }}>
+                  Request a new code
+                </Link>
                 <Link component={RouterLink} to="/login" color="text.secondary" variant="body2">
                   ← Back to Login
                 </Link>

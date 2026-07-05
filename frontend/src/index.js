@@ -39,8 +39,11 @@ root.render(
   </React.StrictMode>
 );
 
-// Temporarily unregister main service worker to fix COOP/Google Sign-In issues
-serviceWorkerRegistration.unregister();
+// Unregister ONLY the legacy CRA app-shell service worker (service-worker.js)
+// to fix COOP/Google Sign-In issues. This deliberately leaves /push-sw.js
+// alone — the old blanket unregister() killed the push registration on every
+// startup, silently breaking web push notifications.
+serviceWorkerRegistration.unregisterLegacy();
 
 // Register push notification service worker ONLY after user is authenticated
 // This prevents COOP interference with Google OAuth

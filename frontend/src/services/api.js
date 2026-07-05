@@ -20,6 +20,10 @@ if (
 
 const api = axios.create({
   baseURL: API_URL,
+  // Fail fast instead of hanging forever on a dead connection (mobile radios,
+  // captive portals). Timeouts reject with code ECONNABORTED and flow through
+  // the normal catch/interceptor paths — they are never swallowed here.
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -99,10 +103,22 @@ api.interceptors.response.use(
 
     // If 401 and we haven't already tried to refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Don't try to refresh on login/signup/refresh endpoints
+      // TOKEN_REVOKED = the session was revoked server-side (global logout,
+      // password reset, tokenVersion bump). The refresh token is dead too, so
+      // treat it as an expired session immediately — never spin on refresh.
+      if (error.response?.data?.code === 'TOKEN_REVOKED') {
+        clearTokens();
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+
+      // Don't try to refresh on login/signup/refresh/logout endpoints
       if (originalRequest.url?.includes('/auth/login') ||
           originalRequest.url?.includes('/auth/signup') ||
           originalRequest.url?.includes('/auth/refresh') ||
+          originalRequest.url?.includes('/auth/logout') ||
           originalRequest.url?.includes('/auth/webauthn/login')) {
         return Promise.reject(error);
       }

@@ -105,7 +105,7 @@ const programs = [
     description: 'Schedule weekly 30-minute facilitated discussions with neutral guides via Google Meet. Structured conversations, not therapy.',
     icon: <VideocamIcon sx={{ fontSize: 40 }} />,
     color: '#2DD4BF',
-    tag: 'Premium',
+    tag: 'Guided',
   },
 ];
 
@@ -174,7 +174,7 @@ const navLinks = [
   { label: 'Programs', href: '#programs' },
   { label: 'How It Works', href: '#how-it-works' },
   { label: 'Results', href: '#results' },
-  { label: 'Pricing', href: '#pricing' },
+  { label: 'Free Access', href: '#free-access' },
   { label: 'Blog', href: '#blog' },
 ];
 
@@ -298,7 +298,7 @@ const Landing = () => {
                 '&:hover': { background: ACCENT_GRADIENT_HOVER },
               }}
             >
-              {isSmall ? 'Start Free' : 'Start Free Trial'}
+              {isSmall ? 'Start Free' : 'Get Started Free'}
             </Button>
             {isMobile && (
               <IconButton aria-label="Open menu" onClick={() => setMobileMenuOpen(true)} sx={{ color: '#fff' }}>
@@ -350,7 +350,7 @@ const Landing = () => {
               onClick={() => { setMobileMenuOpen(false); navigate('/signup'); }}
               sx={{ background: ACCENT_GRADIENT, fontWeight: 600 }}
             >
-              Start Free Trial
+              Get Started Free
             </Button>
           </ListItem>
         </List>
@@ -488,7 +488,7 @@ const Landing = () => {
         >
           The only relationship platform that combines clinical assessments, daily micro-coaching,
           and guided facilitated meetings to help couples build lasting connection.
-          Start your 14-day free trial today.
+          Free. No credit card, no subscription.
         </Typography>
 
         {/* CTA buttons */}
@@ -516,7 +516,7 @@ const Landing = () => {
               transition: 'all 0.3s ease',
             }}
           >
-            Yes! Start My Free Trial
+            Get Started — It's Free
           </Button>
           <Button
             variant="outlined"
@@ -549,7 +549,7 @@ const Landing = () => {
             flexWrap: 'wrap',
           }}
         >
-          {['Based on Gottman Research', 'HIPAA Compliant', '14-Day Free Trial', 'Cancel Anytime'].map(
+          {['Based on Gottman Research', 'HIPAA Compliant', '100% Free', 'No Credit Card Required'].map(
             (item) => (
               <Box key={item} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <CheckCircleIcon sx={{ color: ACCENT_TEAL, fontSize: 16 }} />
@@ -1084,10 +1084,10 @@ const Landing = () => {
     </Box>
   );
 
-  // ── Pricing ──
-  const PricingSection = (
+  // ── Free Access (the app is fully free — no tiers, no trials) ──
+  const FreeAccessSection = (
     <Box
-      id="pricing"
+      id="free-access"
       sx={{
         py: { xs: 8, md: 12 },
         background: `linear-gradient(180deg, ${DARK_BG_3} 0%, ${DARK_BG} 100%)`,
@@ -1096,7 +1096,7 @@ const Landing = () => {
       <Container maxWidth="md">
         <Box sx={{ textAlign: 'center', mb: 8 }}>
           <Chip
-            label="PRICING"
+            label="FREE FOR EVERY COUPLE"
             sx={{
               mb: 2,
               bgcolor: 'rgba(224,138,60,0.15)',
@@ -1117,7 +1117,7 @@ const Landing = () => {
               mb: 2,
             }}
           >
-            Invest in Your{' '}
+            Every Feature.{' '}
             <Box
               component="span"
               sx={{
@@ -1126,7 +1126,7 @@ const Landing = () => {
                 WebkitTextFillColor: 'transparent',
               }}
             >
-              Most Important Relationship
+              Completely Free.
             </Box>
           </Typography>
           <Typography
@@ -1138,80 +1138,13 @@ const Landing = () => {
               fontWeight: 300,
             }}
           >
-            Start with a 14-day free trial. No credit card required.
+            Free. No credit card, no subscription. A stronger marriage shouldn't
+            have a paywall — everything below is included for every couple.
           </Typography>
         </Box>
 
         <Grid container spacing={4} justifyContent="center">
-          {/* Standard */}
-          <Grid item xs={12} sm={6}>
-            <Card
-              sx={{
-                bgcolor: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 4,
-                height: '100%',
-              }}
-            >
-              <CardContent sx={{ p: 4 }}>
-                <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontWeight: 600, fontSize: '0.85rem', mb: 1, letterSpacing: '0.1em' }}>
-                  STANDARD
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1 }}>
-                  <Typography sx={{ color: '#fff', fontSize: '3.5rem', fontWeight: 800, lineHeight: 1 }}>
-                    $9.99
-                  </Typography>
-                  <Typography sx={{ color: 'rgba(255,255,255,0.4)', ml: 1, fontSize: '1rem' }}>
-                    /month
-                  </Typography>
-                </Box>
-                <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', mb: 3 }}>
-                  per couple
-                </Typography>
-                <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)', mb: 3 }} />
-                {[
-                  '4 Scientific Assessments',
-                  'Daily Personalized Insights',
-                  'Curated Video Course (98 days)',
-                  'Matchup Compatibility Analysis',
-                  'Smart Strategy Plans',
-                  'Weekly & Monthly Reports',
-                  'Daily Interaction Logging',
-                  'Therapist Integration',
-                ].map((feature) => (
-                  <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-                    <CheckCircleIcon sx={{ color: ACCENT_TEAL, fontSize: 18 }} />
-                    <Typography sx={{ color: 'rgba(255,255,255,0.88)', fontSize: '0.9rem' }}>
-                      {feature}
-                    </Typography>
-                  </Box>
-                ))}
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  size="large"
-                  onClick={() => navigate('/signup')}
-                  sx={{
-                    mt: 3,
-                    borderColor: 'rgba(255,255,255,0.2)',
-                    color: '#fff',
-                    py: 1.5,
-                    fontWeight: 600,
-                    borderRadius: '50px',
-                    '&:hover': {
-                      borderColor: 'rgba(255,255,255,0.4)',
-                      bgcolor: 'rgba(255,255,255,0.05)',
-                    },
-                  }}
-                >
-                  Start Free Trial
-                </Button>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Premium */}
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12} sm={10} md={8}>
             <Card
               sx={{
                 background: 'linear-gradient(135deg, rgba(224,138,60,0.10) 0%, rgba(14,159,142,0.08) 100%)',
@@ -1222,9 +1155,9 @@ const Landing = () => {
                 overflow: 'visible',
               }}
             >
-              {/* Popular badge */}
+              {/* Free badge */}
               <Chip
-                label="MOST POPULAR"
+                label="EVERYTHING INCLUDED"
                 sx={{
                   position: 'absolute',
                   top: -14,
@@ -1249,39 +1182,35 @@ const Landing = () => {
                     letterSpacing: '0.1em',
                   }}
                 >
-                  PREMIUM
+                  LOVE RESCUE
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1 }}>
                   <Typography sx={{ color: '#fff', fontSize: '3.5rem', fontWeight: 800, lineHeight: 1 }}>
-                    $19.99
+                    $0
                   </Typography>
                   <Typography sx={{ color: 'rgba(255,255,255,0.4)', ml: 1, fontSize: '1rem' }}>
-                    /month
+                    forever
                   </Typography>
                 </Box>
                 <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', mb: 3 }}>
-                  per couple
+                  for both partners
                 </Typography>
                 <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', mb: 3 }} />
                 {[
-                  'Everything in Standard',
+                  'Scientific Assessments',
+                  'Daily Personalized Insights',
+                  'Curated Video Course (98 days)',
+                  'Matchup Compatibility Analysis',
+                  'Smart Strategy Plans',
+                  'Weekly & Monthly Reports',
+                  'Daily Interaction Logging',
                   'Weekly Mediated Meetings',
-                  'Neutral Facilitator (included)',
-                  'Google Meet Video Sessions',
-                  'Partner Consent Management',
                   'Calendar Integration',
-                  'Session Notes & History',
-                  'Priority Support',
-                ].map((feature, i) => (
+                  'Therapist Integration',
+                ].map((feature) => (
                   <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
                     <CheckCircleIcon sx={{ color: ACCENT_TEAL, fontSize: 18 }} />
-                    <Typography
-                      sx={{
-                        color: i === 0 ? '#fff' : 'rgba(255,255,255,0.88)',
-                        fontSize: '0.9rem',
-                        fontWeight: i === 0 ? 600 : 400,
-                      }}
-                    >
+                    <Typography sx={{ color: 'rgba(255,255,255,0.88)', fontSize: '0.9rem' }}>
                       {feature}
                     </Typography>
                   </Box>
@@ -1304,8 +1233,18 @@ const Landing = () => {
                     },
                   }}
                 >
-                  Start Free Trial
+                  Create Your Free Account
                 </Button>
+                <Typography
+                  sx={{
+                    color: 'rgba(255,255,255,0.6)',
+                    fontSize: '0.8rem',
+                    textAlign: 'center',
+                    mt: 2,
+                  }}
+                >
+                  No credit card. No subscription. No locked features.
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
@@ -1346,7 +1285,7 @@ const Landing = () => {
               WebkitTextFillColor: 'transparent',
             }}
           >
-            This Investment
+            Daily Practice
           </Box>
         </Typography>
         <Typography
@@ -1386,10 +1325,10 @@ const Landing = () => {
             transition: 'all 0.3s ease',
           }}
         >
-          Start Your Free 14-Day Trial
+          Get Started — It's Free
         </Button>
         <Typography sx={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.85rem', mt: 2 }}>
-          No credit card required. Cancel anytime.
+          Free. No credit card, no subscription.
         </Typography>
       </Container>
     </Box>
@@ -1581,7 +1520,7 @@ const Landing = () => {
       {HowItWorks}
       {VideoSpotlight}
       {TestimonialsSection}
-      {PricingSection}
+      {FreeAccessSection}
       {FinalCTA}
       {Footer}
     </Box>

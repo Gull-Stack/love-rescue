@@ -25,6 +25,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { useAuth } from '../../contexts/AuthContext';
 import { strategiesApi, calendarApi } from '../../services/api';
+import { isNative } from '../../utils/platform';
 import { sectionColors, brandGradients } from '../../theme';
 import EmptyState from '../../components/common/EmptyState';
 import { trackEvent } from '../../utils/analytics';
@@ -105,8 +106,15 @@ const Strategies = () => {
       setSuccess('Activities synced to Google Calendar!');
     } catch (err) {
       if (err.response?.data?.code === 'CALENDAR_NOT_CONNECTED') {
-        const urlRes = await calendarApi.getAuthUrl();
-        window.location.href = urlRes.data.authUrl;
+        if (isNative()) {
+          // Google OAuth can't run inside the app's webview (403:
+          // disallowed_useragent) and the callback redirects to the website,
+          // so connecting must happen on the web.
+          setError('Google Calendar isn\'t connected yet. Sign in at loverescue.app in your browser to connect it, then sync here.');
+        } else {
+          const urlRes = await calendarApi.getAuthUrl();
+          window.location.href = urlRes.data.authUrl;
+        }
       } else {
         setError(err.response?.data?.error || 'Failed to sync calendar');
       }

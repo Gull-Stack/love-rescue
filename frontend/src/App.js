@@ -1,9 +1,8 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { MotionConfig } from 'framer-motion';
 import { useAuth } from './contexts/AuthContext';
-import { Capacitor } from '@capacitor/core';
-import { StatusBar, Style } from '@capacitor/status-bar';
+import { initCapacitor } from './utils/capacitor-init';
 
 // Layout (static - needed immediately)
 import Layout from './components/Layout/Layout';
@@ -66,6 +65,7 @@ const CommandCenter = React.lazy(() => import('./pages/Admin/CommandCenter'));
 // Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -74,7 +74,10 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    // A cold visit to the root should land on the marketing funnel, not a
+    // login wall. Deep links to protected pages keep going to /login so the
+    // user can sign in and continue.
+    return <Navigate to={location.pathname === '/' ? '/welcome' : '/login'} replace />;
   }
 
   return children;
@@ -115,15 +118,17 @@ const TherapistRoute = ({ children }) => {
 };
 
 function App() {
+  const navigate = useNavigate();
+
   useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      StatusBar.setStyle({ style: Style.Light });
-      // overlay: true => web view goes edge-to-edge under the status bar so the
-      // env(safe-area-inset-top) padding in Layout actually takes effect (matches
-      // viewport-fit=cover in index.html).
-      StatusBar.setOverlaysWebView({ overlay: true });
-    }
-  }, []);
+    // Native shell setup: status bar, splash screen, app lifecycle, and deep
+    // links (initCapacitor no-ops on web and guards against double-init).
+    // Deep links route through the SPA router so https://loverescue.app/join/x
+    // opened from a share sheet lands on the right screen without a reload.
+    initCapacitor({
+      onDeepLink: (path) => navigate(path),
+    });
+  }, [navigate]);
 
   return (
     <MotionConfig reducedMotion="user">

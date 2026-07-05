@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@capacitor-community/apple-sign-in": "^7.1.0",
     "@capacitor/app": "^8.0.0",
     "@capacitor/cli": "^8.0.2",
     "@capacitor/core": "^8.0.2",
@@ -57,7 +58,7 @@
   },
   "jest": {
     "transformIgnorePatterns": [
-      "[/\\\\]node_modules[/\\\\](?!(@simplewebauthn|@capacitor|@codetrix-studio)[/\\\\]).+\\.(js|jsx|mjs|cjs|ts|tsx)$",
+      "[/\\\\]node_modules[/\\\\](?!(@simplewebauthn|@capacitor|@capacitor-community|@codetrix-studio)[/\\\\]).+\\.(js|jsx|mjs|cjs|ts|tsx)$",
       "^.+\\.module\\.(css|sass|scss)$"
     ]
   },
