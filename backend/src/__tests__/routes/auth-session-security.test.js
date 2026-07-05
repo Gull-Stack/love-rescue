@@ -129,8 +129,11 @@ describe('Session security', () => {
           passwordHash: '$2a$12$hashedpassword'
         });
       bcrypt.compare.mockResolvedValue(true);
-      mockPrisma.user.update.mockResolvedValue({ id: 'user-1' });
+      // passwordHash update + revokeAllSessions update. The latter now selects
+      // the bumped tokenVersion so the route can re-mint a fresh token pair.
+      mockPrisma.user.update.mockResolvedValue({ id: 'user-1', tokenVersion: 1 });
       mockPrisma.token.updateMany.mockResolvedValue({ count: 2 });
+      mockPrisma.token.create.mockResolvedValue({ id: 'refresh-token-1' });
 
       const res = await request(app)
         .post('/api/auth/change-password')
@@ -141,7 +144,8 @@ describe('Session security', () => {
       // tokenVersion bumped → all outstanding access tokens die
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { tokenVersion: { increment: 1 } }
+        data: { tokenVersion: { increment: 1 } },
+        select: { tokenVersion: true }
       });
       // All refresh tokens revoked → no new access tokens can be minted
       expect(mockPrisma.token.updateMany).toHaveBeenCalledWith({
@@ -152,6 +156,63 @@ describe('Session security', () => {
         },
         data: { usedAt: expect.any(Date) }
       });
+    });
+
+    it('returns a fresh token pair for the current device carrying the new tokenVersion', async () => {
+      const token = generateToken('user-1', 0);
+
+      mockPrisma.user.findUnique
+        .mockResolvedValueOnce(authUser()) // authenticate middleware
+        .mockResolvedValueOnce({           // route lookup
+          id: 'user-1',
+          email: 'test@example.com',
+          passwordHash: '$2a$12$hashedpassword'
+        });
+      bcrypt.compare.mockResolvedValue(true);
+      // revokeAllSessions bumped tokenVersion 0 → 1
+      mockPrisma.user.update.mockResolvedValue({ id: 'user-1', tokenVersion: 1 });
+      mockPrisma.token.updateMany.mockResolvedValue({ count: 2 });
+      mockPrisma.token.create.mockResolvedValue({ id: 'refresh-token-1' });
+
+      const res = await request(app)
+        .post('/api/auth/change-password')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ currentPassword: 'oldpassword', newPassword: 'newpassword123' });
+
+      expect(res.status).toBe(200);
+      // Response carries replacement tokens so the current device stays logged in
+      expect(res.body.token).toBeDefined();
+      expect(res.body.refreshToken).toBeDefined();
+
+      // The new access token embeds the INCREMENTED tokenVersion...
+      const decoded = jwt.verify(res.body.token, JWT_SECRET);
+      expect(decoded.userId).toBe('user-1');
+      expect(decoded.tokenVersion).toBe(1);
+
+      // ...so it survives the middleware revocation check (DB is now at v1),
+      // while a token minted BEFORE the change (v0) is rejected.
+      mockPrisma.user.findUnique.mockResolvedValue(authUser({ tokenVersion: 1 }));
+
+      const okRes = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${res.body.token}`);
+      expect(okRes.status).toBe(200);
+
+      const staleRes = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${token}`);
+      expect(staleRes.status).toBe(401);
+      expect(staleRes.body.code).toBe('TOKEN_REVOKED');
+
+      // A refresh token was persisted for the new session
+      expect(mockPrisma.token.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            email: 'user:user-1',
+            type: 'refresh_token'
+          })
+        })
+      );
     });
 
     it('rejects the old access token after the password change (end-to-end)', async () => {
@@ -207,7 +268,8 @@ describe('Session security', () => {
       // Global revocation: tokenVersion bump + all remaining refresh tokens
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { tokenVersion: { increment: 1 } }
+        data: { tokenVersion: { increment: 1 } },
+        select: { tokenVersion: true }
       });
       expect(mockPrisma.token.updateMany).toHaveBeenCalledWith({
         where: {
@@ -234,7 +296,8 @@ describe('Session security', () => {
       expect(res.status).toBe(200);
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { tokenVersion: { increment: 1 } }
+        data: { tokenVersion: { increment: 1 } },
+        select: { tokenVersion: true }
       });
     });
   });
@@ -357,7 +420,8 @@ describe('Session security', () => {
       expect(res.status).toBe(200);
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { tokenVersion: { increment: 1 } }
+        data: { tokenVersion: { increment: 1 } },
+        select: { tokenVersion: true }
       });
     });
   });

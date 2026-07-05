@@ -33,7 +33,7 @@ import NotificationSettings from '../../components/NotificationSettings';
 
 const Settings = () => {
   const [searchParams] = useSearchParams();
-  const { user, relationship, invitePartner, refreshUser, biometricEnabled, checkBiometricAvailability, registerBiometric, logout } = useAuth();
+  const { user, relationship, invitePartner, refreshUser, biometricEnabled, checkBiometricAvailability, registerBiometric, logout, changePassword } = useAuth();
   const [loading, setLoading] = useState({});
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -229,13 +229,12 @@ const Settings = () => {
     }
     setLoading({ ...loading, password: true });
     try {
-      await api.post('/auth/change-password', {
-        currentPassword: passwordForm.current,
-        newPassword: passwordForm.next,
-      });
+      // changePassword stores the fresh token pair the server returns so this
+      // device stays signed in; only other devices are logged out.
+      await changePassword(passwordForm.current, passwordForm.next);
       setPasswordDialog(false);
       setPasswordForm({ current: '', next: '', confirm: '' });
-      setSuccess('Password updated successfully');
+      setSuccess('Password updated. You have been signed out on your other devices.');
     } catch (err) {
       setPasswordError(err.response?.data?.error || 'Failed to update password');
     } finally {

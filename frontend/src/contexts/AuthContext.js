@@ -265,6 +265,28 @@ export const AuthProvider = ({ children }) => {
     // Don't clear biometricEmail - we need it for biometric login
   };
 
+  // Change password for the current user. The server revokes every OTHER
+  // session (bumps tokenVersion, kills outstanding refresh tokens) and returns
+  // a FRESH token pair for THIS device so the current session stays alive.
+  // We must persist those new tokens the same way login does — otherwise the
+  // tokens still in storage carry the old tokenVersion and the next request
+  // 401s with TOKEN_REVOKED, kicking the user out of the device they just used.
+  const changePassword = async (currentPassword, newPassword) => {
+    const response = await api.post('/auth/change-password', {
+      currentPassword,
+      newPassword,
+    });
+
+    // Store the replacement tokens using the user's existing "Remember Me"
+    // preference (same mechanism the axios refresh interceptor uses).
+    if (response.data?.token) {
+      const remember = localStorage.getItem('rememberMe') === 'true';
+      setTokens(response.data.token, response.data.refreshToken, remember);
+    }
+
+    return response.data;
+  };
+
   const invitePartner = async (partnerEmail) => {
     try {
       const response = await api.post('/auth/invite-partner', { partnerEmail });
@@ -294,6 +316,7 @@ export const AuthProvider = ({ children }) => {
     googleLogin,
     appleLogin,
     logout,
+    changePassword,
     invitePartner,
     joinRelationship,
     refreshUser: fetchUser,
