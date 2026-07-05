@@ -33,24 +33,34 @@ const CoupleView = () => {
   const [data, setData] = useState(null);
 
   const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [coupleRes, compRes] = await Promise.all([
-        therapistService.getCouple(id),
-        therapistService.getCoupleComparison(id),
-      ]);
-      setData({
-        couple: coupleRes.data?.couple || null,
-        partners: compRes.data?.partners || null,
-        comparison: compRes.data?.comparison || [],
-        comparisonMessage: compRes.data?.message || null,
-      });
-    } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to load couple data');
-    } finally {
-      setLoading(false);
+    setLoading(true);
+    setError(null);
+    // Fetch the two endpoints independently. The comparison endpoint 403s
+    // (PARTNER_CONSENT_REQUIRED) until BOTH partners consent, while getCouple
+    // still returns a redacted 200 when only one has. A shared Promise.all
+    // would reject the whole page on that expected 403, so settle them apart:
+    // the couple response drives the page, the comparison is best-effort.
+    const [coupleResult, compResult] = await Promise.allSettled([
+      therapistService.getCouple(id),
+      therapistService.getCoupleComparison(id),
+    ]);
+    setLoading(false);
+
+    if (coupleResult.status !== 'fulfilled') {
+      const err = coupleResult.reason;
+      setError(err?.response?.data?.error || err?.response?.data?.message || 'Failed to load couple data');
+      return;
     }
+
+    const comparisonAvailable = compResult.status === 'fulfilled';
+    setData({
+      couple: coupleResult.value.data?.couple || null,
+      partnerConsentRequired: Boolean(coupleResult.value.data?.partnerConsentRequired),
+      comparisonAvailable,
+      partners: comparisonAvailable ? (compResult.value.data?.partners || null) : null,
+      comparison: comparisonAvailable ? (compResult.value.data?.comparison || []) : [],
+      comparisonMessage: comparisonAvailable ? (compResult.value.data?.message || null) : null,
+    });
   }, [id]);
 
   useEffect(() => {
@@ -79,7 +89,13 @@ const CoupleView = () => {
     );
   }
 
-  const { couple, comparison = [], comparisonMessage } = data || {};
+  const {
+    couple,
+    comparison = [],
+    comparisonMessage,
+    comparisonAvailable = false,
+    partnerConsentRequired = false,
+  } = data || {};
   const user1 = couple?.user1 || data?.partners?.user1 || null;
   const user2 = couple?.user2 || data?.partners?.user2 || null;
   const nameA = partnerName(user1, 'Partner 1');
@@ -128,12 +144,14 @@ const CoupleView = () => {
                         <Typography variant="body2" fontWeight={600}>{partner.user.email}</Typography>
                       </Box>
                     )}
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">Assessments Completed</Typography>
-                      <Typography variant="body2" fontWeight={600}>
-                        {comparison.filter(c => (idx === 0 ? c.user1 : c.user2) != null).length} of {comparison.length || 0}
-                      </Typography>
-                    </Box>
+                    {comparisonAvailable && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Assessments Completed</Typography>
+                        <Typography variant="body2" fontWeight={600}>
+                          {comparison.filter(c => (idx === 0 ? c.user1 : c.user2) != null).length} of {comparison.length || 0}
+                        </Typography>
+                      </Box>
+                    )}
                   </>
                 ) : (
                   <Typography variant="body2" color="text.secondary">
@@ -146,52 +164,70 @@ const CoupleView = () => {
         ))}
       </Grid>
 
-      {/* Radar Chart Comparison */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>Assessment Comparison</Typography>
-          {radarLabels.length >= 3 ? (
-            <CoupleRadarChart
-              partnerA={radarA}
-              partnerB={radarB}
-              labels={radarLabels}
-              height={350}
-            />
-          ) : (
-            <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-              {comparisonMessage || 'The comparison chart will appear once both partners complete at least three scored assessments.'}
-            </Typography>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Side-by-side scores table */}
-      {comparison.length > 0 && (
-        <Card>
+      {/* Comparison requires BOTH partners to have consented. When only one has,
+          the comparison endpoint 403s and we render an inline note instead of
+          the radar/table (the couple view above still renders from getCouple). */}
+      {!comparisonAvailable ? (
+        <Card sx={{ mb: 3 }}>
           <CardContent>
-            <Typography variant="h6" gutterBottom>Latest Scores Side by Side</Typography>
-            <Box sx={{ overflowX: 'auto' }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Assessment</TableCell>
-                    <TableCell align="right">{nameA}</TableCell>
-                    <TableCell align="right">{nameB}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {comparison.map((c) => (
-                    <TableRow key={c.type}>
-                      <TableCell>{typeLabel(c.type)}</TableCell>
-                      <TableCell align="right">{asNumber(c.user1) ?? (c.user1 != null ? 'Completed' : '—')}</TableCell>
-                      <TableCell align="right">{asNumber(c.user2) ?? (c.user2 != null ? 'Completed' : '—')}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Box>
+            <Typography variant="h6" gutterBottom>Assessment Comparison</Typography>
+            <Alert severity="info" sx={{ mt: 1 }}>
+              {partnerConsentRequired
+                ? 'Both partners must consent to see the side-by-side comparison. This view shows only the partner who has connected with you.'
+                : 'The side-by-side comparison is unavailable right now.'}
+            </Alert>
           </CardContent>
         </Card>
+      ) : (
+        <>
+          {/* Radar Chart Comparison */}
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>Assessment Comparison</Typography>
+              {radarLabels.length >= 3 ? (
+                <CoupleRadarChart
+                  partnerA={radarA}
+                  partnerB={radarB}
+                  labels={radarLabels}
+                  height={350}
+                />
+              ) : (
+                <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                  {comparisonMessage || 'The comparison chart will appear once both partners complete at least three scored assessments.'}
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Side-by-side scores table */}
+          {comparison.length > 0 && (
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Latest Scores Side by Side</Typography>
+                <Box sx={{ overflowX: 'auto' }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Assessment</TableCell>
+                        <TableCell align="right">{nameA}</TableCell>
+                        <TableCell align="right">{nameB}</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {comparison.map((c) => (
+                        <TableRow key={c.type}>
+                          <TableCell>{typeLabel(c.type)}</TableCell>
+                          <TableCell align="right">{asNumber(c.user1) ?? (c.user1 != null ? 'Completed' : '—')}</TableCell>
+                          <TableCell align="right">{asNumber(c.user2) ?? (c.user2 != null ? 'Completed' : '—')}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Box>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
     </Box>
   );

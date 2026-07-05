@@ -600,11 +600,27 @@ const RealTalk = () => {
       const feeling = getFeelingText();
       const res = await realTalkApi.create({ issue: issue.trim(), feeling, need: need.trim() });
 
+      // The backend returns `safety: true` in two structurally different shapes:
+      //   1. Legacy abuse-keyword early return — NOT saved (200). Carries only
+      //      safety/message/hotline/textLine/url; no `realTalk`, no `crisis`.
+      //   2. Crisis detection — the entry WAS saved (201) and the response
+      //      carries the persisted `realTalk` (+ `crisis`) alongside `safety`.
+      // Use the presence of the persisted record as the "was it saved?" signal:
+      // for a saved crisis we must still show the result and advance, otherwise
+      // the user stays on the input step and can re-submit → duplicate rows.
+      const wasSaved = Boolean(res.data.realTalk);
+
       if (res.data.safety) {
         setSafetyData(res.data);
         setSafetyDialog(true);
-        setLoading(false);
-        return;
+        if (!wasSaved) {
+          // Nothing persisted — keep the user on this step to revise; the
+          // safety dialog is the only thing that changes.
+          setLoading(false);
+          return;
+        }
+        // Saved crisis entry: fall through to show the generated startup and
+        // advance, so re-submitting cannot create a duplicate Real Talk.
       }
 
       setResult(res.data);

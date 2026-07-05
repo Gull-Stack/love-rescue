@@ -232,7 +232,10 @@ const MyTherapistSection = () => {
                         variant="outlined"
                         onClick={() => {
                           setPermissionDialog(t);
-                          setNewPermission(t.permissionLevel);
+                          // API returns the level uppercase ('BASIC'/'STANDARD'/
+                          // 'FULL'); the RadioGroup options are lowercase, so
+                          // normalize or nothing preselects and Save is a no-op.
+                          setNewPermission(String(t.permissionLevel || '').toLowerCase());
                         }}
                       >
                         Change Permissions

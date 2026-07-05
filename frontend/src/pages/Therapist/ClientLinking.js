@@ -55,6 +55,17 @@ const PERMISSION_LEVELS = [
   },
 ];
 
+// Rank levels by declaration order (basic < standard < full) so we can compare
+// an invite's ceiling against the options offered.
+const LEVEL_RANK = PERMISSION_LEVELS.reduce((acc, level, idx) => {
+  acc[level.value] = idx;
+  return acc;
+}, {});
+
+// Backend sends the ceiling uppercase ('BASIC'/'STANDARD'/'FULL'); the UI works
+// in lowercase.
+const normalizeLevel = (value) => String(value || '').toLowerCase();
+
 const STATUS_CONFIG = {
   pending: { label: 'Pending', color: 'warning', icon: <HourglassEmptyIcon fontSize="small" /> },
   accepted: { label: 'Connected', color: 'success', icon: <CheckCircleIcon fontSize="small" /> },
@@ -267,6 +278,14 @@ const ClientLinkingAccept = ({ token: tokenProp }) => {
     try {
       const response = await api.get(`/therapist/clients/invite/${token}`);
       setInvite(response.data);
+      // The invite carries a permission ceiling (invite.permissionLevel). Seed
+      // the picker to that ceiling so accept never exceeds it — the backend
+      // rejects anything higher with PERMISSION_EXCEEDS_INVITE. Fall back to the
+      // default only when the invite omits a valid ceiling.
+      const ceiling = normalizeLevel(response.data?.permissionLevel);
+      if (ceiling in LEVEL_RANK) {
+        setPermissionLevel(ceiling);
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Invalid or expired invite');
     } finally {
@@ -363,6 +382,14 @@ const ClientLinkingAccept = ({ token: tokenProp }) => {
     );
   }
 
+  // The invite's permissionLevel is a ceiling: only offer levels at or below it
+  // so the client can't pick something the therapist's invite forbids.
+  const ceilingLevel = normalizeLevel(invite?.permissionLevel);
+  const ceilingRank = ceilingLevel in LEVEL_RANK ? LEVEL_RANK[ceilingLevel] : PERMISSION_LEVELS.length - 1;
+  const availableLevels = PERMISSION_LEVELS.filter((l) => LEVEL_RANK[l.value] <= ceilingRank);
+  const ceilingConfig = PERMISSION_LEVELS.find((l) => l.value === ceilingLevel);
+  const ceilingLimited = ceilingConfig && ceilingRank < PERMISSION_LEVELS.length - 1;
+
   return (
     <Box maxWidth="sm" mx="auto" py={4}>
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
@@ -395,12 +422,18 @@ const ClientLinkingAccept = ({ token: tokenProp }) => {
               Choose what to share
             </Typography>
 
+            {ceilingLimited && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Your therapist limited this invite to {ceilingConfig.label} access, so higher levels aren't available here. You can adjust sharing later from Settings.
+              </Alert>
+            )}
+
             <FormControl component="fieldset" fullWidth>
               <RadioGroup
                 value={permissionLevel}
                 onChange={(e) => setPermissionLevel(e.target.value)}
               >
-                {PERMISSION_LEVELS.map((level) => (
+                {availableLevels.map((level) => (
                   <Card
                     key={level.value}
                     variant="outlined"
