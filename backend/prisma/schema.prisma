@@ -86,6 +86,7 @@ enum ConsentStatus {
   PENDING
   GRANTED
   REVOKED
+  DECLINED
 }
 
 // Therapist alert types
@@ -173,6 +174,7 @@ model User {
   therapistLinks         TherapistClient[]
   therapistAlerts        TherapistAlert[]
   realTalks              RealTalk[]
+  treatmentPlans         TreatmentPlan[]
 
   @@map("users")
   @@index([email])
@@ -196,6 +198,8 @@ model Therapist {
 
   licenseType    String?  @map("license_type") @db.VarChar(50)
   practiceName   String?  @map("practice_name") @db.VarChar(255)
+  approach       String?  @db.VarChar(50) // therapeutic orientation: eft, gottman, cbt, psychodynamic, integrative
+  preferences    Json?    @db.JsonB // notification preferences (per-category push/email/sms toggles)
 
   // Relations
   assignments    TherapistAssignment[]
@@ -204,6 +208,7 @@ model Therapist {
   alerts         TherapistAlert[]
   sessionReports SessionPrepReport[]
   integrationPartnerLinks IntegrationPartnerTherapist[]
+  treatmentPlans TreatmentPlan[]
 
   @@map("therapists")
   @@index([email])
@@ -220,6 +225,7 @@ model TherapistClient {
   consentStatus    ConsentStatus   @default(PENDING) @map("consent_status")
   consentGrantedAt DateTime?       @map("consent_granted_at")
   consentRevokedAt DateTime?       @map("consent_revoked_at")
+  consentDeclinedAt DateTime?      @map("consent_declined_at")
   permissionLevel  PermissionLevel @default(BASIC) @map("permission_level")
   createdAt        DateTime        @default(now()) @map("created_at")
   updatedAt        DateTime        @updatedAt @map("updated_at")
@@ -853,4 +859,25 @@ model IntegrationAccessLog {
   @@index([partnerId, createdAt(sort: Desc)])
   @@index([clientId])
   @@index([createdAt(sort: Desc)])
+}
+
+// Persisted therapist treatment plans — one per therapist/client pair.
+// `plan` stores the full plan payload (modules, pace, per-module notes, goals).
+model TreatmentPlan {
+  id          String   @id @default(uuid()) @db.Uuid
+  therapistId String   @map("therapist_id") @db.Uuid
+  clientId    String   @map("client_id") @db.Uuid
+  plan        Json     @db.JsonB
+  approach    String?  @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  therapist Therapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  client    User      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([therapistId, clientId])
+  @@map("treatment_plans")
+  @@index([therapistId])
+  @@index([clientId])
 }

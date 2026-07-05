@@ -16,9 +16,13 @@ const {
   logAccess,
 } = require('../middleware/therapistAccess');
 const { generateSessionPrepReport } = require('../utils/sessionPrep');
+const { MODULE_LIBRARY, generateTreatmentPlanOptions } = require('../utils/treatmentPlan');
 const logger = require('../utils/logger');
 
 const router = express.Router();
+
+const PERMISSION_ORDER = ['BASIC', 'STANDARD', 'FULL'];
+const VALID_ALERT_TYPES = ['CRISIS', 'RISK', 'MILESTONE', 'STAGNATION'];
 
 // Therapist access is gated: a user can only become a therapist if their email
 // is on the approved allowlist (set THERAPIST_ALLOWLIST on the backend, a
@@ -400,22 +404,41 @@ router.post('/tasks/add', authenticateTherapist, async (req, res, next) => {
       return res.status(404).json({ error: 'Relationship not found' });
     }
 
-    // Check for active TherapistClient link (preferred over legacy consent)
+    // Consent check. TherapistClient links are preferred; legacy per-partner
+    // relationship consent flags (which already require BOTH partners) are the
+    // fallback for couples predating the link model.
     const userIds = [relationship.user1Id, relationship.user2Id].filter(Boolean);
-    const activeLink = await req.prisma.therapistClient.findFirst({
+    const grantedLinks = await req.prisma.therapistClient.findMany({
       where: {
         therapistId: req.therapist.id,
         clientId: { in: userIds },
         consentStatus: 'GRANTED',
       },
     });
+    const grantedClientIds = new Set(grantedLinks.map((l) => l.clientId));
+    const legacyBothConsent =
+      relationship.user1TherapistConsent && relationship.user2TherapistConsent;
 
-    if (!activeLink) {
-      // Fallback to legacy consent check
-      if (!relationship.user1TherapistConsent || !relationship.user2TherapistConsent) {
+    if (assignToUserId) {
+      // Individual task: the assignee must be part of the relationship and
+      // must have granted this therapist access.
+      if (!userIds.includes(assignToUserId)) {
+        return res.status(400).json({ error: 'Assignee is not part of this relationship' });
+      }
+      if (!grantedClientIds.has(assignToUserId) && !legacyBothConsent) {
+        return res.status(403).json({
+          error: 'This client has not granted you access',
+          code: 'CONSENT_REQUIRED'
+        });
+      }
+    } else {
+      // Couple-level task: visible to both partners, so BOTH must have
+      // granted this therapist access (one partner cannot consent for the other).
+      const allPartnersGranted = userIds.every((id) => grantedClientIds.has(id));
+      if (!allPartnersGranted && !legacyBothConsent) {
         return res.status(403).json({
           error: 'Both partners must consent to therapist integration',
-          code: 'CONSENT_REQUIRED'
+          code: grantedLinks.length > 0 ? 'PARTNER_CONSENT_REQUIRED' : 'CONSENT_REQUIRED'
         });
       }
     }
@@ -744,7 +767,20 @@ router.post('/clients/link', async (req, res, next) => {
         return res.status(404).json({ error: 'Invalid or expired invite code' });
       }
 
-      // Client must match the link's clientId OR we update it
+      // Anti-hijack: an invite created for a specific client may only be
+      // accepted by that client. (Open invites — no clientId — bind to the
+      // presenter once; the code is cleared below so it can never be reused.)
+      if (link.clientId && link.clientId !== req.user.id) {
+        logger.warn('Blocked invite-code accept by wrong account', {
+          linkId: link.id,
+          presenterId: req.user.id,
+        });
+        return res.status(403).json({
+          error: 'This invite was issued to a different account',
+          code: 'INVITE_NOT_FOR_YOU',
+        });
+      }
+
       const level = permissionLevel || 'BASIC';
       if (!['BASIC', 'STANDARD', 'FULL'].includes(level)) {
         return res.status(400).json({ error: 'permissionLevel must be BASIC, STANDARD, or FULL' });
@@ -829,7 +865,7 @@ router.post('/clients/link', async (req, res, next) => {
     if (existing) {
       link = await req.prisma.therapistClient.update({
         where: { id: existing.id },
-        data: { inviteCode: code, consentStatus: 'PENDING', consentRevokedAt: null },
+        data: { inviteCode: code, consentStatus: 'PENDING', consentRevokedAt: null, consentDeclinedAt: null },
       });
     } else {
       link = await req.prisma.therapistClient.create({
@@ -923,6 +959,17 @@ router.get('/clients', authenticateTherapist, async (req, res, next) => {
         };
       })
     );
+
+    // HIPAA audit: log the caseload read per client
+    await Promise.all(links.map((link) => logAccess(req.prisma, {
+      accessorId: req.therapist.id,
+      resourceType: 'client_overview',
+      resourceId: link.clientId,
+      resourceOwnerId: link.clientId,
+      action: 'read',
+      accessGranted: true,
+      ipAddress: req.ip,
+    })));
 
     res.json({ clients: clientsWithStats });
   } catch (error) {
@@ -1051,6 +1098,57 @@ router.get(
     try {
       const clientId = req.params.id;
       const lastSessionDate = req.query.lastSessionDate || null;
+
+      // Reports are persisted rows — don't mint a new one on every page view.
+      // Reuse a report generated within the last hour unless ?refresh=true.
+      if (req.query.refresh !== 'true') {
+        const recent = await req.prisma.sessionPrepReport.findFirst({
+          where: {
+            therapistId: req.therapist.id,
+            clientId,
+            createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        if (recent) {
+          const [client, courseProgress, pendingTasks] = await Promise.all([
+            req.prisma.user.findUnique({
+              where: { id: clientId },
+              select: { id: true, firstName: true, lastName: true },
+            }),
+            req.prisma.courseProgress.findFirst({ where: { userId: clientId } }),
+            req.prisma.therapistTask.findMany({
+              where: { assignedToUserId: clientId, completed: false },
+            }),
+          ]);
+
+          return res.json({
+            report: {
+              id: recent.id,
+              client,
+              reportDate: recent.reportDate,
+              lastSessionDate: recent.lastSessionDate,
+              activitiesCompleted: recent.activitiesCompleted,
+              assessmentChanges: recent.assessmentChanges,
+              moodTrends: recent.moodTrends,
+              crisisFlags: recent.crisisFlags,
+              generatedSummary: recent.generatedSummary,
+              expertInsights: recent.expertInsights,
+              courseProgress: courseProgress
+                ? { currentWeek: courseProgress.currentWeek, isActive: courseProgress.isActive }
+                : null,
+              pendingTasks: pendingTasks.map(t => ({
+                id: t.id,
+                description: t.taskDescription,
+                priority: t.priority,
+                dueDate: t.dueDate,
+              })),
+              cached: true,
+            },
+          });
+        }
+      }
 
       const report = await generateSessionPrepReport(
         req.prisma,
@@ -1185,11 +1283,22 @@ router.get(
  */
 router.get('/alerts', authenticateTherapist, async (req, res, next) => {
   try {
-    const { type, unreadOnly } = req.query;
+    const { type, unreadOnly, limit } = req.query;
 
     const where = { therapistId: req.therapist.id };
-    if (type) where.alertType = type;
+    if (type) {
+      // Normalize + whitelist before handing to the Prisma enum (raw values 500)
+      const normalizedType = String(type).toUpperCase();
+      if (!VALID_ALERT_TYPES.includes(normalizedType)) {
+        return res.status(400).json({
+          error: `Invalid alert type. Must be one of: ${VALID_ALERT_TYPES.join(', ')}`,
+        });
+      }
+      where.alertType = normalizedType;
+    }
     if (unreadOnly === 'true') where.readAt = null;
+
+    const take = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 100);
 
     const alerts = await req.prisma.therapistAlert.findMany({
       where,
@@ -1197,8 +1306,20 @@ router.get('/alerts', authenticateTherapist, async (req, res, next) => {
         client: { select: { id: true, firstName: true, lastName: true } },
       },
       orderBy: [{ readAt: 'asc' }, { severity: 'desc' }, { createdAt: 'desc' }],
-      take: 100,
+      take,
     });
+
+    // HIPAA audit: alerts contain client data — log the read per client
+    const alertClientIds = [...new Set(alerts.map(a => a.clientId))];
+    await Promise.all(alertClientIds.map((clientId) => logAccess(req.prisma, {
+      accessorId: req.therapist.id,
+      resourceType: 'crisis_alerts',
+      resourceId: clientId,
+      resourceOwnerId: clientId,
+      action: 'read',
+      accessGranted: true,
+      ipAddress: req.ip,
+    })));
 
     res.json({
       alerts: alerts.map(a => ({
@@ -1396,6 +1517,17 @@ router.get('/outcomes', authenticateTherapist, async (req, res, next) => {
         : null,
     };
 
+    // HIPAA audit: log the caseload outcomes read per client
+    await Promise.all(clientIds.map((clientId) => logAccess(req.prisma, {
+      accessorId: req.therapist.id,
+      resourceType: 'outcomes',
+      resourceId: clientId,
+      resourceOwnerId: clientId,
+      action: 'read',
+      accessGranted: true,
+      ipAddress: req.ip,
+    })));
+
     res.json({
       outcomes: {
         summary,
@@ -1478,6 +1610,7 @@ router.post('/onboard', authenticate, async (req, res, next) => {
         licenseState: licenseState || undefined,
         licenseNumber: licenseNumber || undefined,
         practiceName: practiceName || undefined,
+        approach: approach || undefined,
         isActive: true,
       },
       create: {
@@ -1489,6 +1622,7 @@ router.post('/onboard', authenticate, async (req, res, next) => {
         licenseState: licenseState || undefined,
         licenseNumber: licenseNumber || undefined,
         practiceName: practiceName || undefined,
+        approach: approach || undefined,
         isActive: true,
       },
     });
@@ -1502,6 +1636,7 @@ router.post('/onboard', authenticate, async (req, res, next) => {
         email: therapist.email,
         licenseType: therapist.licenseType,
         licenseState: therapist.licenseState,
+        approach: therapist.approach,
       },
     });
   } catch (error) {
@@ -1509,7 +1644,7 @@ router.post('/onboard', authenticate, async (req, res, next) => {
   }
 });
 
-// ── Stub routes (called by frontend, not yet fully built) ─────────────────────
+// ── Profile, preferences & tooling routes ─────────────────────────────────────
 
 router.get('/profile', authenticateTherapist, (req, res) => {
   const t = req.therapist;
@@ -1518,6 +1653,7 @@ router.get('/profile', authenticateTherapist, (req, res) => {
     firstName: t.firstName, lastName: t.lastName,
     licenseType: t.licenseType, licenseState: t.licenseState,
     licenseNumber: t.licenseNumber, practiceName: t.practiceName,
+    approach: t.approach || null,
     isActive: t.isActive,
   });
 });
@@ -1532,45 +1668,208 @@ router.patch('/profile', authenticateTherapist, async (req, res, next) => {
         licenseState: licenseState ?? undefined,
         licenseNumber: licenseNumber ?? undefined,
         practiceName: practiceName ?? undefined,
+        approach: approach ?? undefined,
       },
     });
-    res.json({ therapist: updated, approach });
+    res.json({ therapist: updated, approach: updated.approach });
   } catch (error) { next(error); }
 });
 
+// Notification preferences — per-category push/email/sms toggles, persisted
+// on Therapist.preferences (JSONB). Shape matches the settings UI.
+const DEFAULT_THERAPIST_PREFERENCES = {
+  crisisAlerts: { push: true, email: true, sms: false },
+  sessionPrep: { push: true, email: false, sms: false },
+  clientActivity: { push: false, email: false, sms: false },
+  weeklyDigest: { push: false, email: true, sms: false },
+};
+
+function mergeTherapistPreferences(stored, incoming) {
+  const merged = {};
+  for (const category of Object.keys(DEFAULT_THERAPIST_PREFERENCES)) {
+    merged[category] = {};
+    for (const channel of Object.keys(DEFAULT_THERAPIST_PREFERENCES[category])) {
+      const incomingValue = incoming?.[category]?.[channel];
+      const storedValue = stored?.[category]?.[channel];
+      merged[category][channel] = typeof incomingValue === 'boolean'
+        ? incomingValue
+        : typeof storedValue === 'boolean'
+          ? storedValue
+          : DEFAULT_THERAPIST_PREFERENCES[category][channel];
+    }
+  }
+  return merged;
+}
+
 router.get('/notification-preferences', authenticateTherapist, (req, res) => {
-  res.json({ emailAlerts: true, pushAlerts: false, weeklyDigest: true });
+  res.json(mergeTherapistPreferences(req.therapist.preferences, null));
 });
 
-router.patch('/notification-preferences', authenticateTherapist, (req, res) => {
-  res.json({ ok: true, preferences: req.body });
+router.patch('/notification-preferences', authenticateTherapist, async (req, res, next) => {
+  try {
+    const merged = mergeTherapistPreferences(req.therapist.preferences, req.body);
+    await req.prisma.therapist.update({
+      where: { id: req.therapist.id },
+      data: { preferences: merged },
+    });
+    res.json(merged);
+  } catch (error) { next(error); }
 });
 
-router.get('/audit-log', authenticateTherapist, (req, res) => {
-  res.json({ logs: [], total: 0, page: 1 });
+// The therapist's own HIPAA access-log trail (what they accessed, when)
+router.get('/audit-log', authenticateTherapist, async (req, res, next) => {
+  try {
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
+
+    const where = { accessorId: req.therapist.id };
+    const [logs, total] = await Promise.all([
+      req.prisma.accessLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      req.prisma.accessLog.count({ where }),
+    ]);
+
+    // Resolve client names for the rows in this page
+    const ownerIds = [...new Set(logs.map(l => l.resourceOwnerId).filter(Boolean))];
+    const clients = ownerIds.length > 0
+      ? await req.prisma.user.findMany({
+          where: { id: { in: ownerIds } },
+          select: { id: true, firstName: true, lastName: true },
+        })
+      : [];
+    const nameById = Object.fromEntries(
+      clients.map(c => [c.id, [c.firstName, c.lastName].filter(Boolean).join(' ')])
+    );
+
+    res.json({
+      logs: logs.map(l => ({
+        id: l.id,
+        timestamp: l.createdAt,
+        clientName: l.resourceOwnerId ? (nameById[l.resourceOwnerId] || 'Unknown') : null,
+        action: l.action,
+        dataType: l.resourceType,
+        accessGranted: l.accessGranted,
+      })),
+      total,
+      page,
+    });
+  } catch (error) { next(error); }
 });
 
 router.get('/export', authenticateTherapist, (req, res) => {
   res.json({ message: 'Export coming soon', data: [] });
 });
 
+// ── Module library & recommendations ──────────────────────────────────────────
+
 router.get('/modules', authenticateTherapist, (req, res) => {
-  res.json({ modules: [] });
+  res.json({ modules: Object.values(MODULE_LIBRARY) });
 });
 
-router.get('/modules/recommend', authenticateTherapist, (req, res) => {
-  res.json({ modules: [] });
+router.get('/modules/recommend', authenticateTherapist, async (req, res, next) => {
+  try {
+    const approach = req.query.approach || req.therapist.approach || 'integrative';
+    const { clientId } = req.query;
+
+    // Optionally personalize with a client's latest assessment data —
+    // gated on that client's GRANTED consent.
+    let coupleProfile = {};
+    if (clientId) {
+      const link = await req.prisma.therapistClient.findFirst({
+        where: { therapistId: req.therapist.id, clientId, consentStatus: 'GRANTED' },
+      });
+      if (!link) {
+        return res.status(403).json({
+          error: 'No active consent from this client',
+          code: 'CONSENT_REQUIRED',
+        });
+      }
+
+      const assessments = await req.prisma.assessment.findMany({
+        where: { userId: clientId },
+        select: { type: true, score: true, completedAt: true },
+        orderBy: { completedAt: 'desc' },
+      });
+      const latestByType = {};
+      for (const a of assessments) {
+        if (!latestByType[a.type]) latestByType[a.type] = a;
+      }
+
+      const parseScore = (score) => {
+        if (!score) return null;
+        if (typeof score === 'string') {
+          try { return JSON.parse(score); } catch { return null; }
+        }
+        return score;
+      };
+
+      const attachmentScore = parseScore(latestByType.attachment?.score);
+      const gottmanScore = parseScore(latestByType.gottman_checkup?.score);
+      const horsemen = gottmanScore?.horsemen || gottmanScore?.fourHorsemen || null;
+
+      coupleProfile = {
+        attachmentStyle: attachmentScore?.style || attachmentScore?.attachmentStyle || attachmentScore?.primary || null,
+        horsemenScores: horsemen,
+        dominantHorseman: horsemen
+          ? Object.entries(horsemen).sort((a, b) => b[1] - a[1])[0]?.[0] || null
+          : null,
+      };
+    }
+
+    const recommendations = generateTreatmentPlanOptions(coupleProfile, approach);
+
+    res.json({
+      modules: recommendations.recommended,
+      recommendations,
+    });
+  } catch (error) { next(error); }
 });
 
-router.get('/clients/invites', authenticateTherapist, (req, res) => {
-  res.json({ invites: [] });
+// ── GET /clients/invites — invite/link status list ────────────────────────────
+router.get('/clients/invites', authenticateTherapist, async (req, res, next) => {
+  try {
+    const links = await req.prisma.therapistClient.findMany({
+      where: { therapistId: req.therapist.id },
+      include: {
+        client: { select: { id: true, firstName: true, lastName: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const STATUS_MAP = {
+      PENDING: 'pending',
+      GRANTED: 'accepted',
+      REVOKED: 'revoked',
+      DECLINED: 'declined',
+    };
+
+    res.json({
+      invites: links.map(l => ({
+        id: l.id,
+        clientId: l.clientId,
+        clientName: [l.client.firstName, l.client.lastName].filter(Boolean).join(' ') || null,
+        clientEmail: l.client.email,
+        status: STATUS_MAP[l.consentStatus] || 'pending',
+        permissionLevel: l.permissionLevel,
+        invitedAt: l.createdAt,
+        createdAt: l.createdAt,
+        respondedAt: l.consentGrantedAt || l.consentDeclinedAt || l.consentRevokedAt || null,
+      })),
+    });
+  } catch (error) { next(error); }
 });
 
 // ── GET /clients/:id — single client detail ──────────────────────────────────
-router.get('/clients/:id', authenticateTherapist, async (req, res, next) => {
+// requireClientAccess enforces GRANTED consent (revoked = no access) and
+// writes the HIPAA access log entry.
+router.get('/clients/:id', authenticateTherapist, requireClientAccess(), async (req, res, next) => {
   try {
     const link = await req.prisma.therapistClient.findFirst({
-      where: { therapistId: req.therapist.id, clientId: req.params.id },
+      where: { therapistId: req.therapist.id, clientId: req.params.id, consentStatus: 'GRANTED' },
       include: {
         client: {
           select: { id: true, firstName: true, lastName: true, email: true, createdAt: true },
@@ -1599,13 +1898,10 @@ router.get('/clients/:id', authenticateTherapist, async (req, res, next) => {
 });
 
 // ── GET /clients/:id/assessments — client assessment history ─────────────────
-router.get('/clients/:id/assessments', authenticateTherapist, async (req, res, next) => {
+// requireClientAccess enforces GRANTED consent + permission level and writes
+// the HIPAA access log entry.
+router.get('/clients/:id/assessments', authenticateTherapist, requireClientAccess('assessment_scores'), async (req, res, next) => {
   try {
-    const link = await req.prisma.therapistClient.findFirst({
-      where: { therapistId: req.therapist.id, clientId: req.params.id, consentStatus: 'GRANTED' },
-    });
-    if (!link) return res.status(403).json({ error: 'Access denied' });
-
     const assessments = await req.prisma.assessment.findMany({
       where: { userId: req.params.id },
       select: { id: true, type: true, score: true, completedAt: true },
@@ -1616,9 +1912,15 @@ router.get('/clients/:id/assessments', authenticateTherapist, async (req, res, n
 });
 
 // ── POST /clients/invite — generate invite link for a client ─────────────────
+// The therapist chooses the permission CEILING for the invite (default
+// STANDARD). The client picks their own level at accept time — anything up
+// to this ceiling.
 router.post('/clients/invite', authenticateTherapist, async (req, res, next) => {
   try {
-    const { permissionLevel = 'BASIC' } = req.body;
+    const permissionLevel = String(req.body.permissionLevel || 'STANDARD').toUpperCase();
+    if (!PERMISSION_ORDER.includes(permissionLevel)) {
+      return res.status(400).json({ error: 'permissionLevel must be BASIC, STANDARD, or FULL' });
+    }
     const jwt = require('jsonwebtoken');
     const secret = process.env.JWT_SECRET;
 
@@ -1636,7 +1938,7 @@ router.post('/clients/invite', authenticateTherapist, async (req, res, next) => 
     );
 
     const inviteLink = `${process.env.FRONTEND_URL || 'https://loverescue.app'}/therapist/join/${token}`;
-    res.json({ inviteLink, expiresIn: '7 days' });
+    res.json({ inviteLink, permissionLevel, expiresIn: '7 days' });
   } catch (error) { next(error); }
 });
 
@@ -1669,15 +1971,30 @@ router.post('/clients/invite/:token/accept', authenticate, async (req, res, next
       return res.status(401).json({ error: 'Invalid or expired invite link' });
     }
 
-    // Client may choose a MORE restrictive level than what the therapist offered,
-    // but cannot escalate beyond the JWT-embedded ceiling.
-    const PERMISSION_ORDER = ['BASIC', 'STANDARD', 'FULL'];
-    const ceiling = payload.permissionLevel || 'BASIC';
-    const requested = req.body.permissionLevel?.toUpperCase();
-    const level = (requested && PERMISSION_ORDER.includes(requested) &&
-      PERMISSION_ORDER.indexOf(requested) <= PERMISSION_ORDER.indexOf(ceiling))
-      ? requested
-      : ceiling;
+    // Client may choose a MORE restrictive level than what the therapist
+    // offered, but cannot escalate beyond the JWT-embedded ceiling. Never
+    // silently clamp — the stored consent must equal what the client chose.
+    const ceiling = PERMISSION_ORDER.includes(payload.permissionLevel)
+      ? payload.permissionLevel
+      : 'BASIC';
+    const requested = req.body.permissionLevel
+      ? String(req.body.permissionLevel).toUpperCase()
+      : null;
+
+    if (requested && !PERMISSION_ORDER.includes(requested)) {
+      return res.status(400).json({ error: 'permissionLevel must be BASIC, STANDARD, or FULL' });
+    }
+
+    if (requested && PERMISSION_ORDER.indexOf(requested) > PERMISSION_ORDER.indexOf(ceiling)) {
+      return res.status(400).json({
+        error: `This invite allows up to ${ceiling} access. Ask your therapist for a new invite to grant ${requested} access, or choose a level up to ${ceiling}.`,
+        code: 'PERMISSION_EXCEEDS_INVITE',
+        maxPermissionLevel: ceiling,
+        requestedPermissionLevel: requested,
+      });
+    }
+
+    const level = requested || ceiling;
 
     // Prevent duplicate links
     const existing = await req.prisma.therapistClient.findFirst({
@@ -1694,7 +2011,14 @@ router.post('/clients/invite/:token/accept', authenticate, async (req, res, next
     if (existing) {
       await req.prisma.therapistClient.update({
         where: { id: existing.id },
-        data: { consentStatus: 'GRANTED', consentGrantedAt: new Date(), permissionLevel: level, coupleId: relationship?.id || null },
+        data: {
+          consentStatus: 'GRANTED',
+          consentGrantedAt: new Date(),
+          consentRevokedAt: null,
+          consentDeclinedAt: null,
+          permissionLevel: level,
+          coupleId: relationship?.id || null,
+        },
       });
     } else {
       await req.prisma.therapistClient.create({
@@ -1714,12 +2038,57 @@ router.post('/clients/invite/:token/accept', authenticate, async (req, res, next
 });
 
 // ── POST /clients/invite/:token/decline — client declines invite ──────────────
-router.post('/clients/invite/:token/decline', async (req, res, next) => {
+// Records the decline on the TherapistClient link (creating one if the invite
+// never had a row) so the therapist's invite list shows it, and invalidates
+// any pending invite code for this pair.
+router.post('/clients/invite/:token/decline', authenticate, async (req, res, next) => {
   try {
     const jwt = require('jsonwebtoken');
-    try { jwt.verify(req.params.token, process.env.JWT_SECRET); } catch {
+    let payload;
+    try {
+      payload = jwt.verify(req.params.token, process.env.JWT_SECRET);
+    } catch {
       return res.status(401).json({ error: 'Invalid or expired invite link' });
     }
+
+    const existing = await req.prisma.therapistClient.findFirst({
+      where: { therapistId: payload.therapistId, clientId: req.user.id },
+    });
+
+    if (existing?.consentStatus === 'GRANTED') {
+      // Already connected — declining a stale invite must not revoke an
+      // active connection (that's what DELETE /api/client/therapists/:id is for).
+      return res.status(409).json({
+        error: 'You are already connected to this therapist. Manage access from Settings.',
+        code: 'ALREADY_CONNECTED',
+      });
+    }
+
+    if (existing) {
+      await req.prisma.therapistClient.update({
+        where: { id: existing.id },
+        data: {
+          consentStatus: 'DECLINED',
+          consentDeclinedAt: new Date(),
+          inviteCode: null, // invalidate any pending code
+        },
+      });
+    } else {
+      await req.prisma.therapistClient.create({
+        data: {
+          therapistId: payload.therapistId,
+          clientId: req.user.id,
+          consentStatus: 'DECLINED',
+          consentDeclinedAt: new Date(),
+        },
+      });
+    }
+
+    logger.info('Client declined therapist invite', {
+      therapistId: payload.therapistId,
+      clientId: req.user.id,
+    });
+
     res.json({ message: 'Invite declined' });
   } catch (error) { next(error); }
 });
@@ -1750,31 +2119,101 @@ router.patch('/alerts/bulk-read', authenticateTherapist, async (req, res, next) 
 });
 
 // ── GET /clients/:id/treatment-plan ──────────────────────────────────────────
-router.get('/clients/:id/treatment-plan', authenticateTherapist, async (req, res, next) => {
+// requireClientAccess enforces GRANTED consent and writes the HIPAA access log.
+router.get('/clients/:id/treatment-plan', authenticateTherapist, requireClientAccess(), async (req, res, next) => {
   try {
-    const link = await req.prisma.therapistClient.findFirst({
-      where: { therapistId: req.therapist.id, clientId: req.params.id },
+    const record = await req.prisma.treatmentPlan.findUnique({
+      where: {
+        therapistId_clientId: { therapistId: req.therapist.id, clientId: req.params.id },
+      },
     });
-    if (!link) return res.status(404).json({ error: 'Client not found' });
-    // treatmentPlan/goals columns not yet in schema — return empty stub
-    res.json({ plan: null, goals: [] });
+
+    const plan = record?.plan || null;
+    res.json({
+      plan,
+      approach: record?.approach || null,
+      goals: plan?.goals || [],
+      updatedAt: record?.updatedAt || null,
+    });
   } catch (error) { next(error); }
 });
 
-// ── PUT /clients/:id/treatment-plan ──────────────────────────────────────────
+// ── PUT /clients/:id/treatment-plan — persist (upsert) the plan ───────────────
 router.put('/clients/:id/treatment-plan', authenticateTherapist, async (req, res, next) => {
   try {
+    const clientId = req.params.id;
+
+    // Consent gate: REVOKED/DECLINED links behave as no access
     const link = await req.prisma.therapistClient.findFirst({
-      where: { therapistId: req.therapist.id, clientId: req.params.id },
+      where: { therapistId: req.therapist.id, clientId, consentStatus: 'GRANTED' },
     });
-    if (!link) return res.status(404).json({ error: 'Client not found' });
-    // treatmentPlan/goals columns not yet in schema — accept write and return
-    const { plan = null, goals = [] } = req.body;
-    res.json({ plan, goals });
+    if (!link) {
+      await logAccess(req.prisma, {
+        accessorId: req.therapist.id,
+        resourceType: 'treatment_plan',
+        resourceOwnerId: clientId,
+        action: 'write',
+        accessGranted: false,
+        reason: 'No active consent link found',
+        ipAddress: req.ip,
+      });
+      return res.status(403).json({
+        error: 'No active consent from this client',
+        code: 'CONSENT_REQUIRED',
+      });
+    }
+
+    // The frontend sends the plan fields flat ({ modules, approach, pace,
+    // notes, ... }); older callers may nest them under `plan`. Persist the
+    // whole payload so it round-trips unchanged.
+    const { plan, approach, ...rest } = req.body;
+    const planPayload = plan && typeof plan === 'object' ? plan : { ...rest, approach };
+
+    const record = await req.prisma.treatmentPlan.upsert({
+      where: {
+        therapistId_clientId: { therapistId: req.therapist.id, clientId },
+      },
+      update: {
+        plan: planPayload,
+        approach: approach || planPayload.approach || null,
+      },
+      create: {
+        therapistId: req.therapist.id,
+        clientId,
+        plan: planPayload,
+        approach: approach || planPayload.approach || null,
+      },
+    });
+
+    await logAccess(req.prisma, {
+      accessorId: req.therapist.id,
+      resourceType: 'treatment_plan',
+      resourceId: record.id,
+      resourceOwnerId: clientId,
+      action: 'write',
+      accessGranted: true,
+      ipAddress: req.ip,
+    });
+
+    logger.info('Treatment plan saved', {
+      planId: record.id,
+      therapistId: req.therapist.id,
+      clientId,
+    });
+
+    res.json({
+      plan: record.plan,
+      approach: record.approach,
+      goals: record.plan?.goals || [],
+      updatedAt: record.updatedAt,
+    });
   } catch (error) { next(error); }
 });
 
 // ── GET /couples/:id — couple detail for therapist ────────────────────────────
+// Requires GRANTED consent (revoked = no access). If only one partner has
+// consented, the non-consented partner's details are redacted — one partner's
+// consent never exposes the other's data.
 router.get('/couples/:id', authenticateTherapist, async (req, res, next) => {
   try {
     const couple = await req.prisma.relationship.findUnique({
@@ -1786,20 +2225,65 @@ router.get('/couples/:id', authenticateTherapist, async (req, res, next) => {
     });
     if (!couple) return res.status(404).json({ error: 'Couple not found' });
 
-    // Verify therapist has access to this couple
-    const link = await req.prisma.therapistClient.findFirst({
-      where: { therapistId: req.therapist.id, coupleId: req.params.id },
+    const partnerIds = [couple.user1Id, couple.user2Id].filter(Boolean);
+    const links = await req.prisma.therapistClient.findMany({
+      where: {
+        therapistId: req.therapist.id,
+        clientId: { in: partnerIds },
+        consentStatus: 'GRANTED',
+      },
     });
-    if (!link) return res.status(403).json({ error: 'Access denied' });
+    const grantedIds = new Set(links.map(l => l.clientId));
 
-    res.json({ couple });
+    if (grantedIds.size === 0) {
+      await logAccess(req.prisma, {
+        accessorId: req.therapist.id,
+        resourceType: 'couple_data',
+        resourceId: couple.id,
+        action: 'read',
+        accessGranted: false,
+        reason: 'No active consent links for couple',
+        ipAddress: req.ip,
+      });
+      return res.status(403).json({
+        error: 'No active consent from partners in this couple',
+        code: 'CONSENT_REQUIRED',
+      });
+    }
+
+    // Redact any partner who has not personally granted access
+    const redacted = {
+      ...couple,
+      user1: grantedIds.has(couple.user1Id) ? couple.user1 : null,
+      user2: couple.user2Id && grantedIds.has(couple.user2Id) ? couple.user2 : null,
+    };
+    const bothConsented = partnerIds.every(id => grantedIds.has(id));
+
+    // HIPAA audit: log the read per consented partner
+    await Promise.all([...grantedIds].map((clientId) => logAccess(req.prisma, {
+      accessorId: req.therapist.id,
+      resourceType: 'couple_data',
+      resourceId: couple.id,
+      resourceOwnerId: clientId,
+      action: 'read',
+      accessGranted: true,
+      ipAddress: req.ip,
+    })));
+
+    res.json({
+      couple: redacted,
+      bothConsented,
+      ...(bothConsented ? {} : { partnerConsentRequired: true }),
+    });
   } catch (error) { next(error); }
 });
 
 // ── GET /couples/:id/comparison — both partners' assessments side by side ─────
-router.get('/couples/:id/comparison', authenticateTherapist, async (req, res, next) => {
+// Comparison exposes BOTH partners' data, so requireCoupleAccess demands a
+// GRANTED link from every partner (403 PARTNER_CONSENT_REQUIRED otherwise)
+// and writes the HIPAA access log entries.
+router.get('/couples/:id/comparison', authenticateTherapist, requireCoupleAccess('assessment_scores'), async (req, res, next) => {
   try {
-    // Verify access + get both partners.
     const couple = await req.prisma.relationship.findUnique({
       where: { id: req.params.id },
       select: {
@@ -1808,10 +2292,6 @@ router.get('/couples/:id/comparison', authenticateTherapist, async (req, res, ne
       },
     });
     if (!couple) return res.status(404).json({ error: 'Couple not found' });
-    const link = await req.prisma.therapistClient.findFirst({
-      where: { therapistId: req.therapist.id, coupleId: req.params.id },
-    });
-    if (!link) return res.status(403).json({ error: 'Access denied' });
 
     const ids = [couple.user1?.id, couple.user2?.id].filter(Boolean);
     const assessments = await req.prisma.assessment.findMany({
@@ -1866,7 +2346,33 @@ router.post('/couples', authenticateTherapist, async (req, res, next) => {
         ],
       },
     });
+
     if (!relationship) {
+      // Neither client may already be in an active relationship with someone
+      // else — pairing them would silently orphan/duplicate that relationship.
+      for (const clientId of [clientAId, clientBId]) {
+        const existingActive = await req.prisma.relationship.findFirst({
+          where: {
+            OR: [{ user1Id: clientId }, { user2Id: clientId }],
+            status: 'active',
+          },
+        });
+        if (existingActive) {
+          return res.status(409).json({
+            error: 'One of these clients already has an active relationship',
+            code: 'EXISTING_RELATIONSHIP',
+            clientId,
+            relationship: {
+              id: existingActive.id,
+              user1Id: existingActive.user1Id,
+              user2Id: existingActive.user2Id,
+              status: existingActive.status,
+              createdAt: existingActive.createdAt,
+            },
+          });
+        }
+      }
+
       relationship = await req.prisma.relationship.create({
         data: { user1Id: clientAId, user2Id: clientBId, status: 'active' },
       });
