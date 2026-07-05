@@ -575,8 +575,6 @@ router.get('/recent-signups', async (req, res) => {
 router.get('/subscriptions', async (req, res) => {
   try {
     const now = new Date();
-    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
-    const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
 
     // Subscription breakdown
     const subscriptionBreakdown = await req.prisma.user.groupBy({
@@ -589,13 +587,14 @@ router.get('/subscriptions', async (req, res) => {
       subscriptions[item.subscriptionStatus] = item._count;
     });
 
-    // Trial users expiring soon (within 7 days)
+    // Trial users expiring soon (within the NEXT 7 days)
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const trialsExpiringSoon = await req.prisma.user.count({
       where: {
         subscriptionStatus: 'trial',
         trialEndsAt: {
           gte: now,
-          lte: sevenDaysAgo
+          lte: sevenDaysFromNow
         }
       }
     });
@@ -629,8 +628,10 @@ router.get('/subscriptions', async (req, res) => {
       }
     });
 
-    // MRR estimate (placeholder - $9.99/month per paid user)
-    const estimatedMRR = paidUsers * 9.99;
+    // MRR: the app is currently free (all users are force-premium), so
+    // revenue is $0. Do NOT fabricate a per-user estimate here — the admin
+    // UI must never show fictional revenue.
+    const estimatedMRR = 0;
 
     res.json({
       subscriptions: {
@@ -640,7 +641,9 @@ router.get('/subscriptions', async (req, res) => {
         conversionRate,
         trialsExpiringSoon,
         stripeCustomers,
-        estimatedMRR: Math.round(estimatedMRR * 100) / 100,
+        estimatedMRR,
+        billingDisabled: true,
+        mrrNote: 'billing disabled — app is free; MRR is $0 by definition',
         recentPaidUsers
       }
     });

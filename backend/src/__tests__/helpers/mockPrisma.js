@@ -42,6 +42,7 @@ const PRISMA_MODELS = [
   'sharedGoal',
   'gratitudeEntry',
   'treatmentPlan',
+  'webhookEvent',
   'integrationPartner',
   'integrationPartnerTherapist',
   'integrationAccessLog'

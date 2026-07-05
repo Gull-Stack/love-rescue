@@ -9,6 +9,13 @@ jest.mock('../../utils/logger', () => ({
   debug: jest.fn()
 }));
 
+jest.mock('../../utils/email', () => ({
+  sendEmail: jest.fn().mockResolvedValue(true)
+}));
+
+const logger = require('../../utils/logger');
+const { sendEmail } = require('../../utils/email');
+
 // Mock Stripe before requiring the route
 const mockStripe = {
   customers: { create: jest.fn(), retrieve: jest.fn() },
@@ -521,6 +528,239 @@ describe.skip('OBSOLETE (app fully free, no subscriptions): Payments Routes', ()
 
       expect(res.status).toBe(400);
       expect(res.body.error).toBe('No customer record found');
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ACTIVE: Stripe webhook hardening (idempotency, ordering, status mapping).
+// The webhook stays live even while the app is free, so it must be safe to
+// re-enable billing without touching this handler.
+// ---------------------------------------------------------------------------
+describe('Payments webhook hardening', () => {
+  let mockPrisma;
+  let app;
+  const userId = 'user-hook-1';
+  const EVENT_CREATED = 1751700000; // unix seconds
+  const eventCreatedDate = new Date(EVENT_CREATED * 1000);
+
+  const baseUser = {
+    id: userId,
+    email: 'hook@example.com',
+    firstName: 'Hope',
+    subscriptionStatus: 'paid',
+    lastStripeEventAt: null
+  };
+
+  function subscriptionUpdatedEvent({ id = 'evt_upd_1', created = EVENT_CREATED, status = 'active', priceId = 'price_standard_test' } = {}) {
+    return {
+      id,
+      type: 'customer.subscription.updated',
+      created,
+      data: {
+        object: {
+          id: 'sub_hook_1',
+          customer: 'cus_hook_1',
+          status,
+          items: { data: [{ price: { id: priceId } }] }
+        }
+      }
+    };
+  }
+
+  async function postWebhook(event) {
+    mockStripe.webhooks.constructEvent.mockReturnValue(event);
+    return request(app)
+      .post('/api/payments/webhook')
+      .set('stripe-signature', 'valid_sig')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify(event));
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.STRIPE_PREMIUM_PRICE_ID = 'price_premium_test';
+    process.env.STRIPE_ANNUAL_PRICE_ID = 'price_annual_test';
+
+    mockPrisma = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ ...baseUser }),
+        update: jest.fn().mockResolvedValue({ ...baseUser })
+      },
+      webhookEvent: {
+        create: jest.fn().mockResolvedValue({ id: 'evt_upd_1' })
+      }
+    };
+
+    mockStripe.customers.retrieve.mockResolvedValue({
+      id: 'cus_hook_1',
+      metadata: { userId }
+    });
+
+    app = createApp(mockPrisma);
+  });
+
+  // ── Idempotency ──────────────────────────────────────────────────────────
+  describe('idempotency (webhook_events dedupe)', () => {
+    test('records the event id before processing', async () => {
+      const event = subscriptionUpdatedEvent({ id: 'evt_once' });
+      const res = await postWebhook(event);
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.webhookEvent.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          id: 'evt_once',
+          type: 'customer.subscription.updated'
+        })
+      });
+    });
+
+    test('same event id delivered twice is processed only once', async () => {
+      const event = subscriptionUpdatedEvent({ id: 'evt_dupe' });
+
+      const first = await postWebhook(event);
+      expect(first.status).toBe(200);
+      expect(first.body.received).toBe(true);
+      expect(mockPrisma.user.update).toHaveBeenCalledTimes(1);
+
+      // Redelivery: unique constraint on WebhookEvent.id fires (P2002)
+      const uniqueViolation = Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
+      mockPrisma.webhookEvent.create.mockRejectedValueOnce(uniqueViolation);
+
+      const second = await postWebhook(event);
+      expect(second.status).toBe(200);
+      expect(second.body.received).toBe(true);
+      expect(second.body.duplicate).toBe(true);
+      // No second entitlement mutation
+      expect(mockPrisma.user.update).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ── Status mapping ───────────────────────────────────────────────────────
+  describe('customer.subscription.updated status mapping', () => {
+    test('active with premium price stays entitled as premium', async () => {
+      const res = await postWebhook(subscriptionUpdatedEvent({ status: 'active', priceId: 'price_premium_test' }));
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { subscriptionStatus: 'premium', lastStripeEventAt: eventCreatedDate }
+      });
+    });
+
+    test('trialing stays entitled (paid tier for non-premium price)', async () => {
+      const res = await postWebhook(subscriptionUpdatedEvent({ status: 'trialing', priceId: 'price_standard_test' }));
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { subscriptionStatus: 'paid', lastStripeEventAt: eventCreatedDate }
+      });
+    });
+
+    test('past_due keeps current entitlement (grace period) and logs a warning', async () => {
+      const res = await postWebhook(subscriptionUpdatedEvent({ status: 'past_due' }));
+
+      expect(res.status).toBe(200);
+      // Watermark advances, but subscriptionStatus is NOT touched
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { lastStripeEventAt: eventCreatedDate }
+      });
+      const updateData = mockPrisma.user.update.mock.calls[0][0].data;
+      expect(updateData).not.toHaveProperty('subscriptionStatus');
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('past_due'),
+        expect.objectContaining({ userId })
+      );
+    });
+
+    test.each(['canceled', 'unpaid', 'incomplete_expired'])('%s expires the entitlement', async (stripeStatus) => {
+      const res = await postWebhook(subscriptionUpdatedEvent({ status: stripeStatus }));
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { subscriptionStatus: 'expired', lastStripeEventAt: eventCreatedDate }
+      });
+    });
+
+    test('incomplete makes no entitlement change', async () => {
+      const res = await postWebhook(subscriptionUpdatedEvent({ status: 'incomplete' }));
+
+      expect(res.status).toBe(200);
+      const updateData = mockPrisma.user.update.mock.calls[0][0].data;
+      expect(updateData).not.toHaveProperty('subscriptionStatus');
+    });
+  });
+
+  // ── Out-of-order protection ──────────────────────────────────────────────
+  describe('out-of-order protection', () => {
+    test('skips an event older than the last processed one for the user', async () => {
+      // The user already processed an event newer than this delivery
+      mockPrisma.user.findUnique.mockResolvedValue({
+        ...baseUser,
+        lastStripeEventAt: new Date((EVENT_CREATED + 600) * 1000)
+      });
+
+      const res = await postWebhook(subscriptionUpdatedEvent({ id: 'evt_stale', created: EVENT_CREATED, status: 'canceled' }));
+
+      expect(res.status).toBe(200);
+      expect(res.body.received).toBe(true);
+      // The stale 'canceled' must NOT clobber the newer state
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
+
+    test('processes an event newer than the stored watermark', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        ...baseUser,
+        lastStripeEventAt: new Date((EVENT_CREATED - 600) * 1000)
+      });
+
+      const res = await postWebhook(subscriptionUpdatedEvent({ id: 'evt_fresh', created: EVENT_CREATED, status: 'canceled' }));
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { subscriptionStatus: 'expired', lastStripeEventAt: eventCreatedDate }
+      });
+    });
+  });
+
+  // ── Dunning email ────────────────────────────────────────────────────────
+  describe('invoice.payment_failed', () => {
+    const paymentFailedEvent = {
+      id: 'evt_payfail_1',
+      type: 'invoice.payment_failed',
+      created: EVENT_CREATED,
+      data: {
+        object: { id: 'inv_fail_1', customer: 'cus_hook_1' }
+      }
+    };
+
+    test('sends a dunning email to the user and advances the watermark', async () => {
+      const res = await postWebhook(paymentFailedEvent);
+
+      expect(res.status).toBe(200);
+      expect(sendEmail).toHaveBeenCalledTimes(1);
+      expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+        to: baseUser.email,
+        subject: expect.stringMatching(/payment/i)
+      }));
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { lastStripeEventAt: eventCreatedDate }
+      });
+    });
+
+    test('does not send email when the user does not exist', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      const res = await postWebhook(paymentFailedEvent);
+
+      expect(res.status).toBe(200);
+      expect(sendEmail).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
     });
   });
 });

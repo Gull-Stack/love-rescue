@@ -143,6 +143,7 @@ model User {
   subscriptionStatus SubscriptionStatus @default(trial) @map("subscription_status")
   trialEndsAt        DateTime?          @map("trial_ends_at")
   stripeCustomerId   String?            @map("stripe_customer_id") @db.VarChar(255)
+  lastStripeEventAt  DateTime?          @map("last_stripe_event_at") // Stripe `created` of the newest processed webhook event for this user (out-of-order protection)
   isPlatformAdmin    Boolean            @default(false) @map("is_platform_admin")
   adminRevokedAt     DateTime?          @map("admin_revoked_at") // set when an operator explicitly demotes; bootstrap never re-promotes
   tokenVersion       Int                @default(0) @map("token_version") // bumped to revoke all outstanding access tokens
@@ -880,4 +881,19 @@ model TreatmentPlan {
   @@map("treatment_plans")
   @@index([therapistId])
   @@index([clientId])
+}
+
+// Stripe webhook delivery ledger — one row per processed event.
+// The primary key IS the Stripe event id (evt_...), so a redelivered event
+// hits the unique constraint and is acknowledged without being reprocessed
+// (idempotency). payloadSummary keeps a tiny audit trail, not the full payload.
+model WebhookEvent {
+  id             String   @id @db.VarChar(255) // Stripe event id (evt_...)
+  type           String   @db.VarChar(100)
+  processedAt    DateTime @default(now()) @map("processed_at")
+  payloadSummary Json?    @map("payload_summary") @db.JsonB
+
+  @@map("webhook_events")
+  @@index([type])
+  @@index([processedAt])
 }

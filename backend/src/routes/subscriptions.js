@@ -32,13 +32,20 @@ router.get('/status', authenticate, async (req, res) => {
 
 /**
  * POST /api/subscriptions/verify-apple
- * Disabled — IAP is no longer used. Returns a no-op success.
+ * Disabled — IAP is no longer used. Returns a 200 for backward compatibility
+ * with old app versions, but deliberately does NOT return a subscription
+ * status: no receipt validation happens here, so the response must never be
+ * interpretable as a verified entitlement.
+ *
+ * IMPORTANT(billing): before billing is ever re-enabled, this endpoint MUST
+ * implement real Apple receipt validation (App Store Server API /
+ * verifyReceipt) and derive entitlement from the validated receipt — never
+ * from the client's claim.
  */
 router.post('/verify-apple', authenticate, async (req, res) => {
   res.json({
     success: true,
-    status: 'premium',
-    source: 'FREE',
+    free: true,
     message: 'App is free — no receipt verification required.',
   });
 });
