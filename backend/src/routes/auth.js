@@ -203,11 +203,16 @@ async function generateTokenPair(userId, prisma, tokenVersion = 0) {
  * access tokens at the middleware check) and mark all refresh tokens used
  * (so no new access tokens can be minted). Used on password change/reset
  * and logout.
+ *
+ * Returns the user's new tokenVersion so a caller that wants to keep the
+ * CURRENT session alive (e.g. change-password) can immediately mint a fresh
+ * token pair carrying the incremented version.
  */
 async function revokeAllSessions(userId, prisma) {
-  await prisma.user.update({
+  const updated = await prisma.user.update({
     where: { id: userId },
-    data: { tokenVersion: { increment: 1 } }
+    data: { tokenVersion: { increment: 1 } },
+    select: { tokenVersion: true }
   });
   await prisma.token.updateMany({
     where: {
@@ -217,6 +222,7 @@ async function revokeAllSessions(userId, prisma) {
     },
     data: { usedAt: new Date() }
   });
+  return updated?.tokenVersion ?? null;
 }
 
 /**
@@ -1008,13 +1014,26 @@ router.post('/change-password', authenticate, async (req, res, next) => {
       data: { passwordHash }
     });
 
-    // Revoke every other session — old access tokens die at the tokenVersion
-    // check and outstanding refresh tokens can no longer be redeemed.
-    await revokeAllSessions(req.user.id, req.prisma);
+    // Revoke every OTHER session — old access tokens die at the tokenVersion
+    // check and outstanding refresh tokens can no longer be redeemed. This
+    // also invalidates the access/refresh tokens on THIS device, so we
+    // immediately mint a fresh pair carrying the new tokenVersion to keep the
+    // current session alive (the user shouldn't be logged out of the device
+    // they just used to change their password).
+    const newTokenVersion = await revokeAllSessions(req.user.id, req.prisma);
+    const { accessToken, refreshToken } = await generateTokenPair(
+      req.user.id,
+      req.prisma,
+      newTokenVersion ?? 0
+    );
 
     logger.info('Password changed', { userId: req.user.id });
 
-    res.json({ message: 'Password changed successfully. Please log in again on your other devices.' });
+    res.json({
+      message: 'Password changed successfully. Please log in again on your other devices.',
+      token: accessToken,
+      refreshToken
+    });
   } catch (error) {
     next(error);
   }
