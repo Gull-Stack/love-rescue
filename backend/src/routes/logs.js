@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate, requireSubscription } = require('../middleware/auth');
 const { calculateRatio } = require('../utils/scoring');
+const { detectCrisisAndNotify } = require('../utils/therapistAlerts');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -86,6 +87,15 @@ router.post('/daily', authenticate, requireSubscription, async (req, res, next) 
 
     logger.info('Daily log saved', { userId: req.user.id, date: logDate });
 
+    // Crisis detection on the journal free-text, AFTER the save succeeded.
+    // Detection is synchronous regex (so resources can ride the response);
+    // therapist alerting + audit logging run fire-and-forget inside the hook —
+    // a detector or DB failure can never break the user's save.
+    const crisis = detectCrisisAndNotify(req.user.id, journalEntry, {
+      prisma: req.prisma,
+      source: 'daily_log',
+    });
+
     res.status(201).json({
       message: 'Daily log saved',
       log: {
@@ -97,7 +107,11 @@ router.post('/daily', authenticate, requireSubscription, async (req, res, next) 
         bidsTurned: dailyLog.bidsTurned,
         closenessScore: dailyLog.closenessScore,
         mood: dailyLog.mood
-      }
+      },
+      // Present only when acute/emergency crisis language was detected —
+      // carries 988/DV-hotline resources so the app can show them immediately.
+      // Never echoes the journal text.
+      ...(crisis ? { crisis } : {})
     });
   } catch (error) {
     next(error);

@@ -288,6 +288,61 @@ function startReminderScheduler() {
   logger.info(`Daily reminder scheduler started (every ${REMINDER_INTERVAL_MS / 60000} min)`);
 }
 
+// Daily therapist-alert scheduler. Runs the risk + milestone alert scan
+// (utils/therapistAlerts.runDailyAlertScan) once per day for every client
+// linked to a therapist. Same in-process setInterval idiom as the reminder
+// scheduler above: hourly ticks, an hour-of-day guard, and a same-day latch
+// give once-daily semantics; startup jitter keeps it from ever running at
+// boot (or in lockstep across restart loops). CRISIS alerts do NOT wait for
+// this job — they fire immediately from the write path (logs/real-talk).
+const ALERT_SCAN_INTERVAL_MS = 60 * 60 * 1000; // hourly tick
+const ALERT_SCAN_UTC_HOUR = Number.isInteger(Number(process.env.ALERT_SCAN_UTC_HOUR))
+  ? Number(process.env.ALERT_SCAN_UTC_HOUR)
+  : 6; // default 06:00 UTC (overnight for US timezones)
+let alertScanRunning = false;
+let lastAlertScanDay = null;
+async function runTherapistAlertScan() {
+  if (alertScanRunning) return; // don't overlap a slow run
+  const now = new Date();
+  if (now.getUTCHours() !== ALERT_SCAN_UTC_HOUR) return;
+  const dayKey = now.toISOString().slice(0, 10);
+  if (lastAlertScanDay === dayKey) return; // already ran today
+  alertScanRunning = true;
+  try {
+    const therapistAlerts = require('./utils/therapistAlerts');
+    therapistAlerts.init(prisma);
+    const summary = await therapistAlerts.runDailyAlertScan(prisma);
+    lastAlertScanDay = dayKey;
+    logger.info(
+      `Therapist alert scan done: ${summary.clientsScanned} clients, ` +
+      `${summary.riskAlerts} risk + ${summary.milestoneAlerts} milestone alerts, ` +
+      `${summary.failures} failures`
+    );
+  } catch (err) {
+    logger.error('Therapist alert scan failed', { error: err.message });
+  } finally {
+    alertScanRunning = false;
+  }
+}
+function startAlertScheduler() {
+  if (process.env.NODE_ENV === 'test') return;
+  if (process.env.ENABLE_ALERT_SCHEDULER === 'false') {
+    logger.info('Alert scheduler disabled via ENABLE_ALERT_SCHEDULER=false');
+    return;
+  }
+  // 5-15 min startup jitter: never scan during boot, and de-synchronize ticks
+  // if the process is restart-looping.
+  const startupJitterMs = 5 * 60 * 1000 + Math.floor(Math.random() * 10 * 60 * 1000);
+  setTimeout(() => {
+    runTherapistAlertScan();
+    setInterval(runTherapistAlertScan, ALERT_SCAN_INTERVAL_MS);
+  }, startupJitterMs);
+  logger.info(
+    `Therapist alert scheduler started (daily at ${String(ALERT_SCAN_UTC_HOUR).padStart(2, '0')}:00 UTC, ` +
+    `first tick in ${Math.round(startupJitterMs / 60000)} min)`
+  );
+}
+
 // Graceful shutdown
 const gracefulShutdown = async () => {
   logger.info('Shutting down gracefully...');
@@ -400,6 +455,9 @@ async function startServer() {
 
     // Start the daily-reminder trigger (the habit loop's missing spark).
     startReminderScheduler();
+
+    // Start the daily therapist alert scan (risk + milestone generation).
+    startAlertScheduler();
 
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
