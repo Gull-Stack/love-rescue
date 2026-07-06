@@ -25,6 +25,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { mediatorsApi, meetingsApi } from '../../services/api';
+import TherapyAppointmentsSection from './TherapyAppointmentsSection';
 
 const steps = ['Choose a Facilitator', 'Pick a Time', 'Confirm'];
 
@@ -450,6 +451,10 @@ const ScheduleMeeting = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Therapy appointments (scheduled by the user's therapist) — renders
+          nothing unless the user actually has some. */}
+      <TherapyAppointmentsSection />
 
       {/* Confirmation Dialog */}
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>

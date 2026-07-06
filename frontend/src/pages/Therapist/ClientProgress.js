@@ -13,6 +13,7 @@ import WhatshotIcon from '@mui/icons-material/Whatshot';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import ArticleIcon from '@mui/icons-material/Article';
+import EventNoteIcon from '@mui/icons-material/EventNote';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import SentimentSatisfiedIcon from '@mui/icons-material/SentimentSatisfied';
 import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
@@ -272,6 +273,14 @@ const ClientProgress = () => {
               sx={{ minHeight: 44 }}
             >
               Session Prep
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<EventNoteIcon />}
+              onClick={() => navigate(`/therapist/clients/${id}/notes`)}
+              sx={{ minHeight: 44 }}
+            >
+              Session Notes
             </Button>
             <Button
               variant="outlined"

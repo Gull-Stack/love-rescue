@@ -19,6 +19,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import EventIcon from '@mui/icons-material/Event';
 import therapistService from '../../services/therapistService';
 import { ClientCard, AlertCard } from '../../components/therapist';
 
@@ -44,6 +45,7 @@ const TherapistDashboard = () => {
   const [pairB, setPairB] = useState('');
   const [pairing, setPairing] = useState(false);
   const [pairError, setPairError] = useState('');
+  const [todayAppointments, setTodayAppointments] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -73,6 +75,17 @@ const TherapistDashboard = () => {
     document.title = 'Therapist Dashboard | Love Rescue';
     fetchData();
   }, [fetchData]);
+
+  // Today's appointments — supplementary; never blocks or breaks the dashboard.
+  useEffect(() => {
+    let cancelled = false;
+    const from = new Date(); from.setHours(0, 0, 0, 0);
+    const to = new Date(); to.setHours(23, 59, 59, 999);
+    therapistService.getAppointments({ from: from.toISOString(), to: to.toISOString() })
+      .then((res) => { if (!cancelled) setTodayAppointments(res.data.appointments || []); })
+      .catch(() => { if (!cancelled) setTodayAppointments(null); });
+    return () => { cancelled = true; };
+  }, []);
 
   if (loading) {
     return (
@@ -176,6 +189,35 @@ const TherapistDashboard = () => {
           <StatCard icon={<FavoriteIcon />} label="Linked Couples" value={couples.length} color="success.main" />
         </Grid>
       </Grid>
+
+      {/* Today's appointments — rendered only when the fetch succeeded */}
+      {todayAppointments !== null && (() => {
+        const scheduledToday = todayAppointments.filter(a => a.status === 'scheduled');
+        const next = scheduledToday.find(a => new Date(a.scheduledAt) >= new Date()) || null;
+        return (
+          <Card sx={{ mb: 3 }}>
+            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', py: 1.5, '&:last-child': { pb: 1.5 } }}>
+              <EventIcon color="primary" />
+              <Box sx={{ flex: 1, minWidth: 200 }}>
+                <Typography fontWeight={600}>
+                  {scheduledToday.length === 0
+                    ? 'No appointments today'
+                    : `${scheduledToday.length} appointment${scheduledToday.length === 1 ? '' : 's'} today`}
+                </Typography>
+                {next && (
+                  <Typography variant="body2" color="text.secondary">
+                    Next: {new Date(next.scheduledAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    {next.clientName ? ` with ${next.clientName}` : ''}
+                  </Typography>
+                )}
+              </Box>
+              <Button size="small" onClick={() => navigate('/therapist/appointments')} sx={{ minHeight: 44, flexShrink: 0 }}>
+                Open calendar
+              </Button>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Client Roster */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
