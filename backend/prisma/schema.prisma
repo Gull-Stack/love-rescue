@@ -155,6 +155,7 @@ model User {
   subscriptionSource SubscriptionSource @default(NONE) @map("subscription_source")
   appleReceiptData   String?            @map("apple_receipt_data") @db.Text
   appleExpiresAt     DateTime?          @map("apple_expires_at") // Apple auto-renewable subscription expiry from the validated receipt
+  appleOriginalTransactionId String?    @unique @map("apple_original_transaction_id") @db.VarChar(255) // replay guard: one Apple purchase entitles at most one account
   subscriptionCurrentPeriodEnd DateTime? @map("subscription_current_period_end") // current billing period end (Stripe)
   metadata           Json?              @db.JsonB
   createdAt          DateTime           @default(now()) @map("created_at")
@@ -939,6 +940,7 @@ model Appointment {
   durationMinutes Int       @default(50) @map("duration_minutes") @db.SmallInt
   status          String    @default("scheduled") @db.VarChar(20)
   locationType    String?   @map("location_type") @db.VarChar(20)
+  timezone        String?   @db.VarChar(64) // IANA timezone the appointment was scheduled in; emails render in it (UTC fallback)
   clientNote      String?   @map("client_note") @db.Text // client-visible logistics note
   cancelledBy     String?   @map("cancelled_by") @db.VarChar(20) // 'therapist' | 'client'
   reminderSentAt  DateTime? @map("reminder_sent_at")

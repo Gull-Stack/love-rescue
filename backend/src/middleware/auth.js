@@ -33,6 +33,8 @@ const authenticate = async (req, res, next) => {
         lastName: true,
         role: true,
         subscriptionStatus: true,
+        subscriptionSource: true,
+        appleExpiresAt: true,
         trialEndsAt: true,
         stripeCustomerId: true,
         isPlatformAdmin: true,
@@ -126,6 +128,9 @@ const optionalAuth = async (req, res, next) => {
           lastName: true,
           role: true,
           subscriptionStatus: true,
+          subscriptionSource: true,
+          appleExpiresAt: true,
+          trialEndsAt: true,
           tokenVersion: true
         }
       });
@@ -145,8 +150,10 @@ const optionalAuth = async (req, res, next) => {
 
 /**
  * requirePremium — real gate. Requires an entitled user whose effective tier
- * is 'premium' (own premium subscription, or a partner on premium). A user who
- * is entitled only at the 'paid'/'trial' tier is rejected with 402.
+ * is 'premium' (own premium subscription, or a partner on premium), OR an
+ * active trial — the UI and marketing promise a trial full access, so trial
+ * users must never hit the premium wall. A user who is entitled only at the
+ * 'paid' tier is rejected with 402 PREMIUM_REQUIRED.
  */
 const requirePremium = async (req, res, next) => {
   try {
@@ -164,7 +171,9 @@ const requirePremium = async (req, res, next) => {
       });
     }
 
-    if (entitlement.tier !== 'premium') {
+    // Active trials (own or partner's) get full access; only entitled
+    // paid-tier users are asked to upgrade.
+    if (entitlement.tier !== 'premium' && !entitlement.isTrial) {
       return res.status(402).json({
         error: 'A premium subscription is required to access this feature',
         code: 'PREMIUM_REQUIRED'

@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { sendEmail } = require('../utils/email');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -100,6 +101,63 @@ async function revokeTherapistAccess(prisma, clientId, therapistId) {
       data: { status: 'revoked', revokedAt: now },
     });
   }
+
+  // 3. Appointments: a revoked pair must not leave dangling 'scheduled'
+  //    appointments — they vanish from the client's view (GRANTED-gated) but
+  //    the reminder scan would keep emailing the client. Cancel every future
+  //    scheduled appointment between the pair and tell the therapist
+  //    (fire-and-forget: email failure never blocks the revoke).
+  const cancelledAppointments = (await prisma.appointment.findMany({
+    where: { therapistId, clientId, status: 'scheduled', scheduledAt: { gt: now } },
+    select: { id: true, scheduledAt: true },
+  })) || [];
+  if (cancelledAppointments.length > 0) {
+    await prisma.appointment.updateMany({
+      where: { id: { in: cancelledAppointments.map((a) => a.id) } },
+      data: { status: 'cancelled', cancelledBy: 'client' },
+    });
+    notifyTherapistAppointmentsCancelled(prisma, therapistId, clientId, cancelledAppointments)
+      .catch((error) => logger.error('Failed to notify therapist of revocation cancellations', {
+        therapistId,
+        error: error.message,
+      }));
+  }
+}
+
+/**
+ * Tell the therapist their upcoming appointments with a revoking client were
+ * cancelled. Logistics only — dates and a count, no clinical data.
+ */
+async function notifyTherapistAppointmentsCancelled(prisma, therapistId, clientId, appointments) {
+  const [therapist, client] = await Promise.all([
+    prisma.therapist.findUnique({
+      where: { id: therapistId },
+      select: { email: true, firstName: true, lastName: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: clientId },
+      select: { firstName: true, lastName: true },
+    }),
+  ]);
+  if (!therapist || !therapist.email) return;
+
+  const clientName = [client?.firstName, client?.lastName].filter(Boolean).join(' ') || 'A client';
+  const count = appointments.length;
+  const plural = count === 1 ? 'appointment was' : `${count} appointments were`;
+  const dates = appointments
+    .map((a) => new Date(a.scheduledAt).toISOString())
+    .join(', ');
+  await sendEmail({
+    to: therapist.email,
+    subject: `${clientName} revoked access — upcoming ${count === 1 ? 'appointment' : 'appointments'} cancelled`,
+    text: `${clientName} revoked their Love Rescue sharing access, so your upcoming ${plural} cancelled (${dates}).\n\n— Love Rescue`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #6366f1;">Appointments Cancelled</h2>
+        <p style="font-size: 16px; color: #1B2735;"><strong>${clientName}</strong> revoked their Love Rescue sharing access, so your upcoming ${plural} cancelled.</p>
+      </div>
+    `,
+  });
 }
 
 /**

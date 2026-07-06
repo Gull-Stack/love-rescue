@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticate, requireSubscription, loadRelationship } = require('../middleware/auth');
+const { authenticate, loadRelationship } = require('../middleware/auth');
 const { detectCrisisAndNotify } = require('../utils/therapistAlerts');
 const logger = require('../utils/logger');
 
@@ -49,8 +49,14 @@ router.get('/', authenticate, loadRelationship, async (req, res, next) => {
 /**
  * POST /api/goals
  * Create a new shared goal
+ *
+ * Deliberately NOT gated by requireSubscription: the shared-goals habit layer
+ * is free, and — safety-critical — crisis detection on the goal free-text
+ * (title + description) must always run. A paywall here would 402 an expired
+ * user before detectCrisisAndNotify ever fired (no 988 resources, no
+ * therapist alert).
  */
-router.post('/', authenticate, requireSubscription, loadRelationship, async (req, res, next) => {
+router.post('/', authenticate, loadRelationship, async (req, res, next) => {
   try {
     const { title, description, targetDate } = req.body;
 

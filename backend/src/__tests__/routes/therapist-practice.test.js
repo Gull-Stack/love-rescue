@@ -566,6 +566,155 @@ describe('Therapist practice routes', () => {
       expect(res.status).toBe(409);
       expect(res.body.code).toBe('INVALID_STATUS_TRANSITION');
     });
+
+    test('duration-only PATCH re-checks overlap at the new length → 409', async () => {
+      const appt = makeAppointment(); // 50 min
+      mockPrisma.appointment.findFirst.mockResolvedValue(appt);
+      // Another appointment starts 60 minutes after ours: fine at 50 min,
+      // overlapping once we stretch to 90.
+      mockPrisma.appointment.findMany.mockResolvedValue([
+        makeAppointment({
+          id: 'appt-after',
+          scheduledAt: new Date(appt.scheduledAt.getTime() + 60 * 60000),
+          durationMinutes: 50
+        })
+      ]);
+
+      const res = await asTherapist(
+        request(app).patch('/api/therapist/appointments/appt-1')
+      ).send({ durationMinutes: 90 });
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe('APPOINTMENT_OVERLAP');
+      expect(res.body.conflictingAppointmentId).toBe('appt-after');
+      expect(mockPrisma.appointment.update).not.toHaveBeenCalled();
+      // The check excluded the appointment being edited
+      expect(mockPrisma.appointment.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: { not: 'appt-1' } })
+        })
+      );
+    });
+
+    test('duration-only PATCH on a non-scheduled appointment → 409 INVALID_STATUS_TRANSITION', async () => {
+      mockPrisma.appointment.findFirst.mockResolvedValue(
+        makeAppointment({ status: 'completed' })
+      );
+
+      const res = await asTherapist(
+        request(app).patch('/api/therapist/appointments/appt-1')
+      ).send({ durationMinutes: 90 });
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe('INVALID_STATUS_TRANSITION');
+      expect(mockPrisma.appointment.update).not.toHaveBeenCalled();
+    });
+
+    test('duration-only PATCH succeeds when the new length fits', async () => {
+      mockPrisma.appointment.findFirst.mockResolvedValue(makeAppointment());
+      mockPrisma.appointment.findMany.mockResolvedValue([]);
+      mockPrisma.appointment.update.mockImplementation(({ data }) =>
+        Promise.resolve(makeAppointment({ ...data }))
+      );
+
+      const res = await asTherapist(
+        request(app).patch('/api/therapist/appointments/appt-1')
+      ).send({ durationMinutes: 90 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.appointment.durationMinutes).toBe(90);
+    });
+  });
+
+  // ── Appointment timezones ──────────────────────────────────────────────────
+
+  describe('appointment timezones', () => {
+    beforeEach(() => {
+      mockPrisma.therapistClient.findFirst.mockResolvedValue(GRANTED_LINK);
+      mockPrisma.appointment.findMany.mockResolvedValue([]);
+      mockPrisma.user.findUnique.mockResolvedValue(CLIENT_USER);
+    });
+
+    test('POST accepts an IANA timezone; emails render the time in it', async () => {
+      // Fixed instant: 2026-08-01T16:00:00Z == 12:00 PM EDT
+      const scheduledAt = new Date('2026-08-01T16:00:00Z');
+      mockPrisma.appointment.create.mockImplementation(({ data }) =>
+        Promise.resolve(makeAppointment({ ...data, id: 'appt-tz' }))
+      );
+
+      const res = await asTherapist(
+        request(app).post('/api/therapist/appointments')
+      ).send({
+        clientId: CLIENT_ID,
+        scheduledAt: scheduledAt.toISOString(),
+        timezone: 'America/New_York'
+      });
+      await flush();
+
+      expect(res.status).toBe(201);
+      expect(res.body.appointment.timezone).toBe('America/New_York');
+      expect(mockPrisma.appointment.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ timezone: 'America/New_York' })
+        })
+      );
+      const emailText = sendEmail.mock.calls[0][0].text;
+      expect(emailText).toContain('12:00 PM');
+      expect(emailText).toMatch(/EDT|GMT-4/);
+    });
+
+    test('emails fall back to an explicit UTC label when no timezone was captured', async () => {
+      const scheduledAt = new Date('2026-08-01T16:00:00Z');
+      mockPrisma.appointment.create.mockImplementation(({ data }) =>
+        Promise.resolve(makeAppointment({ ...data, id: 'appt-noz', timezone: null }))
+      );
+
+      const res = await asTherapist(
+        request(app).post('/api/therapist/appointments')
+      ).send({ clientId: CLIENT_ID, scheduledAt: scheduledAt.toISOString() });
+      await flush();
+
+      expect(res.status).toBe(201);
+      const emailText = sendEmail.mock.calls[0][0].text;
+      expect(emailText).toContain('4:00 PM');
+      expect(emailText).toContain('UTC');
+    });
+
+    test('POST rejects a garbage timezone → 400', async () => {
+      const res = await asTherapist(
+        request(app).post('/api/therapist/appointments')
+      ).send({
+        clientId: CLIENT_ID,
+        scheduledAt: futureDate(48).toISOString(),
+        timezone: 'not a timezone'
+      });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/timezone/i);
+      expect(mockPrisma.appointment.create).not.toHaveBeenCalled();
+    });
+
+    test('PATCH reschedule can update the timezone', async () => {
+      mockPrisma.appointment.findFirst.mockResolvedValue(makeAppointment());
+      mockPrisma.appointment.findMany.mockResolvedValue([]);
+      mockPrisma.appointment.update.mockImplementation(({ data }) =>
+        Promise.resolve(makeAppointment({ ...data }))
+      );
+
+      const res = await asTherapist(
+        request(app).patch('/api/therapist/appointments/appt-1')
+      ).send({
+        scheduledAt: futureDate(96).toISOString(),
+        timezone: 'Europe/Paris'
+      });
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.appointment.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ timezone: 'Europe/Paris' })
+        })
+      );
+    });
   });
 
   // ── Client endpoints ──────────────────────────────────────────────────────
@@ -702,6 +851,8 @@ describe('Therapist practice routes', () => {
   describe('scanAndSendAppointmentReminders', () => {
     beforeEach(() => {
       mockPrisma.user.findUnique.mockResolvedValue(CLIENT_USER);
+      // Reminders additionally require a GRANTED link between the pair
+      mockPrisma.therapistClient.findFirst.mockResolvedValue(GRANTED_LINK);
     });
 
     test('sends reminder and stamps reminderSentAt for appointments in the next 24h', async () => {
@@ -748,6 +899,43 @@ describe('Therapist practice routes', () => {
 
       expect(summary).toEqual({ scanned: 1, sent: 0, failures: 0 });
       expect(sendEmail).not.toHaveBeenCalled();
+    });
+
+    test('skips (no stamp, no email) when the pair has no GRANTED link — revoked clients stop getting mail', async () => {
+      const appt = { ...makeAppointment({ scheduledAt: futureDate(5) }), therapist: THERAPIST };
+      mockPrisma.appointment.findMany.mockResolvedValue([appt]);
+      mockPrisma.therapistClient.findFirst.mockResolvedValue(null); // revoked / no consent
+
+      const summary = await scanAndSendAppointmentReminders(mockPrisma);
+
+      expect(summary).toEqual({ scanned: 1, sent: 0, failures: 0 });
+      expect(mockPrisma.appointment.updateMany).not.toHaveBeenCalled();
+      expect(sendEmail).not.toHaveBeenCalled();
+      // The gate is scoped to the exact pair and GRANTED consent
+      expect(mockPrisma.therapistClient.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            therapistId: THERAPIST_ID,
+            clientId: CLIENT_ID,
+            consentStatus: 'GRANTED'
+          })
+        })
+      );
+    });
+
+    test('counts a transport failure (sendEmail resolves false) as a failure, not sent — stamp stays (no retry storm)', async () => {
+      const appt = { ...makeAppointment({ scheduledAt: futureDate(5) }), therapist: THERAPIST };
+      mockPrisma.appointment.findMany.mockResolvedValue([appt]);
+      mockPrisma.appointment.updateMany.mockResolvedValue({ count: 1 });
+      sendEmail.mockResolvedValueOnce(false); // transport failed, promise resolved
+
+      const summary = await scanAndSendAppointmentReminders(mockPrisma);
+
+      expect(summary).toEqual({ scanned: 1, sent: 0, failures: 1 });
+      // Stamp-first behavior is preserved: the claim was still written
+      expect(mockPrisma.appointment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { reminderSentAt: expect.any(Date) } })
+      );
     });
 
     test('isolates per-appointment failures', async () => {

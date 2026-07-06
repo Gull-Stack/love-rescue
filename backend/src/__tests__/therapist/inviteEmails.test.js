@@ -174,8 +174,28 @@ describe('POST /api/therapist/clients/invite email delivery', () => {
     expect(sendTherapistClientInviteEmail).not.toHaveBeenCalled();
   });
 
-  it('reports emailSent=false when no email transport is configured', async () => {
-    isEmailConfigured.mockReturnValue(false);
+  it('accepts the { email } field the web UI posts (alias of clientEmail)', async () => {
+    const res = await request(app)
+      .post('/api/therapist/clients/invite')
+      .set('x-therapist-api-key', THERAPIST_API_KEY)
+      .send({ email: 'Client@Example.com', permissionLevel: 'STANDARD' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.emailSent).toBe(true);
+    // The PENDING row lookup and the email both used the supplied address
+    expect(prisma.user.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { email: 'client@example.com' } })
+    );
+    expect(sendTherapistClientInviteEmail).toHaveBeenCalledWith(
+      'client@example.com',
+      expect.any(Object)
+    );
+  });
+
+  it('reports emailSent=false when the transport fails (sendEmail resolves false)', async () => {
+    // sendEmail (and the wrappers around it) resolve false — never reject —
+    // when no transport is configured or the SMTP call fails.
+    sendTherapistClientInviteEmail.mockResolvedValue(false);
 
     const res = await request(app)
       .post('/api/therapist/clients/invite')
@@ -185,9 +205,10 @@ describe('POST /api/therapist/clients/invite email delivery', () => {
     expect(res.status).toBe(200);
     expect(res.body.inviteLink).toBeDefined();
     expect(res.body.emailSent).toBe(false);
+    expect(sendTherapistClientInviteEmail).toHaveBeenCalledTimes(1);
   });
 
-  it('still generates the invite when the email send fails (fire-and-forget)', async () => {
+  it('still generates the invite (emailSent=false) when the email send rejects', async () => {
     sendTherapistClientInviteEmail.mockRejectedValue(new Error('SMTP down'));
 
     const res = await request(app)
@@ -197,6 +218,7 @@ describe('POST /api/therapist/clients/invite email delivery', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.inviteLink).toContain('/therapist/join/');
+    expect(res.body.emailSent).toBe(false);
     await flushAsync(); // rejection is caught and logged, never thrown
   });
 });

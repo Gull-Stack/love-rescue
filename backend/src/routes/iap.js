@@ -22,20 +22,27 @@ const router = express.Router();
  * Returns { success, subscriptionStatus, source, expiresAt } on success, or an
  * error with the appropriate status on rejection.
  */
-router.post('/verify', authenticate, async (req, res) => {
-  const receipt = req.body?.receipt || req.body?.receiptData;
-  const result = await applyAppleReceipt(req.prisma, req.user.id, receipt);
+router.post('/verify', authenticate, async (req, res, next) => {
+  try {
+    const receipt = req.body?.receipt || req.body?.receiptData;
+    const result = await applyAppleReceipt(req.prisma, req.user.id, receipt);
 
-  if (!result.success) {
-    return res.status(result.status || 400).json({ error: result.error });
+    if (!result.success) {
+      return res.status(result.status || 400).json({
+        error: result.error,
+        ...(result.code ? { code: result.code } : {})
+      });
+    }
+
+    return res.json({
+      success: true,
+      subscriptionStatus: 'premium',
+      source: 'APPLE',
+      expiresAt: result.expiresAt
+    });
+  } catch (error) {
+    next(error);
   }
-
-  return res.json({
-    success: true,
-    subscriptionStatus: 'premium',
-    source: 'APPLE',
-    expiresAt: result.expiresAt
-  });
 });
 
 module.exports = router;

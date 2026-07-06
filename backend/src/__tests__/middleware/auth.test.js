@@ -122,6 +122,8 @@ describe('authenticate', () => {
         lastName: true,
         role: true,
         subscriptionStatus: true,
+        subscriptionSource: true,
+        appleExpiresAt: true,
         trialEndsAt: true,
         stripeCustomerId: true,
         isPlatformAdmin: true,
@@ -342,6 +344,42 @@ describe('requirePremium', () => {
     await requirePremium(req, res, next);
     expect(next).toHaveBeenCalledTimes(1);
     expect(res.status).not.toHaveBeenCalled();
+  });
+
+  test('passes on an active trial (trials get full access)', async () => {
+    req.user = {
+      id: 'user-4',
+      subscriptionStatus: 'trial',
+      trialEndsAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)
+    };
+    await requirePremium(req, res, next);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  test('passes when covered by a partner on an active trial', async () => {
+    req.user = { id: 'user-5', subscriptionStatus: 'expired', trialEndsAt: null };
+    req.prisma.relationship.findFirst.mockResolvedValue({
+      user1Id: 'user-5',
+      user2Id: 'partner-1',
+      user1: { subscriptionStatus: 'expired', trialEndsAt: null },
+      user2: { subscriptionStatus: 'trial', trialEndsAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) }
+    });
+    await requirePremium(req, res, next);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  test('402 PREMIUM_REQUIRED for an EXPIRED trial that is entitled only at paid tier', async () => {
+    // Lapsed trial + paid status: entitled (paid) but not premium, not trial.
+    req.user = {
+      id: 'user-6',
+      subscriptionStatus: 'paid',
+      trialEndsAt: new Date(Date.now() - 24 * 60 * 60 * 1000)
+    };
+    await requirePremium(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(402);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'PREMIUM_REQUIRED' }));
+    expect(next).not.toHaveBeenCalled();
   });
 });
 

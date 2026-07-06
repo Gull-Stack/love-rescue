@@ -37,6 +37,27 @@ function trialDaysRemaining(trialEndsAt) {
 function resolveOwnEntitlement(user) {
   const status = user?.subscriptionStatus;
 
+  // Apple entitlements expire. A subscription granted from a validated App
+  // Store receipt is only good until the receipt's expiry — there is no
+  // renewal webhook flipping subscriptionStatus back, so a lapsed
+  // appleExpiresAt means NOT entitled regardless of the stored status.
+  // App Store Server Notifications are the proper long-term mechanism to
+  // track renewals/expirations in real time (future work); until then the
+  // stored expiry is authoritative.
+  if (
+    user?.subscriptionSource === 'APPLE' &&
+    user?.appleExpiresAt &&
+    new Date(user.appleExpiresAt).getTime() <= Date.now()
+  ) {
+    return {
+      isEntitled: false,
+      status: 'expired',
+      tier: null,
+      isTrial: false,
+      trialDaysRemaining: 0
+    };
+  }
+
   if (status === 'paid' || status === 'premium') {
     return {
       isEntitled: true,
@@ -60,7 +81,9 @@ function resolveOwnEntitlement(user) {
 
   return {
     isEntitled: false,
-    status: status || 'expired',
+    // A lapsed trial must not leak status 'trial' — the UI would render
+    // "free trial — 0 days remaining" chips for a user who is not entitled.
+    status: !status || status === 'trial' ? 'expired' : status,
     tier: null,
     isTrial: false,
     trialDaysRemaining: 0
@@ -86,8 +109,8 @@ async function findEntitlingPartner(prisma, userId) {
     select: {
       user1Id: true,
       user2Id: true,
-      user1: { select: { subscriptionStatus: true, trialEndsAt: true } },
-      user2: { select: { subscriptionStatus: true, trialEndsAt: true } }
+      user1: { select: { subscriptionStatus: true, trialEndsAt: true, subscriptionSource: true, appleExpiresAt: true } },
+      user2: { select: { subscriptionStatus: true, trialEndsAt: true, subscriptionSource: true, appleExpiresAt: true } }
     }
   });
 

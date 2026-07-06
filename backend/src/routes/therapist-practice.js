@@ -126,6 +126,29 @@ function parseDurationMinutes(raw, fallback = 50) {
   return { ok: true, value: n };
 }
 
+// Loose IANA timezone shape ("America/New_York", "Etc/GMT+5", or plain "UTC").
+const TIMEZONE_PATTERN = /^[A-Za-z_]+\/[A-Za-z_/+-]+$|^UTC$/;
+
+/**
+ * Validate a timezone from the request body. Loose by design: the shape check
+ * catches obvious garbage, and anything else is accepted iff Intl can resolve
+ * it. Absent/null → { value: null } (emails fall back to labelled UTC).
+ */
+function parseTimezone(raw) {
+  if (raw === undefined || raw === null) return { ok: true, value: null };
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > 64) {
+    return { ok: false, error: 'timezone must be an IANA timezone string (e.g. America/New_York)' };
+  }
+  const tz = raw.trim();
+  if (TIMEZONE_PATTERN.test(tz)) return { ok: true, value: tz };
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    return { ok: true, value: tz };
+  } catch {
+    return { ok: false, error: 'timezone must be an IANA timezone string (e.g. America/New_York)' };
+  }
+}
+
 /**
  * Find a scheduled appointment of this therapist overlapping
  * [scheduledAt, scheduledAt + durationMinutes). Returns the conflicting
@@ -166,6 +189,7 @@ function serializeAppointment(appt, extra = {}) {
     durationMinutes: appt.durationMinutes,
     status: appt.status,
     locationType: appt.locationType ?? null,
+    timezone: appt.timezone ?? null,
     clientNote: appt.clientNote ?? null,
     cancelledBy: appt.cancelledBy ?? null,
     reminderSentAt: appt.reminderSentAt ?? null,
@@ -180,14 +204,26 @@ function therapistDisplayName(therapist) {
   return name || therapist?.practiceName || 'your therapist';
 }
 
-function formatWhen(date) {
+/**
+ * Render a date for appointment emails. Uses the appointment's own IANA
+ * timezone when one was captured at scheduling time; otherwise falls back to
+ * UTC with an explicit zone label (timeZoneName: 'short' renders "UTC") so
+ * nobody mistakes a server time for their local time.
+ */
+function formatWhen(date, timezone) {
+  const options = {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+  };
   try {
-    return new Date(date).toLocaleString('en-US', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-      hour: 'numeric', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short',
-    });
+    return new Date(date).toLocaleString('en-US', { ...options, timeZone: timezone || 'UTC' });
   } catch {
-    return new Date(date).toISOString();
+    // Stored timezone no longer resolvable — retry in labelled UTC.
+    try {
+      return new Date(date).toLocaleString('en-US', { ...options, timeZone: 'UTC' });
+    } catch {
+      return new Date(date).toISOString();
+    }
   }
 }
 
@@ -199,15 +235,20 @@ function fireAndForget(promise, context) {
   });
 }
 
+/**
+ * Email the client about an appointment event. Returns sendEmail's boolean
+ * (false when no transport is configured or the transport failed) so callers
+ * like the reminder scan can count real deliveries.
+ */
 async function notifyClientAppointment(prisma, appointment, therapist, kind) {
   const client = await prisma.user.findUnique({
     where: { id: appointment.clientId },
     select: { email: true, firstName: true },
   });
-  if (!client || !client.email) return;
+  if (!client || !client.email) return false;
 
   const tName = therapistDisplayName(therapist);
-  const when = formatWhen(appointment.scheduledAt);
+  const when = formatWhen(appointment.scheduledAt, appointment.timezone);
   const location = appointment.locationType ? ` (${appointment.locationType.replace('_', '-')})` : '';
   const subjects = {
     scheduled: `Appointment scheduled with ${tName}`,
@@ -222,7 +263,7 @@ async function notifyClientAppointment(prisma, appointment, therapist, kind) {
     reminder: `This is a reminder of your upcoming appointment with ${tName} on ${when}${location}.`,
   };
   const name = client.firstName || 'there';
-  await sendEmail({
+  return sendEmail({
     to: client.email,
     subject: subjects[kind],
     text: `Hi ${name},\n\n${bodies[kind]}\n\n— Love Rescue`,
@@ -242,7 +283,7 @@ async function notifyTherapistClientCancelled(prisma, appointment, therapist) {
     select: { firstName: true, lastName: true },
   });
   const clientName = [client?.firstName, client?.lastName].filter(Boolean).join(' ') || 'A client';
-  const when = formatWhen(appointment.scheduledAt);
+  const when = formatWhen(appointment.scheduledAt, appointment.timezone);
   await sendEmail({
     to: therapist.email,
     subject: `${clientName} cancelled an appointment`,
@@ -547,6 +588,10 @@ router.post('/appointments', authenticateTherapist, requireClientAccess(), async
     if (clientNote && (typeof clientNote !== 'string' || clientNote.length > MAX_CLIENT_NOTE_LENGTH)) {
       return res.status(400).json({ error: 'clientNote must be a string of at most 2000 characters' });
     }
+    const timezone = parseTimezone(req.body.timezone);
+    if (!timezone.ok) {
+      return res.status(400).json({ error: timezone.error });
+    }
 
     const conflict = await findOverlappingAppointment(
       req.prisma, req.therapist.id, parsedScheduledAt, duration.value
@@ -567,6 +612,7 @@ router.post('/appointments', authenticateTherapist, requireClientAccess(), async
         scheduledAt: parsedScheduledAt,
         durationMinutes: duration.value,
         locationType: locationType || null,
+        timezone: timezone.value,
         clientNote: clientNote || null,
         status: 'scheduled',
       },
@@ -727,11 +773,38 @@ router.patch('/appointments/:id', authenticateTherapist, async (req, res, next) 
       data.reminderSentAt = null; // new time → a fresh 24h reminder is due
       notifyKind = 'rescheduled';
     } else if (req.body.durationMinutes !== undefined) {
+      // A duration-only change moves the appointment's end time, so it gets
+      // the same guards as a reschedule: scheduled-status only, and an overlap
+      // re-check at the new length.
+      if (appointment.status !== 'scheduled' || (data.status && data.status !== 'scheduled')) {
+        return res.status(409).json({
+          error: 'Only scheduled appointments can change duration',
+          code: 'INVALID_STATUS_TRANSITION',
+        });
+      }
       const duration = parseDurationMinutes(req.body.durationMinutes, appointment.durationMinutes || 50);
       if (!duration.ok) {
         return res.status(400).json({ error: duration.error });
       }
+      const conflict = await findOverlappingAppointment(
+        req.prisma, req.therapist.id, new Date(appointment.scheduledAt), duration.value, appointment.id
+      );
+      if (conflict) {
+        return res.status(409).json({
+          error: 'This time overlaps an existing scheduled appointment',
+          code: 'APPOINTMENT_OVERLAP',
+          conflictingAppointmentId: conflict.id,
+        });
+      }
       data.durationMinutes = duration.value;
+    }
+
+    if (req.body.timezone !== undefined) {
+      const timezone = parseTimezone(req.body.timezone);
+      if (!timezone.ok) {
+        return res.status(400).json({ error: timezone.error });
+      }
+      data.timezone = timezone.value;
     }
 
     if (locationType !== undefined) {
@@ -850,6 +923,7 @@ router.get('/my/appointments', authenticate, async (req, res, next) => {
         durationMinutes: a.durationMinutes,
         status: a.status,
         locationType: a.locationType ?? null,
+        timezone: a.timezone ?? null,
         clientNote: a.clientNote ?? null,
         cancelledBy: a.cancelledBy ?? null,
         createdAt: a.createdAt,
@@ -921,6 +995,11 @@ router.patch('/my/appointments/:id/cancel', authenticate, async (req, res, next)
  * null), so concurrent/repeated scans can never double-send. Failures are
  * isolated per appointment.
  *
+ * A reminder only goes out while the client still has a GRANTED consent link
+ * with the therapist — after a revocation the appointment is cancelled by the
+ * revoke path, but this check makes sure a client who cut ties never gets
+ * another email even if an appointment slipped through.
+ *
  * @returns {Promise<{scanned:number, sent:number, failures:number}>}
  */
 async function scanAndSendAppointmentReminders(prisma) {
@@ -941,15 +1020,36 @@ async function scanAndSendAppointmentReminders(prisma) {
   const summary = { scanned: (due || []).length, sent: 0, failures: 0 };
   for (const appt of (due || [])) {
     try {
+      // Consent gate: skip (and don't stamp) when the pair no longer has a
+      // GRANTED TherapistClient link.
+      const link = await prisma.therapistClient.findFirst({
+        where: {
+          therapistId: appt.therapistId,
+          clientId: appt.clientId,
+          consentStatus: 'GRANTED',
+        },
+        select: { id: true },
+      });
+      if (!link) continue;
+
       // Claim the reminder atomically; if another tick got there first, skip.
+      // Stamp-first is deliberate — it is what makes double-sends impossible —
+      // so the summary is counted from the ACTUAL send result below instead.
       const claim = await prisma.appointment.updateMany({
         where: { id: appt.id, reminderSentAt: null },
         data: { reminderSentAt: new Date() },
       });
       if (!claim || claim.count === 0) continue;
 
-      await notifyClientAppointment(prisma, appt, appt.therapist, 'reminder');
-      summary.sent += 1;
+      // sendEmail resolves false on transport failure (it never rejects) —
+      // count only real deliveries as sent, and log the rest.
+      const delivered = await notifyClientAppointment(prisma, appt, appt.therapist, 'reminder');
+      if (delivered) {
+        summary.sent += 1;
+      } else {
+        summary.failures += 1;
+        logger.error('Appointment reminder email was not delivered', { appointmentId: appt.id });
+      }
     } catch (err) {
       summary.failures += 1;
       logger.error('Appointment reminder failed', { appointmentId: appt.id, error: err.message });

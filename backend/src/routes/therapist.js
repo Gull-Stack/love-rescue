@@ -21,7 +21,6 @@ const {
   sendTherapistClientInviteEmail,
   sendTherapistInviteAcceptedEmail,
   sendTherapistInviteDeclinedEmail,
-  isEmailConfigured,
 } = require('../utils/email');
 const logger = require('../utils/logger');
 
@@ -2026,7 +2025,8 @@ router.post('/clients/invite', authenticateTherapist, async (req, res, next) => 
     // requires consentStatus === 'GRANTED'. The row only becomes readable once
     // the client accepts (PENDING → GRANTED via /clients/invite/:token/accept).
     let linkId = null;
-    const clientEmail = req.body.clientEmail;
+    // The web UI posts { email }; older clients post { clientEmail }. Accept both.
+    const clientEmail = req.body.clientEmail || req.body.email;
     if (clientEmail) {
       const clientUser = await req.prisma.user.findUnique({
         where: { email: String(clientEmail).toLowerCase() },
@@ -2066,21 +2066,26 @@ router.post('/clients/invite', authenticateTherapist, async (req, res, next) => 
     }
 
     // Deliver the invite by email when the therapist supplied a client email.
-    // Fire-and-forget — email failure must never break invite generation.
-    // emailSent tells the UI whether a send was attempted (false when no
-    // clientEmail was given or no email transport is configured), so the
-    // therapist knows whether to share the link manually.
+    // The send is AWAITED so emailSent reports what actually happened —
+    // sendEmail resolves false on a transport failure (it never rejects), so
+    // stamping emailSent from isEmailConfigured() before the send would lie to
+    // the therapist. One SMTP round-trip is acceptable latency for invite
+    // creation; accept/decline notifications stay fire-and-forget. A send
+    // failure still never breaks invite generation.
     let emailSent = false;
     if (clientEmail) {
-      emailSent = isEmailConfigured();
-      sendTherapistClientInviteEmail(String(clientEmail).toLowerCase().trim(), {
-        therapistName: `${req.therapist.firstName} ${req.therapist.lastName}`,
-        practiceName: req.therapist.practiceName || null,
-        inviteLink,
-      }).catch((error) => logger.error('Failed to send therapist client invite email', {
-        therapistId: req.therapist.id,
-        error: error.message,
-      }));
+      try {
+        emailSent = (await sendTherapistClientInviteEmail(String(clientEmail).toLowerCase().trim(), {
+          therapistName: `${req.therapist.firstName} ${req.therapist.lastName}`,
+          practiceName: req.therapist.practiceName || null,
+          inviteLink,
+        })) === true;
+      } catch (error) {
+        logger.error('Failed to send therapist client invite email', {
+          therapistId: req.therapist.id,
+          error: error.message,
+        });
+      }
     }
 
     res.json({ inviteLink, permissionLevel, expiresIn: '7 days', ...(linkId ? { linkId } : {}), emailSent });

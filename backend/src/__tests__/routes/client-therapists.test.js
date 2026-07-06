@@ -17,7 +17,16 @@ jest.mock('../../utils/logger', () => ({
   debug: jest.fn()
 }));
 
+jest.mock('../../utils/email', () => ({
+  sendEmail: jest.fn().mockResolvedValue(true),
+  isEmailConfigured: jest.fn(() => true),
+  sendTherapistClientInviteEmail: jest.fn().mockResolvedValue(true),
+  sendTherapistInviteAcceptedEmail: jest.fn().mockResolvedValue(true),
+  sendTherapistInviteDeclinedEmail: jest.fn().mockResolvedValue(true)
+}));
+
 const { errorHandler } = require('../../middleware/errorHandler');
+const { sendEmail } = require('../../utils/email');
 const { createMockPrisma } = require('../helpers/mockPrisma');
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -149,6 +158,10 @@ describe('Client therapist-consent controls', () => {
     mockPrisma.relationship.findMany.mockResolvedValue([]);
     mockPrisma.relationship.update.mockResolvedValue({});
     mockPrisma.therapistAssignment.updateMany.mockResolvedValue({ count: 0 });
+
+    // Appointment surface touched by revokeTherapistAccess. Default: none.
+    mockPrisma.appointment.findMany.mockResolvedValue([]);
+    mockPrisma.appointment.updateMany.mockResolvedValue({ count: 0 });
 
     // Auth mocks
     mockPrisma.user.findUnique.mockResolvedValue(CLIENT_USER);
@@ -315,6 +328,75 @@ describe('Client therapist-consent controls', () => {
 
       expect(res.status).toBe(200);
       expect(mockPrisma.therapistClient.update).not.toHaveBeenCalled();
+    });
+
+    test('cancels the pair\'s future scheduled appointments and notifies the therapist', async () => {
+      const futureAppt = {
+        id: 'appt-future',
+        scheduledAt: new Date(Date.now() + 48 * 60 * 60 * 1000)
+      };
+      mockPrisma.appointment.findMany.mockResolvedValue([futureAppt]);
+      mockPrisma.appointment.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.therapist.findUnique.mockResolvedValue(THERAPIST_PROFILE);
+
+      const res = await request(app)
+        .delete(`/api/client/therapists/${LINK_ID}`)
+        .set('Authorization', `Bearer ${clientToken}`);
+      // Drain the fire-and-forget notification
+      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(res.status).toBe(200);
+      // Only THIS pair's future scheduled appointments are targeted
+      expect(mockPrisma.appointment.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            therapistId: THERAPIST_ID,
+            clientId: CLIENT_ID,
+            status: 'scheduled',
+            scheduledAt: expect.objectContaining({ gt: expect.any(Date) })
+          })
+        })
+      );
+      expect(mockPrisma.appointment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: { in: ['appt-future'] } },
+          data: { status: 'cancelled', cancelledBy: 'client' }
+        })
+      );
+      expect(sendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: THERAPIST_PROFILE.email,
+          subject: expect.stringContaining('cancelled')
+        })
+      );
+    });
+
+    test('revoke succeeds even when the cancellation notification fails', async () => {
+      mockPrisma.appointment.findMany.mockResolvedValue([
+        { id: 'appt-x', scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000) }
+      ]);
+      mockPrisma.appointment.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.therapist.findUnique.mockRejectedValue(new Error('DB down'));
+
+      const res = await request(app)
+        .delete(`/api/client/therapists/${LINK_ID}`)
+        .set('Authorization', `Bearer ${clientToken}`);
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(res.status).toBe(200);
+      expect(links[0].consentStatus).toBe('REVOKED');
+    });
+
+    test('no appointment writes or emails when there is nothing scheduled', async () => {
+      const res = await request(app)
+        .delete(`/api/client/therapists/${LINK_ID}`)
+        .set('Authorization', `Bearer ${clientToken}`);
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.appointment.updateMany).not.toHaveBeenCalled();
+      expect(sendEmail).not.toHaveBeenCalled();
     });
   });
 

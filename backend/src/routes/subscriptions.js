@@ -26,6 +26,7 @@ router.get('/status', authenticate, async (req, res) => {
       select: {
         subscriptionStatus: true,
         subscriptionSource: true,
+        appleExpiresAt: true, // resolver needs it to expire lapsed Apple entitlements
         trialEndsAt: true
       }
     });
@@ -54,20 +55,27 @@ router.get('/status', authenticate, async (req, res) => {
  * with subscriptionSource APPLE. Rejects invalid/expired receipts with no
  * entitlement. Supports restore (same validation path).
  */
-router.post('/verify-apple', authenticate, async (req, res) => {
-  const receipt = req.body?.receipt || req.body?.receiptData;
-  const result = await applyAppleReceipt(req.prisma, req.user.id, receipt);
+router.post('/verify-apple', authenticate, async (req, res, next) => {
+  try {
+    const receipt = req.body?.receipt || req.body?.receiptData;
+    const result = await applyAppleReceipt(req.prisma, req.user.id, receipt);
 
-  if (!result.success) {
-    return res.status(result.status || 400).json({ error: result.error });
+    if (!result.success) {
+      return res.status(result.status || 400).json({
+        error: result.error,
+        ...(result.code ? { code: result.code } : {})
+      });
+    }
+
+    return res.json({
+      success: true,
+      subscriptionStatus: 'premium',
+      source: 'APPLE',
+      expiresAt: result.expiresAt
+    });
+  } catch (error) {
+    next(error);
   }
-
-  return res.json({
-    success: true,
-    subscriptionStatus: 'premium',
-    source: 'APPLE',
-    expiresAt: result.expiresAt
-  });
 });
 
 module.exports = router;

@@ -38,8 +38,52 @@ describe('resolveOwnEntitlement', () => {
       expect.objectContaining({ isEntitled: false, tier: null })
     );
   });
+  test('lapsed trial reports status expired, never trial (no "0 days remaining" chips)', () => {
+    expect(resolveOwnEntitlement({ subscriptionStatus: 'trial', trialEndsAt: past(1) })).toEqual(
+      expect.objectContaining({ isEntitled: false, status: 'expired', isTrial: false, trialDaysRemaining: 0 })
+    );
+    expect(resolveOwnEntitlement({ subscriptionStatus: 'trial', trialEndsAt: null }).status).toBe('expired');
+  });
   test('expired with no trial → not entitled', () => {
     expect(resolveOwnEntitlement({ subscriptionStatus: 'expired' }).isEntitled).toBe(false);
+  });
+
+  describe('Apple-sourced entitlements expire with appleExpiresAt', () => {
+    test('APPLE premium with future appleExpiresAt → entitled', () => {
+      const r = resolveOwnEntitlement({
+        subscriptionStatus: 'premium',
+        subscriptionSource: 'APPLE',
+        appleExpiresAt: future(10)
+      });
+      expect(r).toEqual(expect.objectContaining({ isEntitled: true, tier: 'premium' }));
+    });
+    test('APPLE premium with LAPSED appleExpiresAt → NOT entitled, status expired', () => {
+      const r = resolveOwnEntitlement({
+        subscriptionStatus: 'premium',
+        subscriptionSource: 'APPLE',
+        appleExpiresAt: past(1)
+      });
+      expect(r).toEqual(expect.objectContaining({
+        isEntitled: false, status: 'expired', tier: null, isTrial: false, trialDaysRemaining: 0
+      }));
+    });
+    test('lapsed APPLE expiry wins even over a live trialEndsAt', () => {
+      const r = resolveOwnEntitlement({
+        subscriptionStatus: 'premium',
+        subscriptionSource: 'APPLE',
+        appleExpiresAt: past(1),
+        trialEndsAt: future(5)
+      });
+      expect(r.isEntitled).toBe(false);
+    });
+    test('Stripe-sourced premium is unaffected by a stale appleExpiresAt', () => {
+      const r = resolveOwnEntitlement({
+        subscriptionStatus: 'premium',
+        subscriptionSource: 'STRIPE',
+        appleExpiresAt: past(30)
+      });
+      expect(r.isEntitled).toBe(true);
+    });
   });
 });
 
@@ -107,6 +151,23 @@ describe('resolveEntitlement (couple-aware)', () => {
     const r = await resolveEntitlement(prisma, { id: 'u1', subscriptionStatus: 'expired' });
     expect(r.isEntitled).toBe(false);
     expect(prisma.relationship.findFirst).toHaveBeenCalledTimes(1);
+  });
+
+  test('a partner whose Apple entitlement lapsed does NOT cover the couple', async () => {
+    prisma.relationship.findFirst.mockResolvedValue({
+      user1Id: 'u1',
+      user2Id: 'p1',
+      user1: { subscriptionStatus: 'expired' },
+      user2: {
+        subscriptionStatus: 'premium',
+        subscriptionSource: 'APPLE',
+        appleExpiresAt: past(2),
+        trialEndsAt: null
+      }
+    });
+    const r = await resolveEntitlement(prisma, { id: 'u1', subscriptionStatus: 'expired' });
+    expect(r.isEntitled).toBe(false);
+    expect(r.coveredByPartner).toBe(false);
   });
 
   test('does not recurse back into the partner\'s partner (one level only)', async () => {

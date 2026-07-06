@@ -473,6 +473,8 @@ router.get('/subscription', authenticate, async (req, res, next) => {
       where: { id: req.user.id },
       select: {
         subscriptionStatus: true,
+        subscriptionSource: true, // resolver needs these two to expire lapsed
+        appleExpiresAt: true,     // Apple entitlements
         trialEndsAt: true,
         stripeCustomerId: true,
         subscriptionCurrentPeriodEnd: true

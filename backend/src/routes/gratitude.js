@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticate, requireSubscription } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 const { detectCrisisAndNotify } = require('../utils/therapistAlerts');
 const logger = require('../utils/logger');
 
@@ -65,8 +65,13 @@ function calculateStreaks(entries) {
 /**
  * POST /api/gratitude
  * Save today's gratitude entry (upsert)
+ *
+ * Deliberately NOT gated by requireSubscription: the gratitude habit layer is
+ * free, and — safety-critical — crisis detection on the entry free-text must
+ * always run. A paywall here would 402 an expired user before
+ * detectCrisisAndNotify ever fired (no 988 resources, no therapist alert).
  */
-router.post('/', authenticate, requireSubscription, async (req, res, next) => {
+router.post('/', authenticate, async (req, res, next) => {
   try {
     const { text, category, date } = req.body;
 

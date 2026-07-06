@@ -23,6 +23,20 @@ const SANDBOX_URL = 'https://sandbox.itunes.apple.com/verifyReceipt';
 // Apple status code meaning "sandbox receipt sent to production" — retry sandbox.
 const SANDBOX_STATUS = 21007;
 
+// Only OUR auto-renewable subscription products may entitle. Any other
+// product_id in the receipt (a different app's product, a consumable, or an
+// unexpected identifier) is ignored for entitlement/expiry purposes.
+const DEFAULT_ALLOWED_PRODUCT_IDS = 'com.loverescue.premium.monthly,com.loverescue.annual';
+
+function allowedProductIds() {
+  return new Set(
+    (process.env.APPLE_PRODUCT_IDS || DEFAULT_ALLOWED_PRODUCT_IDS)
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean)
+  );
+}
+
 async function callApple(url, body) {
   const res = await fetch(url, {
     method: 'POST',
@@ -45,6 +59,7 @@ async function callApple(url, body) {
  *   status: (number|null),
  *   expiresAt: (Date|null),
  *   productId: (string|null),
+ *   originalTransactionId: (string|null),
  *   latestReceipt: (string|null),
  *   raw: (object|null),
  *   error: (string|null)
@@ -54,7 +69,7 @@ async function validateAppleReceipt(receiptData) {
   if (!receiptData || typeof receiptData !== 'string') {
     return {
       valid: false, environment: null, status: null, expiresAt: null,
-      productId: null, latestReceipt: null, raw: null,
+      productId: null, originalTransactionId: null, latestReceipt: null, raw: null,
       error: 'Missing or invalid receipt data'
     };
   }
@@ -77,7 +92,7 @@ async function validateAppleReceipt(receiptData) {
     logger.error('Apple receipt validation request failed', { error: err.message });
     return {
       valid: false, environment: null, status: null, expiresAt: null,
-      productId: null, latestReceipt: null, raw: null,
+      productId: null, originalTransactionId: null, latestReceipt: null, raw: null,
       error: 'Could not reach Apple for receipt validation'
     };
   }
@@ -89,6 +104,7 @@ async function validateAppleReceipt(receiptData) {
       status: response ? response.status : null,
       expiresAt: null,
       productId: null,
+      originalTransactionId: null,
       latestReceipt: null,
       raw: response || null,
       error: `Apple rejected the receipt (status ${response ? response.status : 'unknown'})`
@@ -96,8 +112,11 @@ async function validateAppleReceipt(receiptData) {
   }
 
   // Prefer `latest_receipt_info` (auto-renewable subscriptions); fall back to
-  // the top-level receipt's in-app purchases. Choose the entry with the
-  // furthest-future expiry so renewals supersede earlier transactions.
+  // the top-level receipt's in-app purchases. Only entries whose product_id is
+  // in our allowlist (APPLE_PRODUCT_IDS) count toward entitlement/expiry — a
+  // valid receipt for someone else's product must grant nothing. Among the
+  // allowed entries, choose the one with the furthest-future expiry so
+  // renewals supersede earlier transactions.
   const infos =
     (Array.isArray(response.latest_receipt_info) && response.latest_receipt_info.length
       ? response.latest_receipt_info
@@ -105,14 +124,18 @@ async function validateAppleReceipt(receiptData) {
         ? response.receipt.in_app
         : []) || [];
 
+  const allowed = allowedProductIds();
   let bestExpiry = null;
   let bestProductId = null;
+  let bestOriginalTransactionId = null;
   for (const info of infos) {
+    if (!allowed.has(info.product_id)) continue;
     const expMs = Number(info.expires_date_ms || info.expires_date || 0);
     if (!expMs) continue;
     if (bestExpiry === null || expMs > bestExpiry) {
       bestExpiry = expMs;
       bestProductId = info.product_id || null;
+      bestOriginalTransactionId = info.original_transaction_id || null;
     }
   }
 
@@ -125,9 +148,10 @@ async function validateAppleReceipt(receiptData) {
     status: 0,
     expiresAt,
     productId: bestProductId,
+    originalTransactionId: bestOriginalTransactionId,
     latestReceipt: response.latest_receipt || receiptData,
     raw: response,
-    error: isActive ? null : 'Subscription is expired or contains no active auto-renewable purchase'
+    error: isActive ? null : 'Subscription is expired or contains no active auto-renewable purchase for a recognized product'
   };
 }
 

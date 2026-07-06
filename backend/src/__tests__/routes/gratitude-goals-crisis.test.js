@@ -139,4 +139,64 @@ describe('gratitude/goals crisis wiring', () => {
     expect(res.body.crisis).toBeDefined();
     await flushAsync();
   });
+
+  // SAFETY-CRITICAL: these write routes must never sit behind the paywall —
+  // an EXPIRED user writing crisis language still saves, still gets 988
+  // resources, and the therapist alert still fires.
+  describe('expired (unentitled) users are not paywalled off crisis detection', () => {
+    const EXPIRED_USER = {
+      ...USER,
+      subscriptionStatus: 'expired',
+      trialEndsAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    };
+
+    beforeEach(() => {
+      mockPrisma.user.findUnique.mockResolvedValue(EXPIRED_USER);
+      // A GRANTED therapist link so the alert pipeline has someone to notify
+      mockPrisma.therapistClient.findMany.mockResolvedValue([{
+        therapistId: 'therapist-1',
+        coupleId: REL_ID,
+        therapist: {
+          email: 'dr@example.com',
+          firstName: 'Dana',
+          lastName: 'Therapist',
+          isActive: true,
+        },
+      }]);
+      mockPrisma.therapistAlert.count.mockResolvedValue(0);
+      mockPrisma.therapistAlert.create.mockResolvedValue({ id: 'alert-1' });
+    });
+
+    test('gratitude: expired user writing crisis text → 200 + crisis payload + therapist alert', async () => {
+      const res = await request(app)
+        .post('/api/gratitude')
+        .set('Authorization', `Bearer ${token()}`)
+        .send({ text: CRISIS_TEXT });
+
+      expect(res.status).toBe(200); // NOT 402
+      expect(res.body.entry).toBeDefined();
+      expect(res.body.crisis).toBeDefined();
+      expect(res.body.crisis.detected).toBe(true);
+      expect(JSON.stringify(res.body.crisis.resources)).toContain('988');
+
+      await flushAsync();
+      expect(mockPrisma.therapistAlert.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ clientId: USER_ID, alertType: 'CRISIS' })
+        })
+      );
+    });
+
+    test('goals: expired user writing crisis text → 201 + crisis payload', async () => {
+      const res = await request(app)
+        .post('/api/goals')
+        .set('Authorization', `Bearer ${token()}`)
+        .send({ title: CRISIS_TEXT });
+
+      expect(res.status).toBe(201); // NOT 402
+      expect(res.body.goal).toBeDefined();
+      expect(res.body.crisis).toBeDefined();
+      await flushAsync();
+    });
+  });
 });
