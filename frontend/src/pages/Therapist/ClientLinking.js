@@ -50,7 +50,7 @@ const PERMISSION_LEVELS = [
   {
     value: 'full',
     label: 'Full Access',
-    description: '+ individual responses, journal entries, and messaging',
+    description: '+ individual responses and journal entries',
     color: 'secondary',
   },
 ];

@@ -6,7 +6,7 @@
  * Permission Levels:
  *   BASIC:    assessment scores + activity completion only
  *   STANDARD: + mood trends + crisis alerts + session prep
- *   FULL:     + individual responses + journal entries + messaging
+ *   FULL:     + individual responses + journal entries
  */
 
 const logger = require('../utils/logger');
