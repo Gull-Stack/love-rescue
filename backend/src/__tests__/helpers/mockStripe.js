@@ -15,6 +15,19 @@ const mockCustomersRetrieve = jest.fn().mockResolvedValue({
   metadata: { userId: 'test-user-id' }
 });
 
+const mockCustomersUpdate = jest.fn().mockResolvedValue({
+  id: 'cus_test_123',
+  email: 'test@example.com',
+  metadata: { userId: 'test-user-id' }
+});
+
+const mockPricesRetrieve = jest.fn().mockResolvedValue({
+  id: 'price_test_123',
+  unit_amount: 4900,
+  currency: 'usd',
+  recurring: { interval: 'month' }
+});
+
 const mockCheckoutSessionsCreate = jest.fn().mockResolvedValue({
   id: 'cs_test_123',
   url: 'https://checkout.stripe.com/test'
@@ -47,7 +60,11 @@ const mockBillingPortalSessionsCreate = jest.fn().mockResolvedValue({
 const mockStripeInstance = {
   customers: {
     create: mockCustomersCreate,
-    retrieve: mockCustomersRetrieve
+    retrieve: mockCustomersRetrieve,
+    update: mockCustomersUpdate
+  },
+  prices: {
+    retrieve: mockPricesRetrieve
   },
   checkout: {
     sessions: {
@@ -79,6 +96,8 @@ module.exports = {
   mockStripeInstance,
   mockCustomersCreate,
   mockCustomersRetrieve,
+  mockCustomersUpdate,
+  mockPricesRetrieve,
   mockCheckoutSessionsCreate,
   mockSubscriptionsList,
   mockSubscriptionsUpdate,

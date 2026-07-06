@@ -3,9 +3,44 @@ const Stripe = require('stripe');
 const { authenticate } = require('../middleware/auth');
 const logger = require('../utils/logger');
 const { sendEmail } = require('../utils/email');
+const { resolveEntitlement, trialDaysRemaining } = require('../lib/entitlement');
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// The two purchasable tiers. Both grant premium-level entitlement; the webhook
+// maps tier 'premium'|'annual' → subscriptionStatus 'premium'. Dollar amounts
+// live in Stripe (fetched via prices.retrieve); env display vars + the coded
+// defaults below are the fallback when Stripe is unreachable or unconfigured.
+const TIERS = {
+  premium: {
+    id: 'premium',
+    name: 'Premium Monthly',
+    priceIdEnv: 'STRIPE_PREMIUM_PRICE_ID',
+    displayEnv: 'PLAN_PREMIUM_DISPLAY',
+    defaultDisplay: '$49/mo',
+    defaultAmount: 4900,
+    defaultInterval: 'month'
+  },
+  annual: {
+    id: 'annual',
+    name: 'Premium Annual',
+    priceIdEnv: 'STRIPE_ANNUAL_PRICE_ID',
+    displayEnv: 'PLAN_ANNUAL_DISPLAY',
+    defaultDisplay: '$490/yr',
+    defaultAmount: 49000,
+    defaultInterval: 'year'
+  }
+};
+
+function getTrialDays() {
+  const parsed = parseInt(process.env.TRIAL_DAYS || '14', 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 14;
+}
+
+function frontendUrl() {
+  return process.env.FRONTEND_URL || 'http://localhost:3000';
+}
 
 /**
  * Resolve the entitlement tier for an entitled (active/trialing) subscription
@@ -50,11 +85,133 @@ async function applyUserEntitlement(prisma, userId, eventCreatedAt, dataToSet) {
 }
 
 /**
- * POST /api/payments/create-checkout
- * DISABLED — app is free.
+ * GET /api/payments/plans
+ * Public pricing for the two tiers. Reads live amounts from Stripe when the
+ * price IDs are configured; falls back to env display vars / coded defaults.
+ * Response: { plans: [{ id, name, interval, amount, currency, priceDisplay,
+ * priceId }], trialDays }.
  */
-router.post('/create-checkout', authenticate, (req, res) => {
-  res.status(410).json({ error: 'LoveRescue is now free. No checkout required.', code: 'APP_IS_FREE' });
+router.get('/plans', async (req, res) => {
+  const trialDays = getTrialDays();
+
+  const plans = await Promise.all(Object.values(TIERS).map(async (tier) => {
+    const priceId = process.env[tier.priceIdEnv] || null;
+    let amount = tier.defaultAmount;
+    let currency = 'usd';
+    let interval = tier.defaultInterval;
+    let priceDisplay = process.env[tier.displayEnv] || tier.defaultDisplay;
+
+    if (priceId) {
+      try {
+        const price = await stripe.prices.retrieve(priceId);
+        if (typeof price.unit_amount === 'number') amount = price.unit_amount;
+        if (price.currency) currency = price.currency;
+        if (price.recurring && price.recurring.interval) interval = price.recurring.interval;
+        // Prefer an explicit env display override; otherwise render from Stripe.
+        if (!process.env[tier.displayEnv]) {
+          priceDisplay = `$${(amount / 100).toFixed(amount % 100 === 0 ? 0 : 2)}/${interval === 'year' ? 'yr' : 'mo'}`;
+        }
+      } catch (err) {
+        logger.warn('Failed to retrieve Stripe price, using fallback', { tier: tier.id, error: err.message });
+      }
+    }
+
+    return {
+      id: tier.id,
+      name: tier.name,
+      interval,
+      amount,
+      currency,
+      priceDisplay,
+      priceId
+    };
+  }));
+
+  res.json({ plans, trialDays });
+});
+
+/**
+ * POST /api/payments/create-checkout  { tier }
+ * Creates a Stripe Checkout session (mode: subscription) for the given tier.
+ * Ensures the Stripe customer carries metadata.userId (the webhook resolves the
+ * user from it) and carries the checkout metadata {userId, tier}. Any trial
+ * days the user has left are passed to Stripe as subscription_data.trial_period_days.
+ * Returns { url, sessionId }.
+ */
+router.post('/create-checkout', authenticate, async (req, res, next) => {
+  try {
+    const requestedTier = req.body?.tier;
+    const tier = TIERS[requestedTier] ? requestedTier : 'premium';
+    const priceId = process.env[TIERS[tier].priceIdEnv];
+
+    if (!priceId) {
+      logger.error('Checkout requested but price id not configured', { tier });
+      return res.status(500).json({ error: 'Billing is not configured', code: 'PRICE_NOT_CONFIGURED' });
+    }
+
+    const user = await req.prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        email: true,
+        stripeCustomerId: true,
+        subscriptionStatus: true,
+        trialEndsAt: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Ensure a Stripe customer exists AND carries metadata.userId — the webhook
+    // maps customer.metadata.userId back to the user on subscription events.
+    let customerId = user.stripeCustomerId;
+    if (customerId) {
+      // Keep the mapping current (idempotent).
+      try {
+        await stripe.customers.update(customerId, { metadata: { userId: user.id } });
+      } catch (err) {
+        logger.warn('Could not update Stripe customer metadata', { userId: user.id, error: err.message });
+      }
+    } else {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { userId: user.id }
+      });
+      customerId = customer.id;
+      await req.prisma.user.update({
+        where: { id: user.id },
+        data: { stripeCustomerId: customerId }
+      });
+    }
+
+    const sessionParams = {
+      mode: 'subscription',
+      customer: customerId,
+      line_items: [{ price: priceId, quantity: 1 }],
+      metadata: { userId: user.id, tier },
+      success_url: `${frontendUrl()}/subscribe?status=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${frontendUrl()}/subscribe?status=cancelled`
+    };
+
+    // Honour any remaining app trial as a Stripe trial so the user is not
+    // double-charged while their in-app trial is still running.
+    const remainingTrial = user.subscriptionStatus === 'trial'
+      ? trialDaysRemaining(user.trialEndsAt)
+      : 0;
+    if (remainingTrial > 0) {
+      sessionParams.subscription_data = { trial_period_days: remainingTrial };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
+
+    logger.info('Checkout session created', { userId: user.id, tier, trialDays: remainingTrial });
+    res.json({ url: session.url, sessionId: session.id });
+  } catch (error) {
+    logger.error('create-checkout error', { error: error.message });
+    next(error);
+  }
 });
 
 /**
@@ -306,7 +463,9 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
 /**
  * GET /api/payments/subscription
- * Get current subscription status
+ * Real, couple-aware subscription state. Returns:
+ * { status, isPremium, tier, currentPeriodEnd, cancelAtPeriodEnd, trialEndsAt,
+ *   trialDaysRemaining, coveredByPartner }.
  */
 router.get('/subscription', authenticate, async (req, res, next) => {
   try {
@@ -315,11 +474,18 @@ router.get('/subscription', authenticate, async (req, res, next) => {
       select: {
         subscriptionStatus: true,
         trialEndsAt: true,
-        stripeCustomerId: true
+        stripeCustomerId: true,
+        subscriptionCurrentPeriodEnd: true
       }
     });
 
-    let subscription = null;
+    // req.entitlement was resolved by authenticate; recompute defensively if
+    // absent (e.g. a route mounted without the standard middleware order).
+    const entitlement = req.entitlement || await resolveEntitlement(req.prisma, { id: req.user.id, ...user });
+
+    let currentPeriodEnd = user.subscriptionCurrentPeriodEnd || null;
+    let cancelAtPeriodEnd = false;
+
     const isPaidOrPremium = user.subscriptionStatus === 'paid' || user.subscriptionStatus === 'premium';
     if (user.stripeCustomerId && isPaidOrPremium) {
       try {
@@ -328,28 +494,25 @@ router.get('/subscription', authenticate, async (req, res, next) => {
           status: 'active',
           limit: 1
         });
-
         if (subscriptions.data.length > 0) {
           const sub = subscriptions.data[0];
-          subscription = {
-            id: sub.id,
-            status: sub.status,
-            currentPeriodEnd: new Date(sub.current_period_end * 1000),
-            cancelAtPeriodEnd: sub.cancel_at_period_end
-          };
+          currentPeriodEnd = new Date(sub.current_period_end * 1000);
+          cancelAtPeriodEnd = sub.cancel_at_period_end;
         }
       } catch (stripeError) {
         logger.error('Failed to fetch Stripe subscription', { error: stripeError.message });
       }
     }
 
-    // App is free — always return premium status
     res.json({
-      status: 'premium',
-      isPremium: true,
-      trialEndsAt: null,
-      subscription,
-      trialDaysRemaining: null,
+      status: entitlement.status,
+      isPremium: entitlement.tier === 'premium',
+      tier: entitlement.tier,
+      currentPeriodEnd,
+      cancelAtPeriodEnd,
+      trialEndsAt: user.trialEndsAt || null,
+      trialDaysRemaining: entitlement.trialDaysRemaining,
+      coveredByPartner: entitlement.coveredByPartner
     });
   } catch (error) {
     next(error);
@@ -358,18 +521,69 @@ router.get('/subscription', authenticate, async (req, res, next) => {
 
 /**
  * POST /api/payments/cancel
- * DISABLED — app is free.
+ * Cancels the user's active Stripe subscription at the end of the current
+ * billing period (they keep access until then). Returns { message, endsAt }.
  */
-router.post('/cancel', authenticate, (req, res) => {
-  res.status(410).json({ error: 'LoveRescue is now free. No subscription to cancel.', code: 'APP_IS_FREE' });
+router.post('/cancel', authenticate, async (req, res, next) => {
+  try {
+    const user = await req.prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { stripeCustomerId: true }
+    });
+
+    if (!user || !user.stripeCustomerId) {
+      return res.status(400).json({ error: 'No active subscription' });
+    }
+
+    const subscriptions = await stripe.subscriptions.list({
+      customer: user.stripeCustomerId,
+      status: 'active',
+      limit: 1
+    });
+
+    if (subscriptions.data.length === 0) {
+      return res.status(400).json({ error: 'No active subscription' });
+    }
+
+    const sub = subscriptions.data[0];
+    await stripe.subscriptions.update(sub.id, { cancel_at_period_end: true });
+
+    logger.info('Subscription set to cancel at period end', { userId: req.user.id, subscriptionId: sub.id });
+    res.json({
+      message: 'Your subscription will be cancelled at the end of the billing period.',
+      endsAt: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null
+    });
+  } catch (error) {
+    logger.error('cancel subscription error', { error: error.message });
+    next(error);
+  }
 });
 
 /**
  * POST /api/payments/portal
- * DISABLED — app is free.
+ * Creates a Stripe billing portal session for the user. Returns { url }.
  */
-router.post('/portal', authenticate, (req, res) => {
-  res.status(410).json({ error: 'LoveRescue is now free. No billing portal required.', code: 'APP_IS_FREE' });
+router.post('/portal', authenticate, async (req, res, next) => {
+  try {
+    const user = await req.prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { stripeCustomerId: true }
+    });
+
+    if (!user || !user.stripeCustomerId) {
+      return res.status(400).json({ error: 'No customer record found' });
+    }
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: user.stripeCustomerId,
+      return_url: `${frontendUrl()}/settings`
+    });
+
+    res.json({ url: session.url });
+  } catch (error) {
+    logger.error('billing portal error', { error: error.message });
+    next(error);
+  }
 });
 
 module.exports = router;

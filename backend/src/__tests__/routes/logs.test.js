@@ -46,6 +46,7 @@ describe('Logs Routes', () => {
     firstName: 'John',
     lastName: 'Doe',
     subscriptionStatus: 'trial',
+    trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
     stripeCustomerId: null,
     isPlatformAdmin: false,
     createdAt: new Date()

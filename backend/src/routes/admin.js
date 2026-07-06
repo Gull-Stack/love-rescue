@@ -648,10 +648,14 @@ router.get('/subscriptions', async (req, res) => {
       }
     });
 
-    // MRR: the app is currently free (all users are force-premium), so
-    // revenue is $0. Do NOT fabricate a per-user estimate here — the admin
-    // UI must never show fictional revenue.
-    const estimatedMRR = 0;
+    // Estimated MRR: active paying users × the configured monthly price.
+    // Annual subscribers are counted at their monthly-equivalent. We cannot
+    // cheaply split premium users by monthly-vs-annual price here, so we apply
+    // the monthly price as the per-user estimate (the dominant/entry plan);
+    // this is an estimate surfaced as such, not billed revenue.
+    const monthlyPriceCents = parseInt(process.env.PLAN_PREMIUM_PRICE_CENTS || '4900', 10);
+    const monthlyPriceDollars = (Number.isFinite(monthlyPriceCents) ? monthlyPriceCents : 4900) / 100;
+    const estimatedMRR = Math.round(paidUsers * monthlyPriceDollars);
 
     res.json({
       subscriptions: {
@@ -662,8 +666,8 @@ router.get('/subscriptions', async (req, res) => {
         trialsExpiringSoon,
         stripeCustomers,
         estimatedMRR,
-        billingDisabled: true,
-        mrrNote: 'billing disabled — app is free; MRR is $0 by definition',
+        billingDisabled: false,
+        mrrNote: `estimate: ${paidUsers} active paid/premium users × $${monthlyPriceDollars}/mo`,
         recentPaidUsers
       }
     });

@@ -122,6 +122,7 @@ describe('authenticate', () => {
         lastName: true,
         role: true,
         subscriptionStatus: true,
+        trialEndsAt: true,
         stripeCustomerId: true,
         isPlatformAdmin: true,
         tokenVersion: true,
@@ -201,14 +202,15 @@ describe('authenticate', () => {
     expect(req.user.tokenVersion).toBeUndefined();
   });
 
-  test('sets req.user and calls next on valid token', async () => {
+  test('sets req.user with the REAL subscription status (no force-premium)', async () => {
+    const futureTrial = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
     const mockUser = {
       id: 'user-123',
       email: 'test@example.com',
       firstName: 'John',
       lastName: 'Doe',
       subscriptionStatus: 'trial',
-    isPlatformAdmin: false,
+      trialEndsAt: futureTrial,
       stripeCustomerId: 'cus_test',
       isPlatformAdmin: true,
       createdAt: new Date('2025-01-01')
@@ -220,8 +222,15 @@ describe('authenticate', () => {
 
     await authenticate(req, res, next);
 
-    // App is free — all users get upgraded to premium regardless of DB status
-    expect(req.user).toEqual({ ...mockUser, subscriptionStatus: 'premium' });
+    // The real DB status is preserved — no premium override.
+    expect(req.user).toEqual(mockUser);
+    expect(req.user.subscriptionStatus).toBe('trial');
+    // Entitlement is resolved and attached (self trial → entitled, no partner query).
+    expect(req.entitlement).toEqual(expect.objectContaining({
+      isEntitled: true,
+      isTrial: true,
+      source: 'self'
+    }));
     expect(next).toHaveBeenCalledTimes(1);
     expect(res.status).not.toHaveBeenCalled();
     expect(res.json).not.toHaveBeenCalled();
@@ -233,36 +242,63 @@ describe('authenticate', () => {
 // ---------------------------------------------------------------------------
 describe('requireSubscription', () => {
   let req, res, next;
+  const futureTrial = () => new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+  const pastTrial = () => new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   beforeEach(() => {
     req = createMockReq();
+    // Default: no active relationship (solo) so partner lookups resolve to null.
+    req.prisma.relationship = { findFirst: jest.fn().mockResolvedValue(null) };
     res = createMockRes();
     next = jest.fn();
   });
 
-  test('always calls next — app is fully free (no subscription enforcement)', async () => {
-    // No user, expired, trial, paid — all should pass through
+  test('401 when no authenticated user', async () => {
     await requireSubscription(req, res, next);
-    expect(next).toHaveBeenCalledTimes(1);
-    expect(res.status).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+  });
 
-    next.mockClear();
-    req.user = { id: 'user-1', subscriptionStatus: 'expired' };
+  test('402 SUBSCRIPTION_REQUIRED when not entitled (expired, no trial, no partner)', async () => {
+    req.user = { id: 'user-1', subscriptionStatus: 'expired', trialEndsAt: pastTrial() };
     await requireSubscription(req, res, next);
-    expect(next).toHaveBeenCalledTimes(1);
-    expect(res.status).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(402);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'SUBSCRIPTION_REQUIRED' }));
+    expect(next).not.toHaveBeenCalled();
+  });
 
-    next.mockClear();
-    req.user = { id: 'user-2', subscriptionStatus: 'trial' };
+  test('passes on a live trial', async () => {
+    req.user = { id: 'user-2', subscriptionStatus: 'trial', trialEndsAt: futureTrial() };
     await requireSubscription(req, res, next);
     expect(next).toHaveBeenCalledTimes(1);
     expect(res.status).not.toHaveBeenCalled();
+  });
 
-    next.mockClear();
-    req.user = { id: 'user-3', subscriptionStatus: 'premium' };
+  test('passes on a paid subscription', async () => {
+    req.user = { id: 'user-3', subscriptionStatus: 'paid' };
     await requireSubscription(req, res, next);
     expect(next).toHaveBeenCalledTimes(1);
-    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  test('passes when covered by an entitled partner', async () => {
+    req.user = { id: 'user-4', subscriptionStatus: 'expired', trialEndsAt: pastTrial() };
+    req.prisma.relationship.findFirst.mockResolvedValue({
+      user1Id: 'user-4',
+      user2Id: 'partner-1',
+      user1: { subscriptionStatus: 'expired', trialEndsAt: null },
+      user2: { subscriptionStatus: 'premium', trialEndsAt: null }
+    });
+    await requireSubscription(req, res, next);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(req.entitlement.coveredByPartner).toBe(true);
+  });
+
+  test('reuses a pre-resolved req.entitlement without querying', async () => {
+    req.user = { id: 'user-5', subscriptionStatus: 'expired' };
+    req.entitlement = { isEntitled: true, tier: 'paid' };
+    await requireSubscription(req, res, next);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(req.prisma.relationship.findFirst).not.toHaveBeenCalled();
   });
 });
 
@@ -274,24 +310,35 @@ describe('requirePremium', () => {
 
   beforeEach(() => {
     req = createMockReq();
+    req.prisma.relationship = { findFirst: jest.fn().mockResolvedValue(null) };
     res = createMockRes();
     next = jest.fn();
   });
 
-  test('always calls next — app is fully free (no premium enforcement)', async () => {
-    // No user, trial, premium — all should pass through
+  test('401 when no authenticated user', async () => {
     await requirePremium(req, res, next);
-    expect(next).toHaveBeenCalledTimes(1);
-    expect(res.status).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+  });
 
-    next.mockClear();
-    req.user = { id: 'user-1', subscriptionStatus: 'trial' };
+  test('402 SUBSCRIPTION_REQUIRED when not entitled at all', async () => {
+    req.user = { id: 'user-1', subscriptionStatus: 'expired', trialEndsAt: null };
     await requirePremium(req, res, next);
-    expect(next).toHaveBeenCalledTimes(1);
-    expect(res.status).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(402);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'SUBSCRIPTION_REQUIRED' }));
+    expect(next).not.toHaveBeenCalled();
+  });
 
-    next.mockClear();
-    req.user = { id: 'user-2', subscriptionStatus: 'premium' };
+  test('402 PREMIUM_REQUIRED when entitled only at paid tier', async () => {
+    req.user = { id: 'user-2', subscriptionStatus: 'paid' };
+    await requirePremium(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(402);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'PREMIUM_REQUIRED' }));
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('passes on a premium subscription', async () => {
+    req.user = { id: 'user-3', subscriptionStatus: 'premium' };
     await requirePremium(req, res, next);
     expect(next).toHaveBeenCalledTimes(1);
     expect(res.status).not.toHaveBeenCalled();

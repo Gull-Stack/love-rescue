@@ -154,6 +154,8 @@ model User {
   pushPlatform       String?            @map("push_platform") @db.VarChar(10) // ios, android, web
   subscriptionSource SubscriptionSource @default(NONE) @map("subscription_source")
   appleReceiptData   String?            @map("apple_receipt_data") @db.Text
+  appleExpiresAt     DateTime?          @map("apple_expires_at") // Apple auto-renewable subscription expiry from the validated receipt
+  subscriptionCurrentPeriodEnd DateTime? @map("subscription_current_period_end") // current billing period end (Stripe)
   metadata           Json?              @db.JsonB
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")

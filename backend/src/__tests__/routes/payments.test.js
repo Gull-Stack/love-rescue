@@ -18,7 +18,8 @@ const { sendEmail } = require('../../utils/email');
 
 // Mock Stripe before requiring the route
 const mockStripe = {
-  customers: { create: jest.fn(), retrieve: jest.fn() },
+  customers: { create: jest.fn(), retrieve: jest.fn(), update: jest.fn() },
+  prices: { retrieve: jest.fn() },
   checkout: { sessions: { create: jest.fn() } },
   subscriptions: { list: jest.fn(), update: jest.fn() },
   webhooks: { constructEvent: jest.fn() },
@@ -852,6 +853,185 @@ describe('Payments webhook hardening', () => {
         expect.stringMatching(/dunning email/i),
         expect.objectContaining({ userId })
       );
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ACTIVE: billing re-enabled — /plans, /create-checkout, /subscription.
+// ---------------------------------------------------------------------------
+describe('Payments billing (re-enabled)', () => {
+  let mockPrisma;
+  let app;
+  const userId = 'user-bill-1';
+
+  const authUser = {
+    id: userId,
+    email: 'buyer@example.com',
+    firstName: 'Bea',
+    lastName: 'Buyer',
+    role: 'user',
+    subscriptionStatus: 'trial',
+    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    stripeCustomerId: null,
+    isPlatformAdmin: false,
+    tokenVersion: 0,
+    createdAt: new Date('2025-01-01')
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.STRIPE_PREMIUM_PRICE_ID = 'price_premium_test';
+    process.env.STRIPE_ANNUAL_PRICE_ID = 'price_annual_test';
+    process.env.FRONTEND_URL = 'https://app.example.com';
+    process.env.TRIAL_DAYS = '14';
+    delete process.env.PLAN_PREMIUM_DISPLAY;
+    delete process.env.PLAN_ANNUAL_DISPLAY;
+
+    mockPrisma = {
+      user: {
+        // auth middleware findUnique + route findUnique both served here
+        findUnique: jest.fn().mockResolvedValue(authUser),
+        update: jest.fn().mockResolvedValue(authUser)
+      },
+      relationship: { findFirst: jest.fn().mockResolvedValue(null) }
+    };
+
+    app = createApp(mockPrisma);
+  });
+
+  function token() {
+    return generateToken(userId);
+  }
+
+  // ── GET /plans ────────────────────────────────────────────────────────────
+  describe('GET /plans', () => {
+    test('returns both tiers from Stripe with trialDays', async () => {
+      mockStripe.prices.retrieve.mockImplementation(async (id) => {
+        if (id === 'price_premium_test') {
+          return { id, unit_amount: 4900, currency: 'usd', recurring: { interval: 'month' } };
+        }
+        return { id, unit_amount: 49000, currency: 'usd', recurring: { interval: 'year' } };
+      });
+
+      const res = await request(app).get('/api/payments/plans');
+
+      expect(res.status).toBe(200);
+      expect(res.body.trialDays).toBe(14);
+      expect(res.body.plans).toHaveLength(2);
+
+      const premium = res.body.plans.find((p) => p.id === 'premium');
+      expect(premium).toEqual(expect.objectContaining({
+        id: 'premium',
+        interval: 'month',
+        amount: 4900,
+        currency: 'usd',
+        priceId: 'price_premium_test',
+        priceDisplay: '$49/mo'
+      }));
+
+      const annual = res.body.plans.find((p) => p.id === 'annual');
+      expect(annual).toEqual(expect.objectContaining({
+        id: 'annual', interval: 'year', amount: 49000, priceDisplay: '$490/yr'
+      }));
+    });
+
+    test('falls back to defaults when Stripe retrieve fails', async () => {
+      mockStripe.prices.retrieve.mockRejectedValue(new Error('no such price'));
+
+      const res = await request(app).get('/api/payments/plans');
+
+      expect(res.status).toBe(200);
+      const premium = res.body.plans.find((p) => p.id === 'premium');
+      expect(premium.amount).toBe(4900);
+      expect(premium.priceDisplay).toBe('$49/mo');
+    });
+  });
+
+  // ── POST /create-checkout ───────────────────────────────────────────────
+  describe('POST /create-checkout', () => {
+    test('creates a subscription session with {userId,tier} metadata + trial days', async () => {
+      mockStripe.customers.create.mockResolvedValue({ id: 'cus_new_1', metadata: { userId } });
+      mockStripe.checkout.sessions.create.mockResolvedValue({ id: 'cs_1', url: 'https://checkout.stripe.com/cs_1' });
+
+      const res = await request(app)
+        .post('/api/payments/create-checkout')
+        .set('Authorization', `Bearer ${token()}`)
+        .send({ tier: 'premium' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.url).toBe('https://checkout.stripe.com/cs_1');
+      expect(res.body.sessionId).toBe('cs_1');
+
+      // New customer created WITH metadata.userId, and persisted.
+      expect(mockStripe.customers.create).toHaveBeenCalledWith({
+        email: authUser.email,
+        metadata: { userId }
+      });
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { stripeCustomerId: 'cus_new_1' }
+      });
+
+      const params = mockStripe.checkout.sessions.create.mock.calls[0][0];
+      expect(params).toEqual(expect.objectContaining({
+        mode: 'subscription',
+        customer: 'cus_new_1',
+        line_items: [{ price: 'price_premium_test', quantity: 1 }],
+        metadata: { userId, tier: 'premium' }
+      }));
+      // Trial user with ~7 days left → trial_period_days passed to Stripe.
+      expect(params.subscription_data.trial_period_days).toBeGreaterThan(0);
+      expect(params.success_url).toContain('https://app.example.com');
+    });
+
+    test('annual tier uses the annual price id', async () => {
+      mockStripe.customers.create.mockResolvedValue({ id: 'cus_new_2', metadata: { userId } });
+      mockStripe.checkout.sessions.create.mockResolvedValue({ id: 'cs_2', url: 'u' });
+
+      await request(app)
+        .post('/api/payments/create-checkout')
+        .set('Authorization', `Bearer ${token()}`)
+        .send({ tier: 'annual' });
+
+      const params = mockStripe.checkout.sessions.create.mock.calls[0][0];
+      expect(params.line_items).toEqual([{ price: 'price_annual_test', quantity: 1 }]);
+      expect(params.metadata.tier).toBe('annual');
+    });
+
+    test('reuses existing customer and updates its metadata; no trial days when not on trial', async () => {
+      const paidUser = { ...authUser, subscriptionStatus: 'paid', trialEndsAt: null, stripeCustomerId: 'cus_existing' };
+      mockPrisma.user.findUnique.mockResolvedValue(paidUser);
+      mockStripe.checkout.sessions.create.mockResolvedValue({ id: 'cs_3', url: 'u' });
+
+      const res = await request(app)
+        .post('/api/payments/create-checkout')
+        .set('Authorization', `Bearer ${token()}`)
+        .send({ tier: 'premium' });
+
+      expect(res.status).toBe(200);
+      expect(mockStripe.customers.create).not.toHaveBeenCalled();
+      expect(mockStripe.customers.update).toHaveBeenCalledWith('cus_existing', { metadata: { userId } });
+      const params = mockStripe.checkout.sessions.create.mock.calls[0][0];
+      expect(params).not.toHaveProperty('subscription_data');
+    });
+  });
+
+  // ── GET /subscription ─────────────────────────────────────────────────────
+  describe('GET /subscription', () => {
+    test('returns the resolved trial shape', async () => {
+      const res = await request(app)
+        .get('/api/payments/subscription')
+        .set('Authorization', `Bearer ${token()}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual(expect.objectContaining({
+        status: 'trial',
+        isPremium: false,
+        tier: 'trial',
+        coveredByPartner: false
+      }));
+      expect(res.body.trialDaysRemaining).toBeGreaterThan(0);
     });
   });
 });

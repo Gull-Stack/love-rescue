@@ -72,6 +72,7 @@ function makeRoutePrisma() {
     lastName: 'Chen',
     role: 'user',
     subscriptionStatus: 'trial',
+    trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
     stripeCustomerId: null,
     isPlatformAdmin: false,
     tokenVersion: 0,

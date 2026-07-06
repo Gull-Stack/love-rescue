@@ -253,7 +253,9 @@ router.post('/signup', async (req, res, next) => {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Create user — app is free, all users get premium status
+    // Create user — new users start on a free trial (default 14 days).
+    const trialDays = parseInt(process.env.TRIAL_DAYS || '14', 10);
+    const trialEndsAt = new Date(Date.now() + (Number.isFinite(trialDays) ? trialDays : 14) * 24 * 60 * 60 * 1000);
     const user = await req.prisma.user.create({
       data: {
         email: email.toLowerCase(),
@@ -261,7 +263,8 @@ router.post('/signup', async (req, res, next) => {
         firstName,
         lastName,
         gender: gender || null,
-        subscriptionStatus: 'premium',
+        subscriptionStatus: 'trial',
+        trialEndsAt,
       },
       select: {
         id: true,
@@ -269,7 +272,8 @@ router.post('/signup', async (req, res, next) => {
         firstName: true,
         lastName: true,
         gender: true,
-        subscriptionStatus: true
+        subscriptionStatus: true,
+        trialEndsAt: true
       }
     });
 
