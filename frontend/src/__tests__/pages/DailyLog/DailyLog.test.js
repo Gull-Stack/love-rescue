@@ -272,12 +272,10 @@ describe('DailyLog', () => {
     });
   });
 
-  test('a failed save is retried and the check-in is not lost', async () => {
-    // NOTE: the auto-submit effect on the Done card resubmits as soon as a
-    // failed attempt resets the double-submit guard, so a transient failure
-    // recovers without user action. (Persistent failures retry in a loop —
-    // flagged as a source bug; see suite notes.) We assert the recovery
-    // behavior: first attempt fails, follow-up succeeds, nothing is lost.
+  test('a failed save shows an error and the manual Retry succeeds without losing the check-in', async () => {
+    // The auto-submit effect is gated on !error, so a failed save does NOT
+    // auto-resubmit in a loop — the user retries explicitly via the Retry
+    // button, and the payload survives the failure.
     logsApi.submitDaily
       .mockRejectedValueOnce({ response: { data: { error: 'Server exploded' } } })
       .mockResolvedValue({ data: { message: 'Daily log saved' } });
@@ -293,11 +291,19 @@ describe('DailyLog', () => {
       await new Promise((resolve) => setTimeout(resolve, 350));
     }
 
+    // First attempt fails and surfaces the error; no auto-resubmit loop.
     await waitFor(() => {
-      expect(screen.getByText('Done')).toBeInTheDocument();
+      expect(logsApi.submitDaily).toHaveBeenCalledTimes(1);
     });
-    expect(logsApi.submitDaily.mock.calls.length).toBeGreaterThanOrEqual(2);
-    // Every attempt carried the same full payload — the check-in survived the failure.
+    await waitFor(() => {
+      expect(screen.getByText(/Server exploded/i)).toBeInTheDocument();
+    });
+
+    // Manual retry succeeds with the same full payload.
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    await waitFor(() => {
+      expect(logsApi.submitDaily).toHaveBeenCalledTimes(2);
+    });
     expect(logsApi.submitDaily).toHaveBeenLastCalledWith(
       expect.objectContaining({ mood: 5, closenessScore: 5 })
     );

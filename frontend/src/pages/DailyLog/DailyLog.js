@@ -815,12 +815,15 @@ const DailyLog = () => {
     }
   }, [formData, selectedEmotions, gratitudeText, hasLoggedToday]);
 
-  // Auto-submit when reaching the DONE card
+  // Auto-submit when reaching the DONE card. Gated on !error so a failed
+  // save doesn't immediately auto-resubmit in a loop — after a failure the
+  // user retries explicitly via the Retry button (which calls handleSubmit
+  // directly and clears the error).
   useEffect(() => {
-    if (currentCard === 6 && !submitted && !saving) {
+    if (currentCard === 6 && !submitted && !saving && !error) {
       handleSubmit();
     }
-  }, [currentCard, submitted, saving, handleSubmit]);
+  }, [currentCard, submitted, saving, error, handleSubmit]);
 
   // Card navigation
   const goToCard = useCallback((target) => {

@@ -159,8 +159,13 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       const refreshToken = getRefreshToken();
-      
+
       if (!refreshToken) {
+        // Release the latch and fail any queued requests — otherwise every
+        // subsequent 401 queues behind a refresh that will never happen and
+        // hangs forever.
+        isRefreshing = false;
+        processQueue(error, null);
         clearTokens();
         if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
           window.location.href = '/login';
