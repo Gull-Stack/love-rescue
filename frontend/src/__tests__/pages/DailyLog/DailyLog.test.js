@@ -1,183 +1,305 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ThemeProvider } from '@mui/material/styles';
-import { MemoryRouter } from 'react-router-dom';
-import theme from '../../../theme';
+import { renderWithProviders } from '../../../testHelpers/renderWithProviders';
+import { createPartnerAuth } from '../../../testHelpers/mockAuthContext';
 
-jest.mock('../../../services/api', () => ({
-  __esModule: true,
-  default: { get: jest.fn(), post: jest.fn() },
-  logsApi: {
-    getPrompt: jest.fn(),
-    getDaily: jest.fn(),
-    submitDaily: jest.fn(),
-  },
+jest.mock('../../../contexts/AuthContext', () => ({
+  useAuth: jest.fn(),
 }));
 
-jest.mock('../../../components/common/DailyInsight', () => () => <div data-testid="daily-insight" />);
-jest.mock('../../../components/common/DailyVideo', () => () => <div data-testid="daily-video" />);
+jest.mock('../../../services/api', () =>
+  require('../../../testHelpers/mockApi').buildApiModuleMock()
+);
+
+jest.mock('../../../utils/haptics', () => ({
+  hapticLight: jest.fn(),
+  hapticMedium: jest.fn(),
+  hapticSuccess: jest.fn(),
+}));
+
+jest.mock('../../../utils/celebrate', () => ({
+  celebrate: jest.fn(),
+}));
+
+jest.mock('canvas-confetti', () => jest.fn());
+
+jest.mock('../../../hooks/usePushNotifications', () => ({
+  __esModule: true,
+  default: () => ({
+    isSupported: false,
+    isSubscribed: false,
+    subscribe: jest.fn(),
+  }),
+}));
 
 import DailyLog from '../../../pages/DailyLog/DailyLog';
-import { logsApi } from '../../../services/api';
+import { useAuth } from '../../../contexts/AuthContext';
+import { logsApi, streaksApi, gratitudeApi } from '../../../services/api';
+import { celebrate } from '../../../utils/celebrate';
 
 const mockPromptResponse = {
   data: {
-    prompt: {
-      id: 1,
-      title: 'Test',
-      prompt: 'What happened today?',
-      type: 'appreciation',
-    },
+    prompt: { id: 1, prompt: 'What happened today?', type: 'appreciation' },
     hasLoggedToday: false,
     todayLog: null,
   },
 };
 
-const mockSubmitResponse = {
+const mockStreak = {
   data: {
-    message: 'Daily log saved',
-    log: {},
+    currentStreak: 1,
+    longestStreak: 3,
+    xp: 50,
+    level: 1,
+    levelName: 'Relationship Rookie',
+    levelProgress: 10,
+    xpToNextLevel: 100,
+    streakAlive: true,
+    loggedToday: false,
   },
 };
 
-const renderComponent = () => {
-  return render(
-    <ThemeProvider theme={theme}>
-      <MemoryRouter>
-        <DailyLog />
-      </MemoryRouter>
-    </ThemeProvider>
-  );
+const renderPage = () => renderWithProviders(<DailyLog />);
+
+// The check-in is a 7-card swipe deck; simulate a left swipe (next card).
+const swipeLeft = (element) => {
+  fireEvent.touchStart(element, { touches: [{ clientX: 300, clientY: 200 }] });
+  fireEvent.touchEnd(element, { changedTouches: [{ clientX: 100, clientY: 200 }] });
+};
+
+const clickNext = async (name = /^next$/i) => {
+  fireEvent.click(screen.getByRole('button', { name }));
 };
 
 describe('DailyLog', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useAuth.mockReturnValue(createPartnerAuth());
     logsApi.getPrompt.mockResolvedValue(mockPromptResponse);
     logsApi.getDaily.mockRejectedValue(new Error('No log for today'));
-    logsApi.submitDaily.mockResolvedValue(mockSubmitResponse);
+    logsApi.submitDaily.mockResolvedValue({ data: { message: 'Daily log saved', log: {} } });
+    streaksApi.getStreak.mockResolvedValue(mockStreak);
+    gratitudeApi.submitEntry.mockResolvedValue({ data: {} });
   });
 
   test('shows loading spinner initially', () => {
     logsApi.getPrompt.mockReturnValue(new Promise(() => {}));
-    renderComponent();
+    renderPage();
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
 
-  test('renders "Daily Log" title', async () => {
-    renderComponent();
+  test('starts on the mood card', async () => {
+    renderPage();
     await waitFor(() => {
-      expect(screen.getByText('Daily Log')).toBeInTheDocument();
+      expect(screen.getByText('How are you feeling?')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/auto-advances after selection/i)).toBeInTheDocument();
+  });
+
+  test('swiping left advances to the connection card (uses partner name)', async () => {
+    const { container } = renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('How are you feeling?')).toBeInTheDocument();
+    });
+
+    swipeLeft(container.firstChild);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/how close did you feel to partner today\?/i)
+      ).toBeInTheDocument();
     });
   });
 
-  test('shows today\'s prompt', async () => {
-    renderComponent();
-    await waitFor(() => {
-      expect(screen.getByText('What happened today?')).toBeInTheDocument();
+  test('already logged today shows the done state with an edit escape hatch', async () => {
+    logsApi.getPrompt.mockResolvedValue({
+      data: {
+        prompt: { id: 1, prompt: 'x' },
+        hasLoggedToday: true,
+        todayLog: { positiveCount: 4, negativeCount: 1, mood: 7, closenessScore: 6 },
+      },
     });
-    expect(screen.getByText("Today's Prompt")).toBeInTheDocument();
-  });
+    renderPage();
 
-  test('renders positive interaction counter', async () => {
-    renderComponent();
     await waitFor(() => {
-      expect(screen.getByText('Positive Interactions')).toBeInTheDocument();
-    });
-  });
-
-  test('renders negative interaction counter', async () => {
-    renderComponent();
-    await waitFor(() => {
-      expect(screen.getByText('Negative Interactions')).toBeInTheDocument();
-    });
-  });
-
-  test('increment positive count on + click', async () => {
-    const user = userEvent.setup();
-    renderComponent();
-    await waitFor(() => {
-      expect(screen.getByText('Positive Interactions')).toBeInTheDocument();
+      expect(screen.getByText('Logged today')).toBeInTheDocument();
     });
 
-    // The positive count starts at 0, find the positive section's + button
-    // Positive section uses color="success" on the AddIcon button
-    const addButtons = screen.getAllByTestId('AddIcon');
-    // First AddIcon is in the positive section
-    const positiveAddButton = addButtons[0].closest('button');
-    await user.click(positiveAddButton);
+    fireEvent.click(screen.getByRole('button', { name: /edit today's log/i }));
 
-    // After clicking +, the positive count should be 1
-    // Look within the Interaction Counter card
     await waitFor(() => {
-      const headings = screen.getAllByRole('heading');
-      // The positive count is rendered as an h4 Typography
-      const countElements = screen.getAllByText('1');
-      expect(countElements.length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText('How are you feeling?')).toBeInTheDocument();
     });
   });
 
-  test('decrement positive count on - click does not go below 0', async () => {
-    const user = userEvent.setup();
-    renderComponent();
+  test('interaction counters increment and cannot go below zero', async () => {
+    const { container } = renderPage();
     await waitFor(() => {
-      expect(screen.getByText('Positive Interactions')).toBeInTheDocument();
+      expect(screen.getByText('How are you feeling?')).toBeInTheDocument();
     });
 
-    // The positive - button should be disabled when count is 0
-    const removeButtons = screen.getAllByTestId('RemoveIcon');
-    const positiveRemoveButton = removeButtons[0].closest('button');
-    expect(positiveRemoveButton).toBeDisabled();
+    // Mood → Connection → Interactions
+    swipeLeft(container.firstChild);
+    await waitFor(() => {
+      expect(screen.getByText(/how close did you feel/i)).toBeInTheDocument();
+    });
+    await clickNext();
+    await waitFor(() => {
+      expect(screen.getByText("Today's moments")).toBeInTheDocument();
+    });
+
+    const addPositive = screen.getByRole('button', { name: /add a positive moment/i });
+    const removePositive = screen.getByRole('button', { name: /remove one positive moment/i });
+    const removeNegative = screen.getByRole('button', { name: /remove one difficult moment/i });
+
+    expect(removePositive).toBeDisabled();
+    expect(removeNegative).toBeDisabled();
+
+    fireEvent.click(addPositive);
+    fireEvent.click(addPositive);
+
+    await waitFor(() => {
+      expect(screen.getByText('2')).toBeInTheDocument();
+    });
+    expect(removePositive).not.toBeDisabled();
   });
 
-  test('shows ratio display', async () => {
-    renderComponent();
+  test('completing the deck auto-submits the check-in with gratitude and emotions', async () => {
+    const { container } = renderPage();
     await waitFor(() => {
-      expect(screen.getByText('Your Ratio')).toBeInTheDocument();
-    });
-    // Initial state: 0 positive, 0 negative => ratio is '0'
-    expect(screen.getByText('0:1')).toBeInTheDocument();
-  });
-
-  test('saves log on submit', async () => {
-    const user = userEvent.setup();
-    renderComponent();
-    await waitFor(() => {
-      expect(screen.getByText('Daily Log')).toBeInTheDocument();
+      expect(screen.getByText('How are you feeling?')).toBeInTheDocument();
     });
 
-    const saveButton = screen.getByRole('button', { name: /save log/i });
-    await user.click(saveButton);
+    // 0 Mood → 1 Connection
+    swipeLeft(container.firstChild);
+    await waitFor(() => expect(screen.getByText(/how close did you feel/i)).toBeInTheDocument());
+    // 1 → 2 Interactions
+    await clickNext();
+    await waitFor(() => expect(screen.getByText("Today's moments")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /add a positive moment/i }));
+    // 2 → 3 Gratitude
+    await clickNext();
+    await waitFor(() =>
+      expect(screen.getByText(/one thing you appreciate about partner/i)).toBeInTheDocument()
+    );
+    await userEvent.type(
+      screen.getByPlaceholderText(/what did partner do that mattered\?/i),
+      'Made me coffee'
+    );
+    // 3 → 4 Emotions
+    await clickNext();
+    await waitFor(() => expect(screen.getByText('What did you feel?')).toBeInTheDocument());
+    // 4 → 5 Reflection (skip emotions)
+    fireEvent.click(screen.getByRole('button', { name: /^skip$/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/anything to remember about today\?/i)).toBeInTheDocument()
+    );
+    // 5 → 6 Done — auto-submit fires
+    fireEvent.click(screen.getByRole('button', { name: /finish/i }));
 
     await waitFor(() => {
       expect(logsApi.submitDaily).toHaveBeenCalledTimes(1);
     });
     expect(logsApi.submitDaily).toHaveBeenCalledWith(
       expect.objectContaining({
-        positiveCount: 0,
+        positiveCount: 1,
         negativeCount: 0,
-        journalEntry: '',
         closenessScore: 5,
         mood: 5,
+        emotions: [],
       })
     );
+
+    await waitFor(() => {
+      expect(screen.getByText('Done')).toBeInTheDocument();
+    });
+    expect(gratitudeApi.submitEntry).toHaveBeenCalledWith({ text: 'Made me coffee' });
+    expect(celebrate).toHaveBeenCalledWith({ big: true });
+    expect(screen.getAllByText(/day 1/i).length).toBeGreaterThanOrEqual(1);
   });
 
-  test('shows success message after save', async () => {
-    const user = userEvent.setup();
-    renderComponent();
-    await waitFor(() => {
-      expect(screen.getByText('Daily Log')).toBeInTheDocument();
+  test('crisis detection replaces the celebration with supportive resources', async () => {
+    logsApi.submitDaily.mockResolvedValue({
+      data: {
+        message: 'Daily log saved',
+        crisis: {
+          detected: true,
+          message: "It sounds like you're carrying something heavy right now.",
+          resources: [
+            {
+              name: '988 Suicide & Crisis Lifeline',
+              contact: 'Call or text 988',
+              available: '24/7',
+            },
+          ],
+        },
+      },
     });
 
-    const saveButton = screen.getByRole('button', { name: /save log/i });
-    await user.click(saveButton);
+    const { container } = renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('How are you feeling?')).toBeInTheDocument();
+    });
+
+    // Fast-forward the deck: swipe through every card to reach Done (index 6),
+    // giving the 300ms slide transition time to land between swipes.
+    for (let card = 0; card < 6; card += 1) {
+      swipeLeft(container.firstChild);
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    }
 
     await waitFor(() => {
-      expect(screen.getByText('Daily log saved successfully!')).toBeInTheDocument();
+      expect(logsApi.submitDaily).toHaveBeenCalled();
     });
-    // After saving, the button text should change to "Update Log"
-    expect(screen.getByRole('button', { name: /update log/i })).toBeInTheDocument();
+
+    // Crisis dialog appears with tappable resources; no confetti celebration.
+    await waitFor(() => {
+      expect(screen.getByText("Before you go — we're here")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText("It sounds like you're carrying something heavy right now.")
+    ).toBeInTheDocument();
+    expect(screen.getByText('988 Suicide & Crisis Lifeline')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /call 988/i })).toHaveAttribute('href', 'tel:988');
+    expect(celebrate).not.toHaveBeenCalled();
+
+    // Dismissing keeps the saved state
+    fireEvent.click(screen.getByRole('button', { name: /i'm safe — continue/i }));
+    await waitFor(() => {
+      expect(screen.queryByText("Before you go — we're here")).not.toBeInTheDocument();
+    });
+  });
+
+  test('a failed save is retried and the check-in is not lost', async () => {
+    // NOTE: the auto-submit effect on the Done card resubmits as soon as a
+    // failed attempt resets the double-submit guard, so a transient failure
+    // recovers without user action. (Persistent failures retry in a loop —
+    // flagged as a source bug; see suite notes.) We assert the recovery
+    // behavior: first attempt fails, follow-up succeeds, nothing is lost.
+    logsApi.submitDaily
+      .mockRejectedValueOnce({ response: { data: { error: 'Server exploded' } } })
+      .mockResolvedValue({ data: { message: 'Daily log saved' } });
+
+    const { container } = renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('How are you feeling?')).toBeInTheDocument();
+    });
+
+    for (let card = 0; card < 6; card += 1) {
+      swipeLeft(container.firstChild);
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    }
+
+    await waitFor(() => {
+      expect(screen.getByText('Done')).toBeInTheDocument();
+    });
+    expect(logsApi.submitDaily.mock.calls.length).toBeGreaterThanOrEqual(2);
+    // Every attempt carried the same full payload — the check-in survived the failure.
+    expect(logsApi.submitDaily).toHaveBeenLastCalledWith(
+      expect.objectContaining({ mood: 5, closenessScore: 5 })
+    );
   });
 });

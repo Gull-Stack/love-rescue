@@ -1,19 +1,9 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { ThemeProvider } from '@mui/material/styles';
-import { MemoryRouter } from 'react-router-dom';
-import theme from '../../../theme';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import Dashboard from '../../../pages/Dashboard/Dashboard';
 import { useAuth } from '../../../contexts/AuthContext';
-import api, {
-  logsApi,
-  matchupApi,
-  strategiesApi,
-  assessmentsApi,
-  meetingsApi,
-  paymentsApi,
-} from '../../../services/api';
+import { renderWithProviders } from '../../../testHelpers/renderWithProviders';
+import { createAuthValue } from '../../../testHelpers/mockAuthContext';
 
 jest.mock('../../../contexts/AuthContext', () => ({
   useAuth: jest.fn(),
@@ -25,300 +15,192 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
-jest.mock('../../../services/api', () => ({
-  __esModule: true,
-  default: { get: jest.fn(), post: jest.fn() },
-  logsApi: { getPrompt: jest.fn(), getStats: jest.fn() },
-  matchupApi: { getCurrent: jest.fn() },
-  strategiesApi: { getCurrent: jest.fn() },
-  assessmentsApi: { getResults: jest.fn() },
-  meetingsApi: { getUpcoming: jest.fn() },
-  paymentsApi: { getSubscription: jest.fn() },
+jest.mock('../../../services/api', () =>
+  require('../../../testHelpers/mockApi').buildApiModuleMock()
+);
+
+jest.mock('../../../utils/celebrate', () => ({
+  celebrate: jest.fn(),
 }));
 
-jest.mock('../../../components/common/DailyInsight', () => () => (
-  <div data-testid="daily-insight">DailyInsight</div>
-));
-jest.mock('../../../components/common/DailyVideo', () => () => (
-  <div data-testid="daily-video">DailyVideo</div>
-));
+import {
+  logsApi,
+  matchupApi,
+  strategiesApi,
+  assessmentsApi,
+  meetingsApi,
+  paymentsApi,
+  gratitudeApi,
+  streaksApi,
+  progressRingsApi,
+  realTalkApi,
+  insightsApi,
+} from '../../../services/api';
 
-const renderWithProviders = (ui, { route = '/' } = {}) => {
-  return render(
-    <ThemeProvider theme={theme}>
-      <MemoryRouter initialEntries={[route]}>
-        {ui}
-      </MemoryRouter>
-    </ThemeProvider>
-  );
+const twoCompleted = {
+  completed: [
+    { type: 'attachment', score: { style: 'secure' } },
+    { type: 'personality', score: { type: 'INFJ' } },
+  ],
+  pending: [
+    'love_language', 'human_needs', 'gottman_checkup', 'emotional_intelligence',
+    'conflict_style', 'differentiation', 'hormonal_health', 'physical_vitality',
+  ],
 };
 
-// Default mock data
-const mockPromptData = {
-  data: {
-    prompt: { prompt: 'What made you smile about your partner today?' },
-    hasLoggedToday: false,
-  },
+const setupDefaultMocks = ({ assessments = twoCompleted, hasLoggedToday = false } = {}) => {
+  logsApi.getPrompt.mockResolvedValue({
+    data: { prompt: { prompt: 'What made you smile today?' }, hasLoggedToday },
+  });
+  logsApi.getStats.mockResolvedValue({ data: { stats: { avgRatio: 3.5, daysLogged: 5 } } });
+  assessmentsApi.getResults.mockResolvedValue({ data: assessments });
+  meetingsApi.getUpcoming.mockResolvedValue({ data: { meetings: [] } });
+  paymentsApi.getSubscription.mockResolvedValue({ data: null });
+  gratitudeApi.getToday.mockResolvedValue({ data: { entry: null } });
+  gratitudeApi.getStreak.mockResolvedValue({
+    data: { currentStreak: 0, longestStreak: 0, totalEntries: 0 },
+  });
+  gratitudeApi.getLoveNote.mockResolvedValue({ data: { loveNote: null } });
+  streaksApi.getStreak.mockResolvedValue({ data: { currentStreak: 0 } });
+  progressRingsApi.get.mockResolvedValue({ data: null });
+  realTalkApi.list.mockResolvedValue({ data: { pagination: { total: 0 } } });
+  strategiesApi.getCurrent.mockResolvedValue({ data: { strategy: null } });
+  matchupApi.getCurrent.mockResolvedValue({ data: { matchup: null } });
+  insightsApi.getDaily.mockRejectedValue(new Error('no insight'));
 };
 
-const mockStatsData = {
-  data: {
-    stats: {
-      avgRatio: 3.5,
-      daysLogged: 5,
-      trend: 'improving',
-    },
-  },
+const failAllMocks = () => {
+  const reject = () => Promise.reject(new Error('offline'));
+  [
+    logsApi.getPrompt, logsApi.getStats, assessmentsApi.getResults,
+    meetingsApi.getUpcoming, paymentsApi.getSubscription, gratitudeApi.getToday,
+    gratitudeApi.getStreak, gratitudeApi.getLoveNote, streaksApi.getStreak,
+    progressRingsApi.get, realTalkApi.list, strategiesApi.getCurrent,
+    matchupApi.getCurrent,
+  ].forEach((fn) => fn.mockImplementation(reject));
+  insightsApi.getDaily.mockRejectedValue(new Error('offline'));
 };
 
-const mockAssessmentsData = {
-  data: {
-    completed: ['attachment', 'communication'],
-    pending: ['conflict', 'values'],
-    allCompleted: false,
-  },
-};
-
-const mockMeetingsData = {
-  data: {
-    meetings: [],
-  },
-};
-
-const mockSubscriptionData = {
-  data: {
-    isPremium: false,
-    status: 'trial',
-  },
-};
-
-const mockMatchupData = {
-  data: {
-    matchup: {
-      score: 72,
-      alignments: ['communication', 'values'],
-      misses: ['conflict'],
-    },
-  },
-};
-
-const mockStrategyData = {
-  data: {
-    strategy: {
-      week: 3,
-      progress: 60,
-      dailyActivities: {
-        monday: ['Log 3 positive interactions'],
-        tuesday: ['Ask an open-ended question'],
-        wednesday: ['Express appreciation'],
-        thursday: ['Log interaction ratio'],
-        friday: ['Plan a meaningful activity'],
-        saturday: ['Spend 20 minutes together'],
-        sunday: ['Reflect on the week'],
-      },
-      weeklyGoals: [
-        'Practice active listening daily',
-        'Schedule one date night',
-        'Share one appreciation each day',
-      ],
-    },
-  },
-};
-
-const setupDefaultMocks = () => {
-  logsApi.getPrompt.mockResolvedValue(mockPromptData);
-  logsApi.getStats.mockResolvedValue(mockStatsData);
-  assessmentsApi.getResults.mockResolvedValue(mockAssessmentsData);
-  meetingsApi.getUpcoming.mockResolvedValue(mockMeetingsData);
-  paymentsApi.getSubscription.mockResolvedValue(mockSubscriptionData);
-  matchupApi.getCurrent.mockResolvedValue(mockMatchupData);
-  strategiesApi.getCurrent.mockResolvedValue(mockStrategyData);
-};
+const renderPage = () => renderWithProviders(<Dashboard />);
 
 describe('Dashboard', () => {
-  const mockInvitePartner = jest.fn();
-
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.clear();
+    useAuth.mockReturnValue(createAuthValue());
     setupDefaultMocks();
-    useAuth.mockReturnValue({
-      user: { id: 'user-1', firstName: 'Test', lastName: 'User', email: 'test@example.com' },
-      relationship: { id: 'rel-1', hasPartner: false },
-      invitePartner: mockInvitePartner,
-    });
   });
 
-  test('shows loading spinner initially', () => {
-    // Make API calls hang so loading stays visible
+  test('shows layout skeleton while data loads', () => {
     logsApi.getPrompt.mockImplementation(() => new Promise(() => {}));
     logsApi.getStats.mockImplementation(() => new Promise(() => {}));
-    assessmentsApi.getResults.mockImplementation(() => new Promise(() => {}));
-    meetingsApi.getUpcoming.mockImplementation(() => new Promise(() => {}));
-    paymentsApi.getSubscription.mockImplementation(() => new Promise(() => {}));
 
-    renderWithProviders(<Dashboard />);
+    const { container } = renderPage();
 
-    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    expect(container.querySelectorAll('.MuiSkeleton-root').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Your progress')).not.toBeInTheDocument();
   });
 
-  test('renders welcome message with user name', async () => {
-    renderWithProviders(<Dashboard />);
+  test('renders the relationship-health hero with the checkup invite when no score exists', async () => {
+    renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText(/welcome, test!/i)).toBeInTheDocument();
+      expect(screen.getByText('See where things stand')).toBeInTheDocument();
     });
+    expect(screen.getByRole('button', { name: /take the checkup/i })).toBeInTheDocument();
   });
 
-  test('shows partner invite alert when no partner', async () => {
-    renderWithProviders(<Dashboard />);
+  test('continue card points at the exact next step (finish assessments)', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Your progress')).toBeInTheDocument();
+    });
+    // 2 of 3 done → one more to unlock the plan
+    const journeyCard = screen.getByText('Your progress').closest('.MuiCard-root');
+    expect(
+      within(journeyCard).getByText(/finish your assessments — 1 to go/i)
+    ).toBeInTheDocument();
+
+    fireEvent.click(within(journeyCard).getByRole('button', { name: /continue/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/assessments');
+  });
+
+  test('hero action card mirrors the assessments-remaining state', async () => {
+    renderPage();
 
     await waitFor(() => {
       expect(
-        screen.getByText(/your partner hasn't joined yet/i)
+        screen.getByText(/1 more assessment and your personalized plan unlocks/i)
       ).toBeInTheDocument();
     });
-
-    const inviteButtons = screen.getAllByRole('button', { name: /invite partner/i });
-    expect(inviteButtons.length).toBeGreaterThanOrEqual(1);
   });
 
-  test('shows daily prompt card', async () => {
-    renderWithProviders(<Dashboard />);
+  test('shows the "How Love Rescue works" roadmap for early users', async () => {
+    renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("Today's Prompt")).toBeInTheDocument();
+      expect(screen.getByText('How Love Rescue works')).toBeInTheDocument();
     });
-
-    expect(
-      screen.getByText('What made you smile about your partner today?')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Take a few quick assessments')).toBeInTheDocument();
+    expect(screen.getByText('Get your personalized weekly plan')).toBeInTheDocument();
   });
 
-  test('shows assessment progress card', async () => {
-    renderWithProviders(<Dashboard />);
+  test('renders completed assessment result cards with score chips', async () => {
+    renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Assessments')).toBeInTheDocument();
+      expect(screen.getByText('secure')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('2/4')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /continue assessments/i })).toBeInTheDocument();
+    expect(screen.getByText('INFJ')).toBeInTheDocument();
   });
 
-  test('shows matchup score when available', async () => {
-    useAuth.mockReturnValue({
-      user: { id: 'user-1', firstName: 'Test', lastName: 'User', email: 'test@example.com' },
-      relationship: { id: 'rel-1', hasPartner: true },
-      invitePartner: mockInvitePartner,
-    });
-
-    renderWithProviders(<Dashboard />);
-
-    await waitFor(() => {
-      expect(screen.getByText('72%')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText(/2 alignments/i)).toBeInTheDocument();
-    expect(screen.getByText(/1 areas to work on/i)).toBeInTheDocument();
-  });
-
-  test('shows strategy hero when active', async () => {
-    useAuth.mockReturnValue({
-      user: { id: 'user-1', firstName: 'Test', lastName: 'User', email: 'test@example.com' },
-      relationship: { id: 'rel-1', hasPartner: true },
-      invitePartner: mockInvitePartner,
-    });
-
-    renderWithProviders(<Dashboard />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/your strategy plan/i)).toBeInTheDocument();
-    });
-
-    expect(screen.getByText(/week 3 of 6/i)).toBeInTheDocument();
-    expect(screen.getByText('60%')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /view full strategy/i })).toBeInTheDocument();
-  });
-
-  test('shows strategy CTA when no strategy exists', async () => {
-    strategiesApi.getCurrent.mockResolvedValue({ data: { strategy: null } });
-
-    renderWithProviders(<Dashboard />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/generate your personalized strategy/i)).toBeInTheDocument();
-    });
-
-    expect(screen.getByRole('button', { name: /get started/i })).toBeInTheDocument();
-  });
-
-  test('shows stats card with ratio and days logged', async () => {
-    renderWithProviders(<Dashboard />);
-
-    await waitFor(() => {
-      expect(screen.getByText('This Week')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText('3.5:1')).toBeInTheDocument();
-    expect(screen.getByText('5')).toBeInTheDocument();
-    expect(screen.getByText('Avg Ratio')).toBeInTheDocument();
-    expect(screen.getByText('Days Logged')).toBeInTheDocument();
-  });
-
-  test('invite button creates invite link', async () => {
-    mockInvitePartner.mockResolvedValueOnce({
-      inviteLink: 'http://localhost:3000/join/ABC123',
-      inviteCode: 'ABC123',
-    });
-
-    renderWithProviders(<Dashboard />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/your partner hasn't joined yet/i)).toBeInTheDocument();
-    });
-
-    const inviteButtons = screen.getAllByRole('button', { name: /invite partner/i });
-    fireEvent.click(inviteButtons[0]);
-
-    await waitFor(() => {
-      expect(screen.getByText('http://localhost:3000/join/ABC123')).toBeInTheDocument();
-    });
-
-    expect(mockInvitePartner).toHaveBeenCalled();
-  });
-
-  test('shows "Completed" chip when logged today', async () => {
-    logsApi.getPrompt.mockResolvedValue({
-      data: {
-        prompt: { prompt: 'What made you smile about your partner today?' },
-        hasLoggedToday: true,
+  test('after the plan unlocks, the next step becomes the daily check-in', async () => {
+    setupDefaultMocks({
+      assessments: {
+        completed: [
+          { type: 'attachment', score: { style: 'secure' } },
+          { type: 'personality', score: { type: 'INFJ' } },
+          { type: 'love_language', score: { primary: 'quality_time' } },
+        ],
+        pending: ['human_needs'],
       },
+      hasLoggedToday: false,
     });
-
-    renderWithProviders(<Dashboard />);
+    renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Completed')).toBeInTheDocument();
+      expect(screen.getByText(/do today's check-in/i)).toBeInTheDocument();
     });
-  });
-
-  test('shows meetings card', async () => {
-    renderWithProviders(<Dashboard />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Mediated Meetings')).toBeInTheDocument();
-    });
-  });
-
-  test('navigates to daily log on prompt button click', async () => {
-    renderWithProviders(<Dashboard />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Today's Prompt")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /log now/i }));
-
+    // ActionCard's check-in CTA routes to /daily
+    fireEvent.click(screen.getByRole('button', { name: /check in \(~45 sec\)/i }));
     expect(mockNavigate).toHaveBeenCalledWith('/daily');
+  });
+
+  test('shows a retry banner instead of a silent blank dashboard when loading fails', async () => {
+    failAllMocks();
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText(/some things didn't load/i)).toBeInTheDocument();
+    });
+
+    // Retry re-fires the dashboard queries
+    setupDefaultMocks();
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/some things didn't load/i)).not.toBeInTheDocument();
+    });
+    expect(logsApi.getPrompt.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('persists the derived user state for Layout\'s dynamic nav', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Your progress')).toBeInTheDocument();
+    });
+    expect(localStorage.getItem('lr_user_state')).toBe('DISCOVERING');
   });
 });
