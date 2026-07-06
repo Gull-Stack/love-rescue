@@ -174,7 +174,7 @@ const navLinks = [
   { label: 'Programs', href: '#programs' },
   { label: 'How It Works', href: '#how-it-works' },
   { label: 'Results', href: '#results' },
-  { label: 'Free Access', href: '#free-access' },
+  { label: 'Pricing', href: '#pricing' },
   { label: 'Blog', href: '#blog' },
 ];
 
@@ -488,7 +488,7 @@ const Landing = () => {
         >
           The only relationship platform that combines clinical assessments, daily micro-coaching,
           and guided facilitated meetings to help couples build lasting connection.
-          Free. No credit card, no subscription.
+          Start with a 14-day free trial — no card required.
         </Typography>
 
         {/* CTA buttons */}
@@ -516,7 +516,7 @@ const Landing = () => {
               transition: 'all 0.3s ease',
             }}
           >
-            Get Started — It's Free
+            Start Your Free Trial
           </Button>
           <Button
             variant="outlined"
@@ -549,7 +549,7 @@ const Landing = () => {
             flexWrap: 'wrap',
           }}
         >
-          {['Based on Gottman Research', 'HIPAA Compliant', '100% Free', 'No Credit Card Required'].map(
+          {['Based on Gottman Research', 'HIPAA Compliant', '14-Day Free Trial', 'No Card to Start'].map(
             (item) => (
               <Box key={item} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <CheckCircleIcon sx={{ color: ACCENT_TEAL, fontSize: 16 }} />
@@ -1084,10 +1084,126 @@ const Landing = () => {
     </Box>
   );
 
-  // ── Free Access (the app is fully free — no tiers, no trials) ──
-  const FreeAccessSection = (
+  // ── Pricing ──
+  // NOTE: Displayed prices are defaults only. Live amounts are config-driven and
+  // come from Stripe (STRIPE_PREMIUM_PRICE_ID / STRIPE_ANNUAL_PRICE_ID via
+  // GET /api/payments/plans). These must match the Stripe dashboard prices:
+  // Premium $49/mo, Annual $490/yr.
+  const PRICING_FEATURES = [
+    'Scientific Assessments',
+    'Matchup Compatibility Analysis',
+    'Smart Strategy Plans',
+    'Guided Video Course (98 days)',
+    'Daily Personalized Insights',
+    'Weekly & Monthly Progress Reports',
+    'Guided Real Talk Conversations',
+    'Weekly Mediated Meetings (video)',
+    'Progress Tracking & Streaks',
+    'Partner Sync — one seat covers both',
+    'Therapist Connection & Integration',
+  ];
+
+  const renderPricingCard = ({ tier, price, per, note, badge, features, cta, featured }) => (
+    <Card
+      sx={{
+        background: featured
+          ? 'linear-gradient(135deg, rgba(224,138,60,0.16) 0%, rgba(14,159,142,0.12) 100%)'
+          : 'linear-gradient(135deg, rgba(224,138,60,0.10) 0%, rgba(14,159,142,0.08) 100%)',
+        border: featured ? '1px solid rgba(224,138,60,0.6)' : '1px solid rgba(224,138,60,0.35)',
+        borderRadius: 4,
+        height: '100%',
+        position: 'relative',
+        overflow: 'visible',
+      }}
+    >
+      <Chip
+        label={badge}
+        sx={{
+          position: 'absolute',
+          top: -14,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: ACCENT_GRADIENT,
+          color: '#fff',
+          fontWeight: 700,
+          fontSize: '0.7rem',
+          letterSpacing: '0.1em',
+        }}
+      />
+      <CardContent sx={{ p: 4 }}>
+        <Typography
+          sx={{
+            background: ACCENT_GRADIENT,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            fontWeight: 600,
+            fontSize: '0.85rem',
+            mb: 1,
+            letterSpacing: '0.1em',
+          }}
+        >
+          {tier}
+        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1 }}>
+          <Typography sx={{ color: '#fff', fontSize: '3.5rem', fontWeight: 800, lineHeight: 1 }}>
+            {price}
+          </Typography>
+          <Typography sx={{ color: 'rgba(255,255,255,0.4)', ml: 1, fontSize: '1rem' }}>
+            {per}
+          </Typography>
+        </Box>
+        <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', mb: 3 }}>
+          {note}
+        </Typography>
+        <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', mb: 3 }} />
+        {features.map((feature) => (
+          <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+            <CheckCircleIcon sx={{ color: ACCENT_TEAL, fontSize: 18 }} />
+            <Typography sx={{ color: 'rgba(255,255,255,0.88)', fontSize: '0.9rem' }}>
+              {feature}
+            </Typography>
+          </Box>
+        ))}
+        <Button
+          fullWidth
+          variant={featured ? 'contained' : 'outlined'}
+          size="large"
+          onClick={() => navigate('/signup')}
+          sx={{
+            mt: 3,
+            py: 1.5,
+            fontWeight: 700,
+            borderRadius: '50px',
+            ...(featured
+              ? {
+                  background: ACCENT_GRADIENT,
+                  boxShadow: '0 4px 20px rgba(224,138,60,0.3)',
+                  '&:hover': {
+                    background: ACCENT_GRADIENT_HOVER,
+                    boxShadow: '0 6px 30px rgba(224,138,60,0.4)',
+                  },
+                }
+              : {
+                  borderColor: 'rgba(224,138,60,0.6)',
+                  color: '#fff',
+                  '&:hover': { borderColor: ACCENT_AMBER, bgcolor: 'rgba(224,138,60,0.08)' },
+                }),
+          }}
+        >
+          {cta}
+        </Button>
+        <Typography
+          sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem', textAlign: 'center', mt: 2 }}
+        >
+          14-day free trial · No card required to start · Cancel anytime
+        </Typography>
+      </CardContent>
+    </Card>
+  );
+
+  const PricingSection = (
     <Box
-      id="free-access"
+      id="pricing"
       sx={{
         py: { xs: 8, md: 12 },
         background: `linear-gradient(180deg, ${DARK_BG_3} 0%, ${DARK_BG} 100%)`,
@@ -1096,7 +1212,7 @@ const Landing = () => {
       <Container maxWidth="md">
         <Box sx={{ textAlign: 'center', mb: 8 }}>
           <Chip
-            label="FREE FOR EVERY COUPLE"
+            label="SIMPLE, HONEST PRICING"
             sx={{
               mb: 2,
               bgcolor: 'rgba(224,138,60,0.15)',
@@ -1126,127 +1242,47 @@ const Landing = () => {
                 WebkitTextFillColor: 'transparent',
               }}
             >
-              Completely Free.
+              One Simple Price.
             </Box>
           </Typography>
           <Typography
             sx={{
               color: 'rgba(255,255,255,0.72)',
               fontSize: '1.05rem',
-              maxWidth: '500px',
+              maxWidth: '520px',
               mx: 'auto',
               fontWeight: 300,
             }}
           >
-            Free. No credit card, no subscription. A stronger marriage shouldn't
-            have a paywall — everything below is included for every couple.
+            Start with a 14-day free trial — no credit card required. One subscription
+            covers both partners. Cancel anytime.
           </Typography>
         </Box>
 
-        <Grid container spacing={4} justifyContent="center">
-          <Grid item xs={12} sm={10} md={8}>
-            <Card
-              sx={{
-                background: 'linear-gradient(135deg, rgba(224,138,60,0.10) 0%, rgba(14,159,142,0.08) 100%)',
-                border: '1px solid rgba(224,138,60,0.35)',
-                borderRadius: 4,
-                height: '100%',
-                position: 'relative',
-                overflow: 'visible',
-              }}
-            >
-              {/* Free badge */}
-              <Chip
-                label="EVERYTHING INCLUDED"
-                sx={{
-                  position: 'absolute',
-                  top: -14,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  background: ACCENT_GRADIENT,
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: '0.7rem',
-                  letterSpacing: '0.1em',
-                }}
-              />
-              <CardContent sx={{ p: 4 }}>
-                <Typography
-                  sx={{
-                    background: ACCENT_GRADIENT,
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    fontWeight: 600,
-                    fontSize: '0.85rem',
-                    mb: 1,
-                    letterSpacing: '0.1em',
-                  }}
-                >
-                  LOVE RESCUE
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1 }}>
-                  <Typography sx={{ color: '#fff', fontSize: '3.5rem', fontWeight: 800, lineHeight: 1 }}>
-                    $0
-                  </Typography>
-                  <Typography sx={{ color: 'rgba(255,255,255,0.4)', ml: 1, fontSize: '1rem' }}>
-                    forever
-                  </Typography>
-                </Box>
-                <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', mb: 3 }}>
-                  for both partners
-                </Typography>
-                <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', mb: 3 }} />
-                {[
-                  'Scientific Assessments',
-                  'Daily Personalized Insights',
-                  'Curated Video Course (98 days)',
-                  'Matchup Compatibility Analysis',
-                  'Smart Strategy Plans',
-                  'Weekly & Monthly Reports',
-                  'Daily Interaction Logging',
-                  'Weekly Mediated Meetings',
-                  'Calendar Integration',
-                  'Therapist Integration',
-                ].map((feature) => (
-                  <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-                    <CheckCircleIcon sx={{ color: ACCENT_TEAL, fontSize: 18 }} />
-                    <Typography sx={{ color: 'rgba(255,255,255,0.88)', fontSize: '0.9rem' }}>
-                      {feature}
-                    </Typography>
-                  </Box>
-                ))}
-                <Button
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  onClick={() => navigate('/signup')}
-                  sx={{
-                    mt: 3,
-                    background: ACCENT_GRADIENT,
-                    py: 1.5,
-                    fontWeight: 700,
-                    borderRadius: '50px',
-                    boxShadow: '0 4px 20px rgba(224,138,60,0.3)',
-                    '&:hover': {
-                      background: ACCENT_GRADIENT_HOVER,
-                      boxShadow: '0 6px 30px rgba(224,138,60,0.4)',
-                    },
-                  }}
-                >
-                  Create Your Free Account
-                </Button>
-                <Typography
-                  sx={{
-                    color: 'rgba(255,255,255,0.6)',
-                    fontSize: '0.8rem',
-                    textAlign: 'center',
-                    mt: 2,
-                  }}
-                >
-                  No credit card. No subscription. No locked features.
-                </Typography>
-              </CardContent>
-            </Card>
+        <Grid container spacing={4} justifyContent="center" alignItems="stretch">
+          <Grid item xs={12} sm={6}>
+            {renderPricingCard({
+              tier: 'PREMIUM — MONTHLY',
+              price: '$49',
+              per: '/month',
+              note: '14-day free trial — no card required to start',
+              badge: 'MOST FLEXIBLE',
+              features: PRICING_FEATURES,
+              cta: 'Start 14-Day Free Trial',
+              featured: false,
+            })}
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            {renderPricingCard({
+              tier: 'ANNUAL — BEST VALUE',
+              price: '$490',
+              per: '/year',
+              note: '≈ 2 months free vs. monthly · 14-day free trial',
+              badge: 'BEST VALUE',
+              features: ['Everything in Premium', 'Pay for 10 months, get 12', ...PRICING_FEATURES],
+              cta: 'Start 14-Day Free Trial',
+              featured: true,
+            })}
           </Grid>
         </Grid>
       </Container>
@@ -1325,10 +1361,10 @@ const Landing = () => {
             transition: 'all 0.3s ease',
           }}
         >
-          Get Started — It's Free
+          Start Your 14-Day Free Trial
         </Button>
         <Typography sx={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.85rem', mt: 2 }}>
-          Free. No credit card, no subscription.
+          14-day free trial. No card required to start. Cancel anytime.
         </Typography>
       </Container>
     </Box>
@@ -1520,7 +1556,7 @@ const Landing = () => {
       {HowItWorks}
       {VideoSpotlight}
       {TestimonialsSection}
-      {FreeAccessSection}
+      {PricingSection}
       {FinalCTA}
       {Footer}
     </Box>

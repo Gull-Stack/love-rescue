@@ -985,7 +985,7 @@
 
 <!-- ═══════════ ANNOUNCEMENT BAR ═══════════ -->
 <div class="announcement-bar" id="announcementBar">
-  <span>🚀 <strong>11 world-class experts. One custom strategy. $0 to start.</strong> The program traditional therapy wishes it was.</span>
+  <span>🚀 <strong>11 world-class experts. One custom strategy. 14-day free trial.</strong> The program traditional therapy wishes it was.</span>
   <a href="/start">Start Free →</a>
   <button class="close-announcement" onclick="document.getElementById('announcementBar').style.display='none';document.body.classList.remove('has-announcement');" aria-label="Close">&times;</button>
 </div>
@@ -1002,7 +1002,7 @@
       <a href="/services/couples-therapy">Couples Therapy</a>
       <a href="/services/marriage-counseling">Marriage Counseling</a>
       <a href="/blog/">Blog</a>
-      <a href="#pricing">Free Access</a>
+      <a href="#pricing">Pricing</a>
     </nav>
     <div class="header-cta">
       <button class="btn-login" onclick="window.location.href='/login'">Log In</button>
@@ -1024,7 +1024,7 @@
   <a href="/services/couples-therapy">Couples Therapy</a>
   <a href="/services/marriage-counseling">Marriage Counseling</a>
   <a href="/blog/">Blog</a>
-  <a href="#pricing">Free Access</a>
+  <a href="#pricing">Pricing</a>
   <a href="/login">Log In</a>
   <a href="/start" class="btn btn-primary">Start Free</a>
 </div>
@@ -1075,7 +1075,7 @@
       <div><div class="stat-value">11+</div><div class="stat-label">proven frameworks, distilled into one plan you can actually follow</div></div>
       <div><div class="stat-value">14</div><div class="stat-label">weeks of structured steps — you always know what's next</div></div>
       <div><div class="stat-value">98</div><div class="stat-label">days of specific actions, not vague advice on how to feel</div></div>
-      <div><div class="stat-value">$0</div><div class="stat-label">to start — see if it's working before you pay a cent</div></div>
+      <div><div class="stat-value">14</div><div class="stat-label">days free to try everything — no card required to start</div></div>
     </div>
   </div>
 </section>
@@ -1155,7 +1155,7 @@
       <div class="villain-card fade-up">
         <h3>💸 Years &amp; Thousands — Gone</h3>
         <p class="villain-desc">The average couple spends $150-$300 per session, 2-4x per month, for months or years — with zero measurable progress. No weekly plan. No skills. Just talking in circles while the clock runs and the bill grows.</p>
-        <p class="villain-hope">Love Rescue: the complete program — every assessment, insight, and expert framework — free.</p>
+        <p class="villain-hope">Love Rescue: the complete program — every assessment, insight, and expert framework — for $49/mo that covers both of you. Start free for 14 days.</p>
       </div>
       <div class="villain-card fade-up fade-up-delay-1">
         <h3>🧭 No Strategy. No Map. No Destination.</h3>
@@ -1186,7 +1186,7 @@
       <div class="comparison-row">
         <div class="comparison-cell label">Cost</div>
         <div class="comparison-cell bad">$200-300/session</div>
-        <div class="comparison-cell good">Free — every feature</div>
+        <div class="comparison-cell good">$49/mo — covers both partners</div>
       </div>
       <div class="comparison-row">
         <div class="comparison-cell label">Weekly Plan</div>
@@ -1559,57 +1559,64 @@
   </div>
 </section>
 
-<!-- ═══════════ FREE ACCESS ═══════════ -->
+<!-- ═══════════ PRICING ═══════════ -->
+<!--
+  Displayed prices below are defaults only. The live amounts are config-driven
+  and come from Stripe (STRIPE_PREMIUM_PRICE_ID / STRIPE_ANNUAL_PRICE_ID via
+  GET /api/payments/plans). These must match the prices set in the Stripe
+  dashboard: Premium $49/mo, Annual $490/yr.
+-->
 <section class="pricing" id="pricing">
   <div class="container" style="text-align:center;">
-    <span class="chip chip-pink fade-up">FREE. ACTUALLY FREE.</span>
-    <h2 class="section-title fade-up">Everything Therapy Charges Thousands For. <span class="gradient-text">Free.</span></h2>
-    <p class="section-sub fade-up">Traditional therapy: $200-300 per session with no plan. Love Rescue: the complete program — every assessment, every expert framework, every weekly action plan — at no cost. No card. No trial clock. No locked features.</p>
+    <span class="chip chip-pink fade-up">SIMPLE, HONEST PRICING</span>
+    <h2 class="section-title fade-up">One plan. <span class="gradient-text">Every feature.</span> Both partners.</h2>
+    <p class="section-sub fade-up">Traditional therapy runs $200-300 per session with no plan between visits. Love Rescue gives you the complete program — every assessment, every expert framework, every weekly action plan — for one price that covers both of you. Start with a 14-day free trial, no card required. Cancel anytime.</p>
     <div class="pricing-grid" style="text-align:left;">
 
       <div class="price-card">
-        <div class="price-tier">THE PLAN</div>
-        <div class="price-amount">$0<span class="per">/forever</span></div>
-        <div class="price-note">The full 14-week program — nothing held back</div>
+        <div class="price-tier">PREMIUM — MONTHLY</div>
+        <div class="price-amount">$49<span class="per">/month</span></div>
+        <div class="price-note">14-day free trial — no card required to start</div>
         <hr class="price-divider" />
         <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>4 Deep Behavioral Assessments</span></div>
-        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Custom Daily Insights (98 days)</span></div>
-        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Expert Video Course (11+ specialists)</span></div>
-        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Compatibility Blueprint (with partner)</span></div>
-        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Weekly Action Plans</span></div>
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Compatibility &amp; Matchup Analysis</span></div>
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Personalized Weekly Strategies</span></div>
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Guided Expert Course (11+ specialists)</span></div>
         <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Weekly &amp; Monthly Progress Reports</span></div>
-        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Daily Interaction Logging</span></div>
-        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Daily Gratitude Practice</span></div>
-        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Therapist Integration</span></div>
-        <a href="/start" class="btn btn-white-outline">Start Free — No Card Required</a>
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Guided Real Talk Conversations</span></div>
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Guided Meetings (Google Meet video)</span></div>
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Progress Tracking, Rings &amp; Streaks</span></div>
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Partner Sync — one seat covers both</span></div>
+        <div class="feature-row green"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Therapist Connection &amp; Integration</span></div>
+        <a href="/start" class="btn btn-white-outline">Start 14-Day Free Trial</a>
       </div>
 
       <div class="price-card featured">
-        <div class="popular-badge">ALSO INCLUDED</div>
-        <div class="price-tier gradient">CONNECTION TOOLS</div>
-        <div class="price-amount">$0<span class="per">/forever</span></div>
-        <div class="price-note">The tools other apps gate behind a paywall — included</div>
+        <div class="popular-badge">BEST VALUE</div>
+        <div class="price-tier gradient">ANNUAL</div>
+        <div class="price-amount">$490<span class="per">/year</span></div>
+        <div class="price-note">≈ 2 months free vs. monthly · 14-day free trial</div>
         <hr class="price-divider" />
-        <div class="feature-row pink bold"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Everything in The Plan</span></div>
-        <div class="feature-row pink bold"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Guided Real Talk Conversations</span></div>
-        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Weekly Guided Skill Sessions</span></div>
-        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Neutral Facilitator (included)</span></div>
-        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Google Meet Video Sessions</span></div>
-        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Partner Consent Management</span></div>
-        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Calendar Integration</span></div>
-        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Session Notes &amp; History</span></div>
-        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Progress Rings &amp; Streaks</span></div>
-        <a href="/start" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:28px;">Unlock Full Access — Free</a>
+        <div class="feature-row pink bold"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Everything in Premium</span></div>
+        <div class="feature-row pink bold"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Best price — pay for 10 months, get 12</span></div>
+        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>All assessments, matchup &amp; strategies</span></div>
+        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Full guided course &amp; Real Talk</span></div>
+        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Guided meetings &amp; progress tracking</span></div>
+        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Partner sync — one seat covers both</span></div>
+        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Therapist connection &amp; integration</span></div>
+        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Weekly &amp; monthly progress reports</span></div>
+        <div class="feature-row pink"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span>Lock in your rate for a full year</span></div>
+        <a href="/start" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:28px;">Start 14-Day Free Trial</a>
       </div>
 
     </div>
 
-    <!-- Why Free Badge -->
+    <!-- Cancel Anytime Badge -->
     <div class="guarantee fade-up">
       <svg class="guarantee-icon" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
       <div class="guarantee-text">
-        <h4>Why Is It Free?</h4>
-        <p>Because the couples who need this most are the ones already drained by therapy bills. We'd rather have a million marriages saved than a paywall. No trial countdown, no card on file, no surprise charge later — just do the work.</p>
+        <h4>Cancel anytime</h4>
+        <p>Try everything free for 14 days — no card required to start. If Love Rescue isn't for you, cancel in a couple of taps and you won't be charged again; you keep access through the end of the period you paid for. No lock-in, no long contracts.</p>
       </div>
     </div>
 
@@ -1685,11 +1692,11 @@
 
       <div class="faq-item">
         <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
-          <span>Is it really free? What's the catch?</span>
+          <span>How much does Love Rescue cost?</span>
           <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
         </button>
         <div class="faq-answer">
-          <p>Really free. Every assessment, every insight, every expert video — the complete program, no credit card, no trial that expires, no premium tier hiding the good stuff. There's no catch: we'd rather help more couples than gate the work behind a paywall. And your account is yours — walk away anytime, no strings.</p>
+          <p>Start with a 14-day free trial — no credit card required to begin. After that, Premium is $49/month, or $490/year (about two months free) if you go annual. One subscription covers both partners, so a single paid seat unlocks the whole program for your relationship. You can cancel anytime in a couple of taps; you won't be charged again and you keep access through the end of the period you already paid for.</p>
         </div>
       </div>
 
@@ -1717,12 +1724,12 @@
   <div class="final-cta-bg"></div>
   <div class="container">
     <h2>Stop Guessing. Start <span class="gradient-text">Working a Plan.</span></h2>
-    <p>You've put in the effort — you just never had a plan. Love Rescue gives you one: built on 11+ expert frameworks, broken into specific weekly steps, with progress you can actually see. Start today — it's completely free.</p>
+    <p>You've put in the effort — you just never had a plan. Love Rescue gives you one: built on 11+ expert frameworks, broken into specific weekly steps, with progress you can actually see. Start today with a 14-day free trial.</p>
     <a href="/start" class="btn btn-primary btn-large">
-      Get My Plan — Free
+      Start My 14-Day Free Trial
       <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
     </a>
-    <div class="fine">No credit card. No commitment. Just the beginning of real progress.</div>
+    <div class="fine">No card required to start. Cancel anytime. Just the beginning of real progress.</div>
   </div>
 </section>
 
@@ -1767,7 +1774,7 @@
 <!-- ═══════════ STICKY CTA BAR ═══════════ -->
 <div class="sticky-cta" id="stickyCta">
   <p style="margin:0;font-weight:600;font-size:0.95rem;">11 experts. One strategy. Your weekly progress starts now.</p>
-  <a href="/start" class="btn btn-primary" style="padding:10px 28px;font-size:0.9rem;box-shadow:none;">Start Free — No Card, Ever</a>
+  <a href="/start" class="btn btn-primary" style="padding:10px 28px;font-size:0.9rem;box-shadow:none;">Start Free — No Card to Start</a>
 </div>
 
 <script>
