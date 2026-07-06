@@ -11,6 +11,13 @@ const {
 } = require('@simplewebauthn/server');
 const { OAuth2Client } = require('google-auth-library');
 const { authenticate } = require('../middleware/auth');
+const { resolveEntitlement } = require('../lib/entitlement');
+
+// New OAuth accounts start on the same free trial as email signups.
+const trialStart = () => {
+  const days = parseInt(process.env.TRIAL_DAYS || '14', 10);
+  return new Date(Date.now() + (Number.isFinite(days) ? days : 14) * 24 * 60 * 60 * 1000);
+};
 const logger = require('../utils/logger');
 const { sendPasswordResetEmail, sendPartnerInviteEmail } = require('../utils/email');
 
@@ -426,7 +433,8 @@ router.post('/google', async (req, res, next) => {
             authProvider: 'google',
             firstName: given_name || null,
             lastName: family_name || null,
-            subscriptionStatus: 'premium',
+            subscriptionStatus: 'trial',
+            trialEndsAt: trialStart(),
           }
         });
 
@@ -897,6 +905,8 @@ router.get('/me', authenticate, async (req, res, next) => {
         gender: true,
         role: true,
         subscriptionStatus: true,
+        subscriptionSource: true,
+        appleExpiresAt: true,
         authProvider: true,
         trialEndsAt: true,
         isPlatformAdmin: true,
@@ -924,9 +934,21 @@ router.get('/me', authenticate, async (req, res, next) => {
       }
     });
 
-    // App is free — all users are treated as premium
+    // Report the user's REAL entitlement (couple-aware: an active trial, a
+    // paid/premium plan, or partner coverage). Never force-premium — the
+    // client's feature gating reads this.
+    const entitlement = await resolveEntitlement(req.prisma, user);
+    const { subscriptionSource: _src, appleExpiresAt: _exp, ...safeUser } = user;
     res.json({
-      user: { ...user, subscriptionStatus: 'premium' },
+      user: {
+        ...safeUser,
+        subscriptionStatus: entitlement.status,
+        tier: entitlement.tier,
+        isEntitled: entitlement.isEntitled,
+        isTrial: entitlement.isTrial,
+        trialDaysRemaining: entitlement.trialDaysRemaining,
+        coveredByPartner: entitlement.coveredByPartner
+      },
       relationship: relationship ? {
         id: relationship.id,
         hasPartner: !!relationship.user2Id,
@@ -1510,7 +1532,7 @@ router.post('/apple', async (req, res, next) => {
     const isNewUser = !user;
 
     if (!user) {
-      // Create new user — app is free, all users get premium status
+      // Create new user — starts on the standard free trial
       user = await req.prisma.user.create({
         data: {
           email: email || `apple_${appleId}@privaterelay.appleid.com`,
@@ -1520,7 +1542,8 @@ router.post('/apple', async (req, res, next) => {
           lastName: fullName?.lastName || '',
           authProvider: 'apple',
           emailVerified: !!email_verified,
-          subscriptionStatus: 'premium',
+          subscriptionStatus: 'trial',
+          trialEndsAt: trialStart(),
         }
       });
     }
