@@ -41,16 +41,17 @@ const errorHandler = (err, req, res, next) => {
 
   // Default error
   const statusCode = err.statusCode || 500;
-  
-  // In production, hide internal errors but show Prisma migration issues
+
+  // SECURITY FIX: Prisma schema errors (P2021/P2022/P2025) leak table/column
+  // names — only surface the detail and migration hint outside production.
+  // Prod always gets the generic message (details are in the server logs above).
   const isPrismaSchemaError = err.code === 'P2022' || err.code === 'P2021' || err.code === 'P2025';
-  const message = (process.env.NODE_ENV === 'production' && !isPrismaSchemaError)
-    ? 'An unexpected error occurred'
-    : err.message;
+  const isProduction = process.env.NODE_ENV === 'production';
+  const message = isProduction ? 'An unexpected error occurred' : err.message;
 
   res.status(statusCode).json({
     error: message,
-    ...(isPrismaSchemaError && { hint: 'Database schema mismatch - migrations may need to run' })
+    ...(isPrismaSchemaError && !isProduction && { hint: 'Database schema mismatch - migrations may need to run' })
   });
 };
 

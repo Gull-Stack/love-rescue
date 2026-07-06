@@ -46,6 +46,7 @@ describe('Logs Routes', () => {
     firstName: 'John',
     lastName: 'Doe',
     subscriptionStatus: 'trial',
+    trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
     stripeCustomerId: null,
     isPlatformAdmin: false,
     createdAt: new Date()
@@ -116,6 +117,32 @@ describe('Logs Routes', () => {
       expect(res.body.log.ratio).toBe(5);
       expect(calculateRatio).toHaveBeenCalledWith(5, 1);
       expect(mockPrisma.dailyLog.upsert).toHaveBeenCalled();
+    });
+
+    // SAFETY-CRITICAL: the daily check-in is deliberately NOT paywalled — an
+    // expired user writing crisis language must reach detectCrisisAndNotify
+    // (988 resources in the response) instead of being 402'd first.
+    it('saves and returns crisis resources for an EXPIRED (unentitled) user', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        ...mockAuthUser,
+        subscriptionStatus: 'expired',
+        trialEndsAt: new Date(Date.now() - 24 * 60 * 60 * 1000)
+      });
+      mockPrisma.dailyLog.upsert.mockResolvedValue({
+        ...mockDailyLog,
+        journalEntry: 'I want to hurt myself'
+      });
+
+      const res = await request(app)
+        .post('/api/logs/daily')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ positiveCount: 0, negativeCount: 1, journalEntry: 'I want to hurt myself' });
+
+      expect(res.status).toBe(201); // NOT 402
+      expect(res.body.log).toBeDefined();
+      expect(res.body.crisis).toBeDefined();
+      expect(res.body.crisis.detected).toBe(true);
+      expect(JSON.stringify(res.body.crisis.resources)).toContain('988');
     });
 
     it('should upsert an existing log for the same date', async () => {

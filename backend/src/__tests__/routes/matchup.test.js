@@ -51,6 +51,7 @@ describe('Matchup Routes', () => {
     firstName: 'John',
     lastName: 'Doe',
     subscriptionStatus: 'trial',
+    trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
     isPlatformAdmin: false,
     stripeCustomerId: null,
     createdAt: new Date()

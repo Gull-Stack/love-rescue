@@ -26,11 +26,18 @@ const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 const router = express.Router();
 
 // Token expiration configuration
-const ACCESS_TOKEN_EXPIRY = '30d'; // Extended from 7d for PWA persistence
+// SECURITY FIX: reduced from 30d back to 7d — long-lived access tokens defeat
+// revocation. PWA persistence is handled by the 90-day refresh token instead.
+const ACCESS_TOKEN_EXPIRY = '7d';
 const REFRESH_TOKEN_EXPIRY_DAYS = 90; // Refresh tokens last 90 days
 
-// HIGH-04: Account lockout tracking with Redis support
-// Uses Redis if REDIS_URL is configured, otherwise falls back to in-memory
+// HIGH-04: Account lockout tracking with Redis support.
+// SECURITY FIX: the fallback when REDIS_URL is unset is now DB-backed
+// (failedLoginCount/lockedUntil on User) instead of an in-memory Map that
+// reset on every deploy/restart. Same policy on both paths: 5 attempts,
+// 15-minute lockout window. The DB fallback only tracks real accounts
+// (non-existent emails still get the enumeration-safe 401 and are covered by
+// the per-IP authLimiter in index.js).
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_SECONDS = 15 * 60; // 15 minutes
 
@@ -48,16 +55,14 @@ if (process.env.REDIS_URL) {
       logger.info('Redis connected for account lockout');
     });
   } catch (err) {
-    logger.warn('Redis not available, using in-memory lockout', { error: err.message });
+    logger.warn('Redis not available, using database-backed lockout', { error: err.message });
   }
 }
 
-// Fallback in-memory store when Redis is not available
-const failedAttemptsMemory = new Map(); // email -> { count, lockedUntil }
+async function checkAccountLockout(prisma, email) {
+  const normalizedEmail = email.toLowerCase();
+  const key = `lockout:${normalizedEmail}`;
 
-async function checkAccountLockout(email) {
-  const key = `lockout:${email.toLowerCase()}`;
-  
   if (redisClient) {
     try {
       const lockUntil = await redisClient.get(`${key}:locked`);
@@ -66,32 +71,33 @@ async function checkAccountLockout(email) {
       }
       return false;
     } catch (err) {
-      logger.error('Redis lockout check failed, using memory', { error: err.message });
+      logger.error('Redis lockout check failed, using database', { error: err.message });
     }
   }
-  
-  // Fallback to memory
-  const record = failedAttemptsMemory.get(email.toLowerCase());
-  if (!record) return false;
-  if (record.lockedUntil && record.lockedUntil > Date.now()) {
-    return true;
-  }
-  if (record.lockedUntil && record.lockedUntil <= Date.now()) {
-    failedAttemptsMemory.delete(email.toLowerCase());
+
+  // Fallback to database
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { lockedUntil: true }
+    });
+    return !!(user?.lockedUntil && user.lockedUntil > new Date());
+  } catch (err) {
+    logger.error('DB lockout check failed', { error: err.message });
     return false;
   }
-  return false;
 }
 
-async function recordFailedAttempt(email) {
-  const key = `lockout:${email.toLowerCase()}`;
-  
+async function recordFailedAttempt(prisma, email) {
+  const normalizedEmail = email.toLowerCase();
+  const key = `lockout:${normalizedEmail}`;
+
   if (redisClient) {
     try {
       const count = await redisClient.incr(`${key}:count`);
       // Set TTL on count key so it auto-expires
       await redisClient.expire(`${key}:count`, LOCKOUT_DURATION_SECONDS);
-      
+
       if (count >= MAX_FAILED_ATTEMPTS) {
         const lockUntil = Date.now() + (LOCKOUT_DURATION_SECONDS * 1000);
         await redisClient.setex(`${key}:locked`, LOCKOUT_DURATION_SECONDS, lockUntil.toString());
@@ -99,35 +105,58 @@ async function recordFailedAttempt(email) {
       }
       return;
     } catch (err) {
-      logger.error('Redis lockout record failed, using memory', { error: err.message });
+      logger.error('Redis lockout record failed, using database', { error: err.message });
     }
   }
-  
-  // Fallback to memory
-  const normalizedEmail = email.toLowerCase();
-  const record = failedAttemptsMemory.get(normalizedEmail) || { count: 0, lockedUntil: null };
-  record.count += 1;
-  if (record.count >= MAX_FAILED_ATTEMPTS) {
-    record.lockedUntil = Date.now() + (LOCKOUT_DURATION_SECONDS * 1000);
-    logger.warn('Account locked due to too many failed login attempts', { email });
+
+  // Fallback to database — sliding 15-minute window on the User row
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { failedLoginCount: true, lastFailedLoginAt: true }
+    });
+    if (!user) return; // non-existent accounts are handled by the per-IP limiter
+
+    const now = Date.now();
+    const windowExpired = !user.lastFailedLoginAt ||
+      (now - user.lastFailedLoginAt.getTime()) > LOCKOUT_DURATION_SECONDS * 1000;
+    const count = windowExpired ? 1 : (user.failedLoginCount || 0) + 1;
+
+    const data = { failedLoginCount: count, lastFailedLoginAt: new Date(now) };
+    if (count >= MAX_FAILED_ATTEMPTS) {
+      data.lockedUntil = new Date(now + LOCKOUT_DURATION_SECONDS * 1000);
+      logger.warn('Account locked due to too many failed login attempts', { email });
+    }
+
+    // updateMany so a concurrently-deleted user doesn't throw P2025
+    await prisma.user.updateMany({ where: { email: normalizedEmail }, data });
+  } catch (err) {
+    logger.error('DB lockout record failed', { error: err.message });
   }
-  failedAttemptsMemory.set(normalizedEmail, record);
 }
 
-async function clearFailedAttempts(email) {
-  const key = `lockout:${email.toLowerCase()}`;
-  
+async function clearFailedAttempts(prisma, email) {
+  const normalizedEmail = email.toLowerCase();
+  const key = `lockout:${normalizedEmail}`;
+
   if (redisClient) {
     try {
       await redisClient.del(`${key}:count`, `${key}:locked`);
       return;
     } catch (err) {
-      logger.error('Redis lockout clear failed, using memory', { error: err.message });
+      logger.error('Redis lockout clear failed, using database', { error: err.message });
     }
   }
-  
-  // Fallback to memory
-  failedAttemptsMemory.delete(email.toLowerCase());
+
+  // Fallback to database
+  try {
+    await prisma.user.updateMany({
+      where: { email: normalizedEmail },
+      data: { failedLoginCount: 0, lastFailedLoginAt: null, lockedUntil: null }
+    });
+  } catch (err) {
+    logger.error('DB lockout clear failed', { error: err.message });
+  }
 }
 
 // WebAuthn configuration
@@ -138,11 +167,13 @@ const rpID = process.env.WEBAUTHN_RP_ID || (isProduction ? 'loverescue.app' : 'l
 const origin = process.env.WEBAUTHN_ORIGIN || (isProduction ? 'https://loverescue.app' : 'http://localhost:3000');
 
 /**
- * Generate access and refresh tokens for a user
+ * Generate access and refresh tokens for a user.
+ * tokenVersion is embedded in the access token so the auth middleware can
+ * reject tokens issued before a password change/reset or logout.
  */
-async function generateTokenPair(userId, prisma) {
+async function generateTokenPair(userId, prisma, tokenVersion = 0) {
   const accessToken = jwt.sign(
-    { userId },
+    { userId, tokenVersion },
     process.env.JWT_SECRET,
     { expiresIn: ACCESS_TOKEN_EXPIRY, algorithm: 'HS256' }
   );
@@ -165,6 +196,33 @@ async function generateTokenPair(userId, prisma) {
   });
 
   return { accessToken, refreshToken };
+}
+
+/**
+ * Revoke every session for a user: bump tokenVersion (kills all outstanding
+ * access tokens at the middleware check) and mark all refresh tokens used
+ * (so no new access tokens can be minted). Used on password change/reset
+ * and logout.
+ *
+ * Returns the user's new tokenVersion so a caller that wants to keep the
+ * CURRENT session alive (e.g. change-password) can immediately mint a fresh
+ * token pair carrying the incremented version.
+ */
+async function revokeAllSessions(userId, prisma) {
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { tokenVersion: { increment: 1 } },
+    select: { tokenVersion: true }
+  });
+  await prisma.token.updateMany({
+    where: {
+      email: `user:${userId}`, // refresh tokens store the user reference here
+      type: 'refresh_token',
+      usedAt: null
+    },
+    data: { usedAt: new Date() }
+  });
+  return updated?.tokenVersion ?? null;
 }
 
 /**
@@ -195,7 +253,9 @@ router.post('/signup', async (req, res, next) => {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Create user — app is free, all users get premium status
+    // Create user — new users start on a free trial (default 14 days).
+    const trialDays = parseInt(process.env.TRIAL_DAYS || '14', 10);
+    const trialEndsAt = new Date(Date.now() + (Number.isFinite(trialDays) ? trialDays : 14) * 24 * 60 * 60 * 1000);
     const user = await req.prisma.user.create({
       data: {
         email: email.toLowerCase(),
@@ -203,7 +263,8 @@ router.post('/signup', async (req, res, next) => {
         firstName,
         lastName,
         gender: gender || null,
-        subscriptionStatus: 'premium',
+        subscriptionStatus: 'trial',
+        trialEndsAt,
       },
       select: {
         id: true,
@@ -211,7 +272,8 @@ router.post('/signup', async (req, res, next) => {
         firstName: true,
         lastName: true,
         gender: true,
-        subscriptionStatus: true
+        subscriptionStatus: true,
+        trialEndsAt: true
       }
     });
 
@@ -253,8 +315,8 @@ router.post('/login', async (req, res, next) => {
 
     const normalizedEmail = email.toLowerCase();
 
-    // HIGH-04: Check account lockout (now Redis-backed if configured)
-    if (await checkAccountLockout(normalizedEmail)) {
+    // HIGH-04: Check account lockout (Redis if configured, otherwise DB-backed)
+    if (await checkAccountLockout(req.prisma, normalizedEmail)) {
       return res.status(429).json({ error: 'Account temporarily locked due to too many failed attempts. Try again in 15 minutes.' });
     }
 
@@ -264,7 +326,7 @@ router.post('/login', async (req, res, next) => {
 
     if (!user) {
       // Don't reveal whether account exists
-      await recordFailedAttempt(normalizedEmail);
+      await recordFailedAttempt(req.prisma, normalizedEmail);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -276,15 +338,15 @@ router.post('/login', async (req, res, next) => {
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
 
     if (!isValidPassword) {
-      await recordFailedAttempt(normalizedEmail);
+      await recordFailedAttempt(req.prisma, normalizedEmail);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Clear failed attempts on successful login
-    await clearFailedAttempts(normalizedEmail);
+    await clearFailedAttempts(req.prisma, normalizedEmail);
 
     // Generate token pair
-    const { accessToken, refreshToken } = await generateTokenPair(user.id, req.prisma);
+    const { accessToken, refreshToken } = await generateTokenPair(user.id, req.prisma, user.tokenVersion ?? 0);
 
     logger.info('User logged in', { userId: user.id });
 
@@ -381,7 +443,7 @@ router.post('/google', async (req, res, next) => {
     }
 
     // Generate token pair
-    const { accessToken, refreshToken } = await generateTokenPair(user.id, req.prisma);
+    const { accessToken, refreshToken } = await generateTokenPair(user.id, req.prisma, user.tokenVersion ?? 0);
 
     logger.info('Google auth', { userId: user.id, isNewUser });
 
@@ -506,12 +568,19 @@ router.post('/webauthn/login/options', async (req, res, next) => {
   try {
     const { email } = req.body;
 
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
     const user = await req.prisma.user.findUnique({
       where: { email: email.toLowerCase() }
     });
 
     if (!user || !user.biometricKeyId) {
-      return res.status(400).json({ error: 'Biometric login not set up for this account' });
+      // MED: enumeration-safe — same generic error whether the account is
+      // missing or simply has no biometrics (mirrors the password login path).
+      // Endpoint is also behind authLimiter in index.js.
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const options = await generateAuthenticationOptions({
@@ -598,7 +667,7 @@ router.post('/webauthn/login/verify', async (req, res, next) => {
     });
 
     // Generate token pair
-    const { accessToken, refreshToken } = await generateTokenPair(user.id, req.prisma);
+    const { accessToken, refreshToken } = await generateTokenPair(user.id, req.prisma, user.tokenVersion ?? 0);
 
     logger.info('WebAuthn login', { userId: user.id });
 
@@ -667,7 +736,7 @@ router.post('/refresh', async (req, res, next) => {
     });
 
     // Generate new token pair (token rotation for security)
-    const { accessToken, refreshToken: newRefreshToken } = await generateTokenPair(user.id, req.prisma);
+    const { accessToken, refreshToken: newRefreshToken } = await generateTokenPair(user.id, req.prisma, user.tokenVersion ?? 0);
 
     logger.info('Token refreshed', { userId: user.id });
 
@@ -949,9 +1018,61 @@ router.post('/change-password', authenticate, async (req, res, next) => {
       data: { passwordHash }
     });
 
+    // Revoke every OTHER session — old access tokens die at the tokenVersion
+    // check and outstanding refresh tokens can no longer be redeemed. This
+    // also invalidates the access/refresh tokens on THIS device, so we
+    // immediately mint a fresh pair carrying the new tokenVersion to keep the
+    // current session alive (the user shouldn't be logged out of the device
+    // they just used to change their password).
+    const newTokenVersion = await revokeAllSessions(req.user.id, req.prisma);
+    const { accessToken, refreshToken } = await generateTokenPair(
+      req.user.id,
+      req.prisma,
+      newTokenVersion ?? 0
+    );
+
     logger.info('Password changed', { userId: req.user.id });
 
-    res.json({ message: 'Password changed successfully' });
+    res.json({
+      message: 'Password changed successfully. Please log in again on your other devices.',
+      token: accessToken,
+      refreshToken
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/auth/logout
+ * Revoke the presented refresh token and invalidate all outstanding access
+ * tokens (bumps tokenVersion → global logout across devices).
+ */
+router.post('/logout', authenticate, async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+
+    // Revoke the presented refresh token first (best effort)
+    if (refreshToken) {
+      const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+      await req.prisma.token.updateMany({
+        where: {
+          token: refreshTokenHash,
+          type: 'refresh_token',
+          usedAt: null
+        },
+        data: { usedAt: new Date() }
+      });
+    }
+
+    // Bump tokenVersion + revoke all remaining refresh tokens. This is a
+    // global logout: 7-day access tokens are otherwise irrevocable, so logout
+    // must invalidate them everywhere, not just discard the local copy.
+    await revokeAllSessions(req.user.id, req.prisma);
+
+    logger.info('User logged out', { userId: req.user.id });
+
+    res.json({ message: 'Logged out successfully' });
   } catch (error) {
     next(error);
   }
@@ -1043,14 +1164,25 @@ router.post('/revoke-partner', authenticate, async (req, res, next) => {
  */
 router.get('/export-data', authenticate, async (req, res, next) => {
   try {
+    // MED FIX: the previous include referenced non-existent `goals`/`strategies`
+    // relations on User (goals live on Relationship as SharedGoal; the user
+    // relation is sharedGoalsCreated) — every export 500'd. Includes below
+    // match the actual schema and add the user-owned content that was missing
+    // (Real Talk entries, assigned tasks, course progress, video completions,
+    // consent logs, notification preferences).
     const user = await req.prisma.user.findUnique({
       where: { id: req.user.id },
       include: {
         assessments: true,
         dailyLogs: true,
         gratitudeEntries: true,
-        goals: true,
-        strategies: true,
+        realTalks: true,
+        sharedGoalsCreated: true,
+        assignedTasks: true,
+        courseProgress: { include: { weeklyStrategies: true } },
+        videoCompletions: true,
+        consentLogs: true,
+        notificationPreferences: true,
         pushSubscriptions: { select: { id: true, createdAt: true } },
       }
     });
@@ -1059,15 +1191,34 @@ router.get('/export-data', authenticate, async (req, res, next) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Strip sensitive fields
-    const { passwordHash, stripeCustomerId, ...safeUser } = user;
+    // Strip sensitive/internal fields from the profile
+    const {
+      passwordHash, stripeCustomerId, biometricKey, biometricKeyId,
+      biometricCounter, appleReceiptData, tokenVersion, failedLoginCount,
+      lastFailedLoginAt, lockedUntil,
+      assessments, dailyLogs, gratitudeEntries, realTalks, sharedGoalsCreated,
+      assignedTasks, courseProgress, videoCompletions, consentLogs,
+      notificationPreferences, pushSubscriptions,
+      ...profile
+    } = user;
 
     logger.info('Data export requested', { userId: req.user.id });
 
     res.setHeader('Content-Disposition', `attachment; filename="loverescue-data-export-${new Date().toISOString().slice(0, 10)}.json"`);
     res.json({
       exportedAt: new Date().toISOString(),
-      user: safeUser
+      profile,
+      assessments,
+      dailyLogs,
+      gratitudeEntries,
+      realTalkEntries: realTalks,
+      goalsCreated: sharedGoalsCreated,
+      therapistTasks: assignedTasks,
+      courseProgress,
+      videoCompletions,
+      consentLogs,
+      notificationPreferences,
+      pushSubscriptions
     });
   } catch (error) {
     next(error);
@@ -1165,8 +1316,19 @@ router.post('/forgot-password', async (req, res, next) => {
     });
 
     if (user && user.passwordHash) {
-      // Generate a 6-digit reset code
+      // Generate a 6-digit reset code. 6 digits stays for UX: codes are now
+      // scoped to the email, capped at 5 verification attempts, expire in 1h,
+      // and sit behind the per-IP authLimiter — brute force is infeasible.
       const resetCode = crypto.randomInt(100000, 999999).toString();
+
+      // Invalidate any previous unused codes — only the latest one works
+      await req.prisma.token.deleteMany({
+        where: {
+          email: normalizedEmail,
+          type: 'password_reset',
+          usedAt: null
+        }
+      });
 
       await req.prisma.token.create({
         data: {
@@ -1200,33 +1362,61 @@ router.post('/forgot-password', async (req, res, next) => {
  */
 router.post('/reset-password', async (req, res, next) => {
   try {
-    const { token: resetToken, newPassword } = req.body;
+    const { email, token: resetToken, newPassword } = req.body;
 
-    if (!resetToken || !newPassword) {
-      return res.status(400).json({ error: 'Reset token and new password are required' });
+    // SECURITY FIX: codes are looked up scoped to the submitted email (a code
+    // is only valid for the account it was issued to), never globally by value.
+    if (!email || !resetToken || !newPassword) {
+      return res.status(400).json({ error: 'Email, reset token, and new password are required' });
     }
 
     if (newPassword.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
-    // Find valid, unused reset token
+    const normalizedEmail = email.toLowerCase();
+    const MAX_RESET_ATTEMPTS = 5;
+
+    // Find the latest unused, unexpired reset code for THIS email
     const tokenRecord = await req.prisma.token.findFirst({
       where: {
-        token: resetToken,
+        email: normalizedEmail,
         type: 'password_reset',
         usedAt: null,
         expiresAt: { gt: new Date() }
-      }
+      },
+      orderBy: { createdAt: 'desc' }
     });
 
-    if (!tokenRecord) {
+    if (!tokenRecord || (tokenRecord.attempts ?? 0) >= MAX_RESET_ATTEMPTS) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    // Constant-time comparison of the submitted code
+    const expected = Buffer.from(tokenRecord.token);
+    const provided = Buffer.from(String(resetToken));
+    const codeMatches = expected.length === provided.length &&
+      crypto.timingSafeEqual(expected, provided);
+
+    if (!codeMatches) {
+      // Count the failed attempt; invalidate the code after 5 wrong tries
+      const attempts = (tokenRecord.attempts ?? 0) + 1;
+      await req.prisma.token.update({
+        where: { id: tokenRecord.id },
+        data: {
+          attempts,
+          ...(attempts >= MAX_RESET_ATTEMPTS && { usedAt: new Date() })
+        }
+      });
+      if (attempts >= MAX_RESET_ATTEMPTS) {
+        logger.warn('Password reset code invalidated after too many attempts', { email: normalizedEmail });
+      }
       return res.status(400).json({ error: 'Invalid or expired reset token' });
     }
 
     // Find user
     const user = await req.prisma.user.findUnique({
-      where: { email: tokenRecord.email }
+      where: { email: normalizedEmail }
     });
 
     if (!user) {
@@ -1240,6 +1430,10 @@ router.post('/reset-password', async (req, res, next) => {
       data: { passwordHash }
     });
 
+    // Revoke every existing session — an attacker who had the old password
+    // (or a stolen token) is locked out once the reset completes.
+    await revokeAllSessions(user.id, req.prisma);
+
     // Mark token as used
     await req.prisma.token.update({
       where: { id: tokenRecord.id },
@@ -1249,14 +1443,14 @@ router.post('/reset-password', async (req, res, next) => {
     // Delete any other unused reset tokens for this email
     await req.prisma.token.deleteMany({
       where: {
-        email: tokenRecord.email,
+        email: normalizedEmail,
         type: 'password_reset',
         usedAt: null
       }
     });
 
     // Clear any lockout
-    await clearFailedAttempts(tokenRecord.email);
+    await clearFailedAttempts(req.prisma, normalizedEmail);
 
     logger.info('Password reset completed', { userId: user.id });
 
@@ -1332,7 +1526,7 @@ router.post('/apple', async (req, res, next) => {
     }
 
     // Generate tokens using same function as other auth methods
-    const { accessToken, refreshToken } = await generateTokenPair(user.id, req.prisma);
+    const { accessToken, refreshToken } = await generateTokenPair(user.id, req.prisma, user.tokenVersion ?? 0);
 
     res.json({
       token: accessToken,

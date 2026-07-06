@@ -13,6 +13,8 @@ const RECOMMENDED_ENV_VARS = [
   'ALLOWED_ORIGINS',
   'FRONTEND_URL',
   'INTEGRATION_JWT_SECRET',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
 ];
 
 const missing = REQUIRED_ENV_VARS.filter(key => !process.env[key]);
@@ -28,6 +30,9 @@ if (missingRecommended.length > 0) {
   console.warn('⚠️  WARNING: Missing recommended environment variables:');
   missingRecommended.forEach(key => console.warn(`   - ${key}`));
   console.warn('Some features may not work correctly.\n');
+  if (missingRecommended.includes('STRIPE_SECRET_KEY') || missingRecommended.includes('STRIPE_WEBHOOK_SECRET')) {
+    console.warn('⚠️  Stripe payments/webhooks will not work until STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are configured.\n');
+  }
 }
 // ============================================
 
@@ -44,6 +49,7 @@ const strategiesRoutes = require('./routes/strategies');
 const reportsRoutes = require('./routes/reports');
 const calendarRoutes = require('./routes/calendar');
 const therapistRoutes = require('./routes/therapist');
+const therapistPracticeRoutes = require('./routes/therapist-practice');
 const paymentsRoutes = require('./routes/payments');
 const insightsRoutes = require('./routes/insights');
 const videosRoutes = require('./routes/videos');
@@ -87,14 +93,18 @@ if (process.env.NODE_ENV === 'production') {
 
 // Security middleware
 // HIGH-NEW-03: Configure Helmet with CSP to protect against XSS
+// NOTE: this API serves JSON only (no HTML/inline scripts — the SPA is deployed
+// separately on Vercel with its own headers), so the CSP here is defense-in-depth.
+// 'unsafe-inline' removed from scriptSrc; js.stripe.com removed (no Stripe.js is
+// loaded from any page served by this backend).
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://accounts.google.com", "https://js.stripe.com"],
+      scriptSrc: ["'self'", "https://accounts.google.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      frameSrc: ["https://accounts.google.com", "https://js.stripe.com"],
+      frameSrc: ["https://accounts.google.com"],
       connectSrc: ["'self'", "https://loverescue.app", "https://www.loverescue.app", "https://accounts.google.com"],
       imgSrc: ["'self'", "data:", "https:"],
     }
@@ -120,7 +130,10 @@ const limiter = rateLimit({
   max: Number(process.env.RATE_LIMIT_MAX) || 1000,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests, please try again later.' }
+  message: { error: 'Too many requests, please try again later.' },
+  // Stripe webhooks are signature-verified and can burst well beyond per-IP
+  // limits (all events come from Stripe's IPs) — exempt them from this limiter.
+  skip: (req) => req.originalUrl === '/api/payments/webhook' || req.originalUrl.startsWith('/api/stripe/webhook')
 });
 app.use('/api/', limiter);
 
@@ -138,6 +151,9 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/signup', authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth/reset-password', authLimiter);
+// Biometric login endpoints are unauthenticated credential probes too
+app.use('/api/auth/webauthn/login/options', authLimiter);
+app.use('/api/auth/webauthn/login/verify', authLimiter);
 
 // CRIT-02: Conditionally skip JSON parsing for Stripe webhook (needs raw body)
 app.use((req, res, next) => {
@@ -172,6 +188,11 @@ app.use('/api/strategies', strategiesRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/therapist', therapistRoutes);
+// Practice management (session notes + appointments). Mounted at the same
+// prefix AFTER the main therapist router — its paths (/clients/:id/notes,
+// /notes/*, /appointments*, /my/*) don't collide with therapist.js routes,
+// so unmatched requests fall through to it.
+app.use('/api/therapist', therapistPracticeRoutes);
 app.use('/api/payments', paymentsRoutes);
 // Alias: Stripe dashboard configured to send to /api/stripe/webhooks
 app.post('/api/stripe/webhooks', express.raw({ type: 'application/json' }), (req, res, next) => {
@@ -273,6 +294,111 @@ function startReminderScheduler() {
   logger.info(`Daily reminder scheduler started (every ${REMINDER_INTERVAL_MS / 60000} min)`);
 }
 
+// Daily therapist-alert scheduler. Runs the risk + milestone alert scan
+// (utils/therapistAlerts.runDailyAlertScan) once per day for every client
+// linked to a therapist. Same in-process setInterval idiom as the reminder
+// scheduler above: hourly ticks, an hour-of-day guard, and a same-day latch
+// give once-daily semantics; startup jitter keeps it from ever running at
+// boot (or in lockstep across restart loops). CRISIS alerts do NOT wait for
+// this job — they fire immediately from the write path (logs/real-talk).
+const ALERT_SCAN_INTERVAL_MS = 60 * 60 * 1000; // hourly tick
+const ALERT_SCAN_UTC_HOUR = Number.isInteger(Number(process.env.ALERT_SCAN_UTC_HOUR))
+  ? Number(process.env.ALERT_SCAN_UTC_HOUR)
+  : 6; // default 06:00 UTC (overnight for US timezones)
+let alertScanRunning = false;
+let lastAlertScanDay = null;
+async function runTherapistAlertScan() {
+  if (alertScanRunning) return; // don't overlap a slow run
+  const now = new Date();
+  // Run on the FIRST tick of each UTC day at or after the target hour. Using
+  // `< target` (not `!== target`) means a tick that drifts past the exact hour
+  // — e.g. boot jitter lands ticks at :07 and :52 and the :06-hour tick is
+  // missed — still triggers the scan later that same day. The same-day latch
+  // (lastAlertScanDay) guarantees it runs at most once per day.
+  if (now.getUTCHours() < ALERT_SCAN_UTC_HOUR) return; // not yet at target hour today
+  const dayKey = now.toISOString().slice(0, 10);
+  if (lastAlertScanDay === dayKey) return; // already ran today
+  alertScanRunning = true;
+  try {
+    const therapistAlerts = require('./utils/therapistAlerts');
+    therapistAlerts.init(prisma);
+    const summary = await therapistAlerts.runDailyAlertScan(prisma);
+    lastAlertScanDay = dayKey;
+    logger.info(
+      `Therapist alert scan done: ${summary.clientsScanned} clients, ` +
+      `${summary.riskAlerts} risk + ${summary.milestoneAlerts} milestone alerts, ` +
+      `${summary.failures} failures`
+    );
+  } catch (err) {
+    logger.error('Therapist alert scan failed', { error: err.message });
+  } finally {
+    alertScanRunning = false;
+  }
+}
+function startAlertScheduler() {
+  if (process.env.NODE_ENV === 'test') return;
+  if (process.env.ENABLE_ALERT_SCHEDULER === 'false') {
+    logger.info('Alert scheduler disabled via ENABLE_ALERT_SCHEDULER=false');
+    return;
+  }
+  // 5-15 min startup jitter: never scan during boot, and de-synchronize ticks
+  // if the process is restart-looping.
+  const startupJitterMs = 5 * 60 * 1000 + Math.floor(Math.random() * 10 * 60 * 1000);
+  setTimeout(() => {
+    runTherapistAlertScan();
+    setInterval(runTherapistAlertScan, ALERT_SCAN_INTERVAL_MS);
+  }, startupJitterMs);
+  logger.info(
+    `Therapist alert scheduler started (daily at ${String(ALERT_SCAN_UTC_HOUR).padStart(2, '0')}:00 UTC, ` +
+    `first tick in ${Math.round(startupJitterMs / 60000)} min)`
+  );
+}
+
+// Appointment-reminder scheduler. Same in-process setInterval idiom as the
+// alert scheduler above: hourly tick, overlap guard, kill switch env, and
+// startup jitter. Each tick emails clients whose scheduled appointment starts
+// within the next 24h and hasn't been reminded (reminderSentAt null); the
+// scan stamps reminderSentAt before sending so it can never double-send, and
+// failures are isolated per appointment (see routes/therapist-practice.js).
+const APPOINTMENT_REMINDER_INTERVAL_MS = 60 * 60 * 1000; // hourly tick
+let appointmentReminderRunning = false;
+async function runAppointmentReminderScan() {
+  if (appointmentReminderRunning) return; // don't overlap a slow run
+  appointmentReminderRunning = true;
+  try {
+    const { scanAndSendAppointmentReminders } = require('./routes/therapist-practice');
+    const summary = await scanAndSendAppointmentReminders(prisma);
+    if (summary.scanned > 0) {
+      logger.info(
+        `Appointment reminder scan done: ${summary.scanned} due, ` +
+        `${summary.sent} sent, ${summary.failures} failures`
+      );
+    }
+  } catch (err) {
+    logger.error('Appointment reminder scan failed', { error: err.message });
+  } finally {
+    appointmentReminderRunning = false;
+  }
+}
+function startAppointmentReminderScheduler() {
+  if (process.env.NODE_ENV === 'test') return;
+  if (process.env.ENABLE_APPOINTMENT_REMINDER_SCHEDULER === 'false') {
+    logger.info('Appointment reminder scheduler disabled via ENABLE_APPOINTMENT_REMINDER_SCHEDULER=false');
+    return;
+  }
+  // 5-15 min startup jitter: never scan during boot, and de-synchronize ticks
+  // if the process is restart-looping.
+  const startupJitterMs = 5 * 60 * 1000 + Math.floor(Math.random() * 10 * 60 * 1000);
+  setTimeout(() => {
+    runAppointmentReminderScan();
+    setInterval(runAppointmentReminderScan, APPOINTMENT_REMINDER_INTERVAL_MS);
+  }, startupJitterMs);
+  logger.info(
+    `Appointment reminder scheduler started (hourly, ` +
+    `first tick in ${Math.round(startupJitterMs / 60000)} min)`
+  );
+}
+
 // Graceful shutdown
 const gracefulShutdown = async () => {
   logger.info('Shutting down gracefully...');
@@ -310,43 +436,47 @@ async function verifyDatabaseSchema() {
   }
 }
 
-// Platform admin emails that should always have access
-const PLATFORM_ADMIN_EMAILS = [
-  'josh@gullstack.com',
-  'bryce@gullstack.com',
-];
+// SECURITY FIX (CRIT): platform admins are no longer hardcoded or self-healing.
+// The allowlist comes from the PLATFORM_ADMIN_EMAILS env var (comma-separated,
+// same var middleware/auth.js uses for its request-time check). Boot-time
+// promotion is opt-in via PLATFORM_ADMIN_BOOTSTRAP=true and:
+//   - never CREATES accounts (the person must sign up first),
+//   - never re-promotes an account an operator explicitly demoted
+//     (tracked via User.adminRevokedAt, set by PUT /api/admin/users/:id).
+const { PLATFORM_ADMIN_EMAILS } = require('./middleware/auth');
 
-// Self-healing bootstrap: ensures platform admins can always log in
 async function bootstrapPlatformAdmins() {
+  if (process.env.PLATFORM_ADMIN_BOOTSTRAP !== 'true') {
+    logger.info('[Bootstrap] Platform admin bootstrap disabled (set PLATFORM_ADMIN_BOOTSTRAP=true to enable)');
+    return;
+  }
+
+  if (PLATFORM_ADMIN_EMAILS.length === 0) {
+    logger.warn('[Bootstrap] PLATFORM_ADMIN_BOOTSTRAP=true but PLATFORM_ADMIN_EMAILS is empty — nothing to promote');
+    return;
+  }
+
   logger.info('[Bootstrap] Checking platform admin accounts...');
-  
+
   try {
     for (const email of PLATFORM_ADMIN_EMAILS) {
       const existingUser = await prisma.user.findUnique({
         where: { email },
       });
-      
+
       if (!existingUser) {
-        logger.info(`[Bootstrap] Creating platform admin: ${email}`);
-        const nameParts = email.split('@')[0].split('.');
-        const firstName = nameParts[0]?.charAt(0).toUpperCase() + nameParts[0]?.slice(1) || 'Admin';
-        
-        // Create with a placeholder password - they'll need to reset or use Google OAuth
-        const bcrypt = require('bcryptjs');
-        const tempPassword = await bcrypt.hash(require('crypto').randomBytes(32).toString('hex'), 10);
-        
-        await prisma.user.create({
-          data: {
-            email,
-            passwordHash: tempPassword, // SECURITY FIX: matches Prisma schema field name
-            firstName,
-            lastName: 'Admin',
-            isPlatformAdmin: true,
-            emailVerified: true, // Skip verification for admins
-          },
-        });
-      } else if (!existingUser.isPlatformAdmin) {
-        // Ensure admin flag is set
+        // Do NOT auto-create accounts — the admin must sign up normally first.
+        logger.warn(`[Bootstrap] Allowlisted admin has no account (skipping): ${email}`);
+        continue;
+      }
+
+      if (existingUser.adminRevokedAt) {
+        // An operator explicitly demoted this account — never re-promote.
+        logger.warn(`[Bootstrap] Admin was explicitly revoked, not re-promoting: ${email}`);
+        continue;
+      }
+
+      if (!existingUser.isPlatformAdmin) {
         logger.info(`[Bootstrap] Promoting to platform admin: ${email}`);
         await prisma.user.update({
           where: { email },
@@ -354,7 +484,7 @@ async function bootstrapPlatformAdmins() {
         });
       }
     }
-    
+
     logger.info('[Bootstrap] Platform admin check complete.');
   } catch (error) {
     logger.error('[Bootstrap] Error (non-fatal):', { error: error.message });
@@ -371,7 +501,7 @@ async function startServer() {
     // Verify critical tables exist (fail fast if schema is broken)
     await verifyDatabaseSchema();
 
-    // Self-healing: ensure platform admins always exist
+    // Opt-in (PLATFORM_ADMIN_BOOTSTRAP=true): promote allowlisted existing accounts
     await bootstrapPlatformAdmins();
 
     // Clean expired tokens on startup
@@ -381,6 +511,12 @@ async function startServer() {
 
     // Start the daily-reminder trigger (the habit loop's missing spark).
     startReminderScheduler();
+
+    // Start the daily therapist alert scan (risk + milestone generation).
+    startAlertScheduler();
+
+    // Start the hourly appointment reminder scan (24h-ahead client emails).
+    startAppointmentReminderScheduler();
 
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);

@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { detectCrisisAndNotify } = require('../utils/therapistAlerts');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -108,11 +109,37 @@ router.post('/', authenticate, async (req, res, next) => {
       where: { userId: req.user.id, deletedAt: null },
     });
 
-    res.status(201).json({
+    // Crisis detection on the free-text fields, AFTER the save succeeded.
+    // (The abuse-keyword early return above catches explicit violence words;
+    // this catches suicidal ideation / self-harm / escalation language that
+    // slips past it.) Therapist alerting runs fire-and-forget inside the hook
+    // and can never break this save.
+    const crisis = detectCrisisAndNotify(req.user.id, allText, {
+      prisma: req.prisma,
+      source: 'real_talk',
+    });
+
+    const responseBody = {
       realTalk,
       warnings: [...issueWarnings, ...feelingWarnings],
       totalCount,
-    });
+    };
+
+    if (crisis) {
+      responseBody.crisis = crisis;
+      // Mirror the abuse safety-response shape (safety/hotline/textLine/url)
+      // so the existing Real Talk safety dialog triggers immediately on
+      // res.data.safety. Resources never include the client's own text.
+      const primaryResource = crisis.resources[0] || {};
+      const secondaryResource = crisis.resources[1] || {};
+      responseBody.safety = true;
+      responseBody.message = crisis.message;
+      responseBody.hotline = primaryResource.contact || 'Call or text 988';
+      responseBody.textLine = secondaryResource.contact || 'Text HOME to 741741';
+      responseBody.url = primaryResource.url || 'https://988lifeline.org';
+    }
+
+    res.status(201).json(responseBody);
   } catch (error) {
     next(error);
   }

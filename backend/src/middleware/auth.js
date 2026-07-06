@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const logger = require('../utils/logger');
+const { resolveEntitlement } = require('../lib/entitlement');
 
 // Validate JWT_SECRET is configured
 if (!process.env.JWT_SECRET) {
@@ -32,8 +33,12 @@ const authenticate = async (req, res, next) => {
         lastName: true,
         role: true,
         subscriptionStatus: true,
+        subscriptionSource: true,
+        appleExpiresAt: true,
+        trialEndsAt: true,
         stripeCustomerId: true,
         isPlatformAdmin: true,
+        tokenVersion: true,
         createdAt: true
       }
     });
@@ -42,8 +47,23 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ error: 'User not found' });
     }
 
-    // App is free — treat all users as premium regardless of DB status
-    req.user = { ...user, subscriptionStatus: 'premium' };
+    // Session revocation: reject tokens issued before the last password
+    // change/reset or logout. Legacy tokens without the claim are treated as
+    // version 0 (grace period) — they die as soon as the user's tokenVersion
+    // is bumped for the first time.
+    const tokenVersion = decoded.tokenVersion ?? 0;
+    if (tokenVersion !== (user.tokenVersion ?? 0)) {
+      return res.status(401).json({ error: 'Token revoked', code: 'TOKEN_REVOKED' });
+    }
+
+    // Expose the REAL subscription status from the DB (no force-premium
+    // override). Resolve couple-aware entitlement once and hang it off req so
+    // downstream gates/routes reuse it without re-querying. The partner lookup
+    // inside resolveEntitlement only runs when the user is not already
+    // self-entitled, so the common path adds no query.
+    const { tokenVersion: _tv, ...safeUser } = user;
+    req.user = safeUser;
+    req.entitlement = await resolveEntitlement(req.prisma, safeUser);
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -58,11 +78,34 @@ const authenticate = async (req, res, next) => {
 };
 
 /**
- * requireSubscription — DISABLED: app is fully free.
- * All users are allowed through unconditionally.
+ * requireSubscription — real gate. Allows through any user who is entitled
+ * under the couple-aware model (own active subscription, own live trial, or a
+ * partner who is entitled). Otherwise 402 Payment Required.
+ *
+ * Reuses req.entitlement computed by authenticate; falls back to resolving it
+ * if the middleware is used standalone.
  */
-const requireSubscription = (req, res, next) => {
-  next();
+const requireSubscription = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const entitlement = req.entitlement || await resolveEntitlement(req.prisma, req.user);
+    req.entitlement = entitlement;
+
+    if (!entitlement.isEntitled) {
+      return res.status(402).json({
+        error: 'An active subscription is required to access this feature',
+        code: 'SUBSCRIPTION_REQUIRED'
+      });
+    }
+
+    next();
+  } catch (error) {
+    logger.error('requireSubscription error', { error: error.message });
+    return res.status(500).json({ error: 'Subscription check failed' });
+  }
 };
 
 /**
@@ -84,12 +127,18 @@ const optionalAuth = async (req, res, next) => {
           firstName: true,
           lastName: true,
           role: true,
-          subscriptionStatus: true
+          subscriptionStatus: true,
+          subscriptionSource: true,
+          appleExpiresAt: true,
+          trialEndsAt: true,
+          tokenVersion: true
         }
       });
 
-      if (user) {
-        req.user = user;
+      // Same revocation check as authenticate (missing claim = legacy version 0)
+      if (user && (decoded.tokenVersion ?? 0) === (user.tokenVersion ?? 0)) {
+        const { tokenVersion: _tv, ...safeUser } = user;
+        req.user = safeUser;
       }
     }
   } catch (error) {
@@ -100,11 +149,42 @@ const optionalAuth = async (req, res, next) => {
 };
 
 /**
- * requirePremium — DISABLED: app is fully free.
- * All users are allowed through unconditionally.
+ * requirePremium — real gate. Requires an entitled user whose effective tier
+ * is 'premium' (own premium subscription, or a partner on premium), OR an
+ * active trial — the UI and marketing promise a trial full access, so trial
+ * users must never hit the premium wall. A user who is entitled only at the
+ * 'paid' tier is rejected with 402 PREMIUM_REQUIRED.
  */
-const requirePremium = (req, res, next) => {
-  next();
+const requirePremium = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const entitlement = req.entitlement || await resolveEntitlement(req.prisma, req.user);
+    req.entitlement = entitlement;
+
+    if (!entitlement.isEntitled) {
+      return res.status(402).json({
+        error: 'An active subscription is required to access this feature',
+        code: 'SUBSCRIPTION_REQUIRED'
+      });
+    }
+
+    // Active trials (own or partner's) get full access; only entitled
+    // paid-tier users are asked to upgrade.
+    if (entitlement.tier !== 'premium' && !entitlement.isTrial) {
+      return res.status(402).json({
+        error: 'A premium subscription is required to access this feature',
+        code: 'PREMIUM_REQUIRED'
+      });
+    }
+
+    next();
+  } catch (error) {
+    logger.error('requirePremium error', { error: error.message });
+    return res.status(500).json({ error: 'Subscription check failed' });
+  }
 };
 
 /**

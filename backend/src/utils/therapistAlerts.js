@@ -20,6 +20,9 @@
 'use strict';
 
 const logger = require('./logger');
+// Reuse the single source of truth for the consent permission matrix so alert
+// routing honours the same tiers as the dashboard data-access checks.
+const { hasPermission } = require('../middleware/therapistAccess');
 
 /**
  * Module-level prisma reference, set via init().
@@ -176,11 +179,31 @@ async function triggerTherapistAlert(clientId, alertType, severity, data, prisma
 
   try {
     // 1. Find all therapists linked to this client with active assignments
-    const linkedTherapists = await _findLinkedTherapists(clientId, db);
+    let linkedTherapists = await _findLinkedTherapists(clientId, db);
+
+    // Permission-tier gating.
+    //
+    // CRISIS: ALWAYS delivered, regardless of the client's consent tier. This
+    // is a deliberate safety / duty-of-care override of the permission matrix —
+    // a client in acute crisis must reach their therapist even on a BASIC link.
+    // It is privacy-safe because the alert row + email carry ONLY minimum
+    // metadata (level, category, timestamp, client name) and NEVER any journal
+    // or Real Talk free-text (see _persistAlert and _sendEmailNotification).
+    //
+    // Non-crisis (RISK / MILESTONE / STAGNATION): these expose mood/progress
+    // detail, which the matrix (therapistAccess.js: mood_trends & crisis_alerts
+    // require STANDARD) gates. Drop any therapist whose consent tier is below
+    // STANDARD so a BASIC client never routes these alerts.
+    if (alertType !== ALERT_TYPE.CRISIS) {
+      linkedTherapists = linkedTherapists.filter((t) =>
+        hasPermission(t.permissionLevel, 'crisis_alerts'));
+    }
 
     if (linkedTherapists.length === 0) {
-      // No linked therapists — log but don't error
-      logger.info('No linked therapists for client, alert not delivered', { clientId });
+      // No linked therapists (or none at the required tier) — log but don't error
+      logger.info('No linked therapists for client at required tier, alert not delivered', {
+        clientId, alertType,
+      });
       return [];
     }
 
@@ -189,6 +212,19 @@ async function triggerTherapistAlert(clientId, alertType, severity, data, prisma
     const channels = SEVERITY_CHANNELS[severity] || SEVERITY_CHANNELS[ALERT_SEVERITY.LOW];
 
     for (const assignment of linkedTherapists) {
+      // Dedupe: skip if this therapist already has an unread alert of the same
+      // type/severity for this client within the last 24h. Severity is part of
+      // the key so an escalation (e.g. HIGH → CRITICAL) still gets through.
+      const isDuplicate = await _hasRecentUnreadAlert(
+        assignment.therapistId, clientId, alertType, severity, db
+      );
+      if (isDuplicate) {
+        logger.info('Skipping duplicate therapist alert (unread within 24h)', {
+          therapistId: assignment.therapistId, clientId, alertType, severity,
+        });
+        continue;
+      }
+
       const alert = {
         id: _generateUUID(),
         therapistId: assignment.therapistId,
@@ -491,18 +527,245 @@ async function handleCrisisDetection(clientId, crisisResult, prisma) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// WRITE-PATH HOOK: TEXT → CRISIS DETECTION → ALERTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Minimum crisis level (ACUTE=2) that triggers therapist alerting from the write path. */
+const CRISIS_ALERT_MIN_LEVEL = 2;
+
+/**
+ * @typedef {Object} ClientCrisisPayload
+ * @property {boolean} detected - Always true when returned
+ * @property {number} level - Crisis level (2=acute, 3=emergency)
+ * @property {string} primaryType - Dominant crisis type
+ * @property {boolean} safetyRisk - Self-harm/violence indicators present
+ * @property {string} message - Client-facing supportive message
+ * @property {Object[]} resources - Hotline resources ({name, contact, available, url})
+ */
+
+/**
+ * Write-path crisis hook. Call after a successful save of client free-text
+ * (journal entry, Real Talk issue/feeling/need, etc.).
+ *
+ * Detection itself is synchronous regex matching (crisisPathway) wrapped in a
+ * try/catch, so it can NEVER throw or break the caller's save. On ACUTE (2) or
+ * EMERGENCY (3) detection it fires — in the background, fire-and-forget:
+ *   1. TherapistAlert rows (type CRISIS) for every GRANTED-consent linked
+ *      therapist, with immediate notification delivery (email today), and
+ *   2. an audit-log entry recording the detection (HIPAA trail).
+ *
+ * PRIVACY: neither the alert rows, the audit log, nor the returned payload
+ * ever contain the client's text — only crisis level, category, timestamps.
+ *
+ * @param {string} clientId - UUID of the client whose text was saved
+ * @param {string} text - The free-text that was just saved (analyzed, never stored here)
+ * @param {Object} [options]
+ * @param {Object} [options.prisma] - Prisma client (falls back to init()-ed instance)
+ * @param {string} [options.source] - Origin of the text (e.g. 'daily_log', 'real_talk')
+ * @returns {ClientCrisisPayload|null} Client-safe payload for the API response
+ *   (so the app can immediately show 988/DV resources), or null when no
+ *   actionable crisis was detected.
+ */
+function detectCrisisAndNotify(clientId, text, { prisma, source = 'unknown' } = {}) {
+  let result;
+  let SAFETY_RESOURCES;
+  try {
+    // Lazy require — crisisPathway lazy-loads this module, so requiring it
+    // here (inside the function) keeps the dependency acyclic at load time.
+    const crisisPathway = require('./crisisPathway');
+    SAFETY_RESOURCES = crisisPathway.SAFETY_RESOURCES;
+    // Note: no clientId passed — this module owns the notification step below.
+    result = crisisPathway.detectCrisisLevel(text);
+  } catch (error) {
+    logger.error('Crisis detection failed (save unaffected)', { clientId, source, error: error.message });
+    return null;
+  }
+
+  if (!result || !result.isCrisis || result.level < CRISIS_ALERT_MIN_LEVEL) {
+    return null;
+  }
+
+  // Fire-and-forget: therapist alerts + audit trail. Never blocks the response.
+  (async () => {
+    const db = _getPrisma(prisma);
+
+    await handleCrisisDetection(clientId, result, db);
+
+    await db.auditLog.create({
+      data: {
+        userId: clientId,
+        action: 'CRISIS_DETECTED',
+        resource: source,
+        metadata: {
+          crisisLevel: result.level,
+          crisisType: result.primaryType,
+          allTypes: result.allTypes,
+          safetyRisk: result.safetyRisk,
+          confidence: result.confidence,
+          detectedAt: new Date().toISOString(),
+        },
+      },
+    });
+  })().catch((error) => {
+    logger.error('Crisis alert pipeline failed (save unaffected)', {
+      clientId, source, error: error.message,
+    });
+  });
+
+  // detectCrisisLevel only attaches resources for safetyRisk / level 3 —
+  // always give the client the core lifelines at level 2+.
+  let resources = result.safetyResources || [];
+  if (resources.length === 0 && SAFETY_RESOURCES) {
+    resources = [SAFETY_RESOURCES.suicideAndCrisis, SAFETY_RESOURCES.crisisTextLine];
+  }
+
+  return {
+    detected: true,
+    level: result.level,
+    primaryType: result.primaryType,
+    safetyRisk: result.safetyRisk,
+    message: result.safetyRisk
+      ? 'You matter, and you deserve support right now. If you are having thoughts of hurting yourself, please reach out — trained counselors are available 24/7.'
+      : 'It sounds like you are going through something really hard. Support is available right now if you need it.',
+    resources,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DAILY ALERT SCAN (Scheduler Entry Point)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Runs the daily risk + milestone alert generation for every client linked to
+ * an active therapist (GRANTED TherapistClient links, plus legacy active
+ * TherapistAssignment relationships). Designed to be invoked once per day by
+ * the scheduler in index.js.
+ *
+ * Per-client error isolation: one client's failure never aborts the run.
+ * Dedupe against alert spam is enforced inside triggerTherapistAlert
+ * (unread same-type alert within 24h is skipped).
+ *
+ * @param {Object} [prisma] - Prisma client (falls back to init()-ed instance)
+ * @returns {Promise<{clientsScanned: number, riskAlerts: number, milestoneAlerts: number, failures: number}>}
+ */
+async function runDailyAlertScan(prisma) {
+  const db = _getPrisma(prisma);
+  const clientIds = new Set();
+
+  // Live links: GRANTED consent to an active therapist
+  try {
+    const links = await db.therapistClient.findMany({
+      where: {
+        consentStatus: 'GRANTED',
+        therapist: { isActive: true },
+      },
+      select: { clientId: true },
+    });
+    for (const link of links || []) clientIds.add(link.clientId);
+  } catch (error) {
+    logger.error('Daily alert scan: failed to load TherapistClient links', { error: error.message });
+  }
+
+  // Legacy links: active assignments on active relationships
+  try {
+    const assignments = await db.therapistAssignment.findMany({
+      where: { status: 'active' },
+      select: {
+        relationship: {
+          select: { user1Id: true, user2Id: true, status: true },
+        },
+      },
+    });
+    for (const assignment of assignments || []) {
+      const rel = assignment.relationship;
+      if (!rel || rel.status !== 'active') continue;
+      if (rel.user1Id) clientIds.add(rel.user1Id);
+      if (rel.user2Id) clientIds.add(rel.user2Id);
+    }
+  } catch (error) {
+    logger.error('Daily alert scan: failed to load legacy assignments', { error: error.message });
+  }
+
+  let riskAlerts = 0;
+  let milestoneAlerts = 0;
+  let failures = 0;
+
+  for (const clientId of clientIds) {
+    try {
+      const risks = await generateRiskAlerts(clientId, {}, db);
+      riskAlerts += risks.length;
+      const milestones = await generateMilestoneAlerts(clientId, {}, db);
+      milestoneAlerts += milestones.length;
+    } catch (error) {
+      // generateRiskAlerts/generateMilestoneAlerts already swallow internally;
+      // this is belt-and-suspenders per-client isolation.
+      failures++;
+      logger.error('Daily alert scan: client failed', { clientId, error: error.message });
+    }
+  }
+
+  const summary = { clientsScanned: clientIds.size, riskAlerts, milestoneAlerts, failures };
+  logger.info('Daily therapist alert scan complete', summary);
+  return summary;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // PRIVATE: DATA ACCESS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Finds all therapists linked to a client via active TherapistAssignment.
+ * Finds all therapists linked to a client.
+ *
+ * Primary source: the live TherapistClient model — links where the client has
+ * GRANTED consent (never route alerts to a therapist the client hasn't
+ * consented to). Legacy TherapistAssignment rows (relationship-scoped) are
+ * included as a fallback union for accounts created before TherapistClient
+ * existed. Results are de-duplicated by therapistId.
+ *
  * @private
  * @param {string} clientId - User UUID
- * @returns {Promise<Array<{therapistId: string, relationshipId: string}>>}
+ * @returns {Promise<Array<{therapistId: string, relationshipId: string|null, therapistEmail: string|null, therapistName: string|null}>>}
  */
 async function _findLinkedTherapists(clientId, db) {
+  const byTherapistId = new Map();
+
+  // 1. Live model: TherapistClient with GRANTED consent
   try {
-    // Find relationships where this user is either user1 or user2
+    const links = await db.therapistClient.findMany({
+      where: {
+        clientId,
+        consentStatus: 'GRANTED',
+      },
+      select: {
+        therapistId: true,
+        coupleId: true,
+        permissionLevel: true,
+        therapist: {
+          select: { email: true, firstName: true, lastName: true, isActive: true },
+        },
+      },
+    });
+
+    for (const link of links || []) {
+      if (link.therapist && link.therapist.isActive === false) continue;
+      byTherapistId.set(link.therapistId, {
+        therapistId: link.therapistId,
+        relationshipId: link.coupleId || null,
+        // Consent tier gates non-crisis alerts. Schema default is BASIC, so a
+        // missing value is treated as BASIC (the most restrictive).
+        permissionLevel: link.permissionLevel || 'BASIC',
+        therapistEmail: link.therapist?.email || null,
+        therapistName: link.therapist
+          ? `${link.therapist.firstName || ''} ${link.therapist.lastName || ''}`.trim() || null
+          : null,
+      });
+    }
+  } catch (error) {
+    logger.error('Error finding linked therapists (TherapistClient)', { clientId, error: error.message });
+  }
+
+  // 2. Legacy fallback: active TherapistAssignment on the client's relationships
+  try {
     const relationships = await db.relationship.findMany({
       where: {
         OR: [{ user1Id: clientId }, { user2Id: clientId }],
@@ -511,26 +774,74 @@ async function _findLinkedTherapists(clientId, db) {
       select: { id: true },
     });
 
-    if (relationships.length === 0) return [];
+    if (relationships && relationships.length > 0) {
+      const relationshipIds = relationships.map((r) => r.id);
 
-    const relationshipIds = relationships.map((r) => r.id);
+      const assignments = await db.therapistAssignment.findMany({
+        where: {
+          relationshipId: { in: relationshipIds },
+          status: 'active',
+        },
+        select: {
+          therapistId: true,
+          relationshipId: true,
+          therapist: {
+            select: { email: true, firstName: true, lastName: true, isActive: true },
+          },
+        },
+      });
 
-    // Find active therapist assignments for those relationships
-    const assignments = await db.therapistAssignment.findMany({
+      for (const assignment of assignments || []) {
+        if (byTherapistId.has(assignment.therapistId)) continue;
+        if (assignment.therapist && assignment.therapist.isActive === false) continue;
+        byTherapistId.set(assignment.therapistId, {
+          therapistId: assignment.therapistId,
+          relationshipId: assignment.relationshipId,
+          // Legacy assignments predate the consent-tier model and were gated by
+          // requireBothConsent, which granted full couple-data access. Treat
+          // them as FULL so they keep receiving non-crisis alerts.
+          permissionLevel: 'FULL',
+          therapistEmail: assignment.therapist?.email || null,
+          therapistName: assignment.therapist
+            ? `${assignment.therapist.firstName || ''} ${assignment.therapist.lastName || ''}`.trim() || null
+            : null,
+        });
+      }
+    }
+  } catch (error) {
+    logger.error('Error finding linked therapists (legacy TherapistAssignment)', { clientId, error: error.message });
+  }
+
+  return Array.from(byTherapistId.values());
+}
+
+/**
+ * Checks whether the therapist already has an unread alert of the same
+ * type/severity for the same client within the last 24 hours (anti-spam).
+ * Fails OPEN — if the check errors, we prefer a possible duplicate alert over
+ * a missed crisis notification.
+ * @private
+ * @returns {Promise<boolean>}
+ */
+async function _hasRecentUnreadAlert(therapistId, clientId, alertType, severity, db) {
+  try {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const count = await db.therapistAlert.count({
       where: {
-        relationshipId: { in: relationshipIds },
-        status: 'active',
-      },
-      select: {
-        therapistId: true,
-        relationshipId: true,
+        therapistId,
+        clientId,
+        alertType,
+        severity,
+        readAt: null,
+        createdAt: { gte: since },
       },
     });
-
-    return assignments;
+    return count > 0;
   } catch (error) {
-    logger.error('Error finding linked therapists', { clientId, error: error.message });
-    return [];
+    logger.error('Alert dedupe check failed (failing open)', {
+      therapistId, clientId, alertType, error: error.message,
+    });
+    return false;
   }
 }
 
@@ -616,35 +927,103 @@ async function _queueNotifications(alert, assignment) {
 
 /**
  * Sends a push notification to the therapist.
+ * NOT YET IMPLEMENTED: therapists are a separate model (Therapist, not User)
+ * and have no push-subscription rows — utils/pushNotifications.js is keyed to
+ * User push subscriptions. Email (below) is the delivered channel today.
  * @private
  * @param {TherapistAlert} alert
  * @param {Object} assignment
  */
 async function _sendPushNotification(alert, assignment) {
-  // TODO: Integrate with push notification service (Firebase/APNs/web-push)
-  logger.info('PUSH notification stub', { therapistId: alert.therapistId, title: alert.title });
+  // TODO: Add therapist push subscriptions, then deliver via web-push here.
+  logger.info('PUSH notification stub (email is the delivered channel)', {
+    therapistId: alert.therapistId, title: alert.title,
+  });
 }
 
 /**
- * Sends an email notification to the therapist.
+ * Sends an email notification to the therapist via the shared nodemailer
+ * transport (utils/email.js — same infrastructure as password-reset emails).
+ *
+ * PRIVACY: the email body carries only the alert title/summary (crisis level,
+ * category, timestamp) — never client journal or Real Talk text. Neither is
+ * present anywhere in the alert object by design.
+ *
  * @private
  * @param {TherapistAlert} alert
- * @param {Object} assignment
+ * @param {Object} assignment - Link data from _findLinkedTherapists (carries therapistEmail)
  */
 async function _sendEmailNotification(alert, assignment) {
-  // TODO: Integrate with email service (SendGrid/SES)
-  logger.info('EMAIL notification stub', { therapistId: alert.therapistId, title: alert.title });
+  const to = assignment && assignment.therapistEmail;
+  if (!to) {
+    logger.warn('Therapist alert email skipped — no email on link record', {
+      therapistId: alert.therapistId, alertType: alert.alertType,
+    });
+    return;
+  }
+
+  const { sendEmail } = require('./email');
+
+  const isCrisis = alert.alertType === ALERT_TYPE.CRISIS;
+  const severityLabel = alert.severity;
+  const dashboardUrl = `${process.env.THERAPIST_PORTAL_URL || process.env.FRONTEND_URL || 'https://loverescue.app'}/therapist/alerts`;
+  const createdAt = alert.createdAt instanceof Date ? alert.createdAt.toISOString() : String(alert.createdAt);
+
+  const subject = isCrisis
+    ? `[URGENT] LoveRescue client crisis alert (${severityLabel})`
+    : `LoveRescue client alert: ${alert.title}`;
+
+  const text = [
+    `${alert.title}`,
+    '',
+    `${alert.summary}`,
+    '',
+    `Severity: ${severityLabel}`,
+    `Detected: ${createdAt}`,
+    '',
+    `Review in your dashboard: ${dashboardUrl}`,
+    '',
+    'For client privacy, this notification contains no client-written content.',
+  ].join('\n');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: ${isCrisis ? '#dc2626' : '#6366f1'};">${alert.title}</h2>
+      <p style="font-size: 15px; color: #1B2735;">${alert.summary}</p>
+      <p style="color: #666; font-size: 13px;">Severity: <strong>${severityLabel}</strong> &middot; Detected: ${createdAt}</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${dashboardUrl}" style="background: ${isCrisis ? '#dc2626' : '#6366f1'}; color: #fff; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Review in Dashboard</a>
+      </div>
+      <p style="color: #9FB0C0; font-size: 12px;">For client privacy, this notification contains no client-written content.</p>
+    </div>
+  `;
+
+  try {
+    const sent = await sendEmail({ to, subject, text, html });
+    if (!sent) {
+      logger.warn('Therapist alert email not sent (email service unconfigured or send failed)', {
+        therapistId: alert.therapistId, alertType: alert.alertType,
+      });
+    }
+  } catch (error) {
+    logger.error('Therapist alert email failed', {
+      therapistId: alert.therapistId, error: error.message,
+    });
+  }
 }
 
 /**
  * Sends an SMS notification to the therapist (CRITICAL only).
+ * NOT YET IMPLEMENTED: no SMS provider exists in this codebase.
  * @private
  * @param {TherapistAlert} alert
  * @param {Object} assignment
  */
 async function _sendSmsNotification(alert, assignment) {
-  // TODO: Integrate with SMS service (Twilio)
-  logger.info('SMS notification stub', { therapistId: alert.therapistId, title: alert.title });
+  // TODO: Integrate with SMS service (Twilio) — no SMS infrastructure exists yet.
+  logger.info('SMS notification stub (no SMS provider configured)', {
+    therapistId: alert.therapistId, title: alert.title,
+  });
 }
 
 /**
@@ -1311,6 +1690,12 @@ module.exports = {
 
   // Crisis bridge
   handleCrisisDetection,
+
+  // Write-path hook (journal / Real Talk text)
+  detectCrisisAndNotify,
+
+  // Daily scheduler entry point
+  runDailyAlertScan,
 
   // Constants
   ALERT_TYPE,

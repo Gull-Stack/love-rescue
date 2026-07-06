@@ -1,46 +1,81 @@
 /**
- * Subscriptions routes — SIMPLIFIED
+ * Subscriptions routes.
  *
- * The app is now fully free. All subscription status checks return "premium"
- * for all users. The verify-apple endpoint is retained but does nothing
- * meaningful since IAP is disabled.
+ * GET /status          — real couple-aware subscription state.
+ * POST /verify-apple   — real Apple App Store receipt validation; entitlement
+ *                        is derived from Apple's validated response, never the
+ *                        client's claim. Also serves iOS "restore purchases".
  */
 
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { resolveEntitlement } = require('../lib/entitlement');
+const { applyAppleReceipt } = require('../lib/appleEntitlement');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 
 /**
  * GET /api/subscriptions/status
- * Always returns premium status — all features are free.
+ * Returns { status, source, isActive, isTrial, trialDaysLeft, coveredByPartner }.
  */
 router.get('/status', authenticate, async (req, res) => {
   try {
+    const user = await req.prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        subscriptionStatus: true,
+        subscriptionSource: true,
+        appleExpiresAt: true, // resolver needs it to expire lapsed Apple entitlements
+        trialEndsAt: true
+      }
+    });
+
+    const entitlement = req.entitlement
+      || await resolveEntitlement(req.prisma, { id: req.user.id, ...user });
+
     res.json({
-      status: 'premium',
-      source: 'FREE',
-      isActive: true,
-      isTrial: false,
-      trialDaysLeft: 0,
+      status: entitlement.status,
+      source: user.subscriptionSource || 'NONE',
+      isActive: entitlement.isEntitled,
+      isTrial: entitlement.isTrial,
+      trialDaysLeft: entitlement.trialDaysRemaining,
+      coveredByPartner: entitlement.coveredByPartner
     });
   } catch (error) {
-    console.error('Subscription status error:', error);
+    logger.error('Subscription status error', { error: error.message });
     res.status(500).json({ error: 'Failed to check subscription status' });
   }
 });
 
 /**
- * POST /api/subscriptions/verify-apple
- * Disabled — IAP is no longer used. Returns a no-op success.
+ * POST /api/subscriptions/verify-apple  { receipt }
+ * Real Apple receipt validation (production, sandbox fallback on 21007). On a
+ * valid active auto-renewable receipt, sets the user's entitlement to premium
+ * with subscriptionSource APPLE. Rejects invalid/expired receipts with no
+ * entitlement. Supports restore (same validation path).
  */
-router.post('/verify-apple', authenticate, async (req, res) => {
-  res.json({
-    success: true,
-    status: 'premium',
-    source: 'FREE',
-    message: 'App is free — no receipt verification required.',
-  });
+router.post('/verify-apple', authenticate, async (req, res, next) => {
+  try {
+    const receipt = req.body?.receipt || req.body?.receiptData;
+    const result = await applyAppleReceipt(req.prisma, req.user.id, receipt);
+
+    if (!result.success) {
+      return res.status(result.status || 400).json({
+        error: result.error,
+        ...(result.code ? { code: result.code } : {})
+      });
+    }
+
+    return res.json({
+      success: true,
+      subscriptionStatus: 'premium',
+      source: 'APPLE',
+      expiresAt: result.expiresAt
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = router;

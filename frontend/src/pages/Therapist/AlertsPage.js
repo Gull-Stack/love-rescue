@@ -1,14 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Box, Typography, Button, Chip, Checkbox, FormControlLabel,
+  Box, Typography, Button, Checkbox, FormControlLabel,
   ToggleButton, ToggleButtonGroup, Alert, Skeleton, Card, CardContent,
 } from '@mui/material';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import therapistService from '../../services/therapistService';
 import { AlertCard } from '../../components/therapist';
 
-const TYPES = ['crisis', 'risk', 'milestone', 'stagnation'];
+// Values must match the backend AlertType enum (uppercase); labels are shown capitalized.
+const TYPES = [
+  { value: 'CRISIS', label: 'Crisis' },
+  { value: 'RISK', label: 'Risk' },
+  { value: 'MILESTONE', label: 'Milestone' },
+  { value: 'STAGNATION', label: 'Stagnation' },
+];
 
 const AlertsPage = () => {
   const navigate = useNavigate();
@@ -24,13 +30,13 @@ const AlertsPage = () => {
       setLoading(true);
       setError(null);
       const res = await therapistService.getAlerts({
-        type: filterType,
+        type: filterType || undefined,
         unreadOnly: unreadOnly || undefined,
       });
       setAlerts(res.data.alerts || []);
       setSelected(new Set());
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load alerts');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to load alerts');
     } finally {
       setLoading(false);
     }
@@ -44,7 +50,7 @@ const AlertsPage = () => {
   const handleMarkRead = async (id) => {
     try {
       await therapistService.markAlertRead(id);
-      setAlerts(prev => prev.map(a => a.id === id ? { ...a, read: true } : a));
+      setAlerts(prev => prev.map(a => a.id === id ? { ...a, readAt: new Date().toISOString() } : a));
     } catch (err) {
       console.error('Failed to mark alert as read:', err);
     }
@@ -54,7 +60,7 @@ const AlertsPage = () => {
     if (selected.size === 0) return;
     try {
       await therapistService.markAlertsRead([...selected]);
-      setAlerts(prev => prev.map(a => selected.has(a.id) ? { ...a, read: true } : a));
+      setAlerts(prev => prev.map(a => selected.has(a.id) ? { ...a, readAt: new Date().toISOString() } : a));
       setSelected(new Set());
     } catch (err) {
       console.error('Failed to mark alerts as read:', err);
@@ -83,8 +89,8 @@ const AlertsPage = () => {
           aria-label="Filter by type"
         >
           {TYPES.map(t => (
-            <ToggleButton key={t} value={t} sx={{ minHeight: 44, textTransform: 'capitalize' }}>
-              {t}
+            <ToggleButton key={t.value} value={t.value} sx={{ minHeight: 44 }}>
+              {t.label}
             </ToggleButton>
           ))}
         </ToggleButtonGroup>
@@ -118,25 +124,30 @@ const AlertsPage = () => {
           </CardContent>
         </Card>
       ) : (
-        alerts.map(a => (
-          <Box key={a.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-            <Checkbox
-              checked={selected.has(a.id)}
-              onChange={() => toggleSelect(a.id)}
-              sx={{ mt: 0.5, minWidth: 44, minHeight: 44 }}
-              inputProps={{ 'aria-label': `Select alert for ${a.clientName}` }}
-            />
-            <Box sx={{ flex: 1 }}>
-              <AlertCard
-                alert={a}
-                onClick={() => {
-                  if (!a.read) handleMarkRead(a.id);
-                  navigate(`/therapist/clients/${a.clientId}`);
-                }}
+        alerts.map(a => {
+          const clientName = a.client
+            ? [a.client.firstName, a.client.lastName].filter(Boolean).join(' ') || 'client'
+            : 'client';
+          return (
+            <Box key={a.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+              <Checkbox
+                checked={selected.has(a.id)}
+                onChange={() => toggleSelect(a.id)}
+                sx={{ mt: 0.5, minWidth: 44, minHeight: 44 }}
+                inputProps={{ 'aria-label': `Select alert for ${clientName}` }}
               />
+              <Box sx={{ flex: 1 }}>
+                <AlertCard
+                  alert={a}
+                  onClick={() => {
+                    if (!a.readAt) handleMarkRead(a.id);
+                    navigate(`/therapist/clients/${a.clientId}`);
+                  }}
+                />
+              </Box>
             </Box>
-          </Box>
-        ))
+          );
+        })
       )}
     </Box>
   );

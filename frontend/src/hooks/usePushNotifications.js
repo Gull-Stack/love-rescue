@@ -56,14 +56,21 @@ const usePushNotifications = () => {
       // Register with APNs/FCM
       await PushNotifications.register();
 
-      // Listen for registration success
+      // Listen for registration success. Listener handles are removed once we
+      // settle so repeated subscribe calls don't stack duplicate listeners.
       return new Promise((resolve, reject) => {
+        const handles = [];
+        const cleanup = () => {
+          handles.forEach((h) => h?.remove?.());
+        };
         const timeout = setTimeout(() => {
+          cleanup();
           reject(new Error('Push registration timed out'));
         }, 10000);
 
         PushNotifications.addListener('registration', async (token) => {
           clearTimeout(timeout);
+          cleanup();
           console.log('Push token received:', token.value.substring(0, 16) + '...');
 
           try {
@@ -77,13 +84,14 @@ const usePushNotifications = () => {
           } catch (err) {
             reject(err);
           }
-        });
+        }).then((h) => handles.push(h));
 
         PushNotifications.addListener('registrationError', (err) => {
           clearTimeout(timeout);
+          cleanup();
           console.error('Push registration error:', err);
           reject(new Error(err.error || 'Registration failed'));
-        });
+        }).then((h) => handles.push(h));
       });
     } catch (err) {
       console.error('Native push subscribe error:', err);
@@ -115,9 +123,26 @@ const usePushNotifications = () => {
     return registration;
   };
 
+  // navigator.serviceWorker.ready never resolves when no service worker is
+  // registered, so anything awaiting it without registering first hangs
+  // forever. Guard every .ready wait with a timeout.
+  const serviceWorkerReady = (timeoutMs = 10000) =>
+    Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Service worker not ready — timed out')), timeoutMs)
+      ),
+    ]);
+
   const checkWebSubscription = async () => {
     try {
-      const registration = await navigator.serviceWorker.ready;
+      // getRegistration resolves immediately (undefined when nothing is
+      // registered) — unlike .ready, which would hang forever here.
+      const registration = await navigator.serviceWorker.getRegistration('/push-sw.js');
+      if (!registration) {
+        setIsSubscribed(false);
+        return;
+      }
       const subscription = await registration.pushManager.getSubscription();
       setIsSubscribed(!!subscription);
     } catch (err) {
@@ -143,7 +168,7 @@ const usePushNotifications = () => {
     setError(null);
     try {
       await registerServiceWorker();
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await serviceWorkerReady();
       const response = await api.get('/push/vapid-public-key');
       const vapidKey = response.data.publicKey;
 
@@ -167,8 +192,8 @@ const usePushNotifications = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
+      const registration = await navigator.serviceWorker.getRegistration('/push-sw.js');
+      const subscription = await registration?.pushManager.getSubscription();
       if (subscription) {
         await subscription.unsubscribe();
         await api.post('/push/unsubscribe', { endpoint: subscription.endpoint });

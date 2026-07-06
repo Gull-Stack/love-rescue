@@ -1,9 +1,8 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { MotionConfig } from 'framer-motion';
 import { useAuth } from './contexts/AuthContext';
-import { Capacitor } from '@capacitor/core';
-import { StatusBar, Style } from '@capacitor/status-bar';
+import { initCapacitor } from './utils/capacitor-init';
 
 // Layout (static - needed immediately)
 import Layout from './components/Layout/Layout';
@@ -38,8 +37,10 @@ const Gratitude = React.lazy(() => import('./pages/Gratitude/Gratitude'));
 const RealTalk = React.lazy(() => import('./pages/RealTalk/RealTalk'));
 const RealTalkHistory = React.lazy(() => import('./pages/RealTalk/RealTalkHistory'));
 
+// Billing (lazy loaded)
+const Subscribe = React.lazy(() => import('./pages/Subscribe/Subscribe'));
+
 // Course pages (lazy loaded)
-// const Subscribe = React.lazy(() => import('./pages/Subscribe/Subscribe')); // FREE ERA: removed
 const CourseJourney = React.lazy(() => import('./pages/Course/Journey'));
 const CourseWeekDetail = React.lazy(() => import('./pages/Course/WeekDetail'));
 
@@ -53,6 +54,8 @@ const TreatmentPlanner = React.lazy(() => import('./pages/Therapist/TreatmentPla
 const TherapistOnboarding = React.lazy(() => import('./pages/Therapist/TherapistOnboarding'));
 const TherapistClientLinking = React.lazy(() => import('./pages/Therapist/ClientLinking'));
 const TherapistJoin = React.lazy(() => import('./pages/Therapist/TherapistJoin'));
+const TherapistAppointments = React.lazy(() => import('./pages/Therapist/AppointmentsPage'));
+const TherapistClientNotes = React.lazy(() => import('./pages/Therapist/ClientNotes'));
 
 // Admin pages (lazy loaded)
 const AdminDashboard = React.lazy(() => import('./pages/Admin'));
@@ -66,6 +69,7 @@ const CommandCenter = React.lazy(() => import('./pages/Admin/CommandCenter'));
 // Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -74,7 +78,10 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    // A cold visit to the root should land on the marketing funnel, not a
+    // login wall. Deep links to protected pages keep going to /login so the
+    // user can sign in and continue.
+    return <Navigate to={location.pathname === '/' ? '/welcome' : '/login'} replace />;
   }
 
   return children;
@@ -115,15 +122,17 @@ const TherapistRoute = ({ children }) => {
 };
 
 function App() {
+  const navigate = useNavigate();
+
   useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      StatusBar.setStyle({ style: Style.Light });
-      // overlay: true => web view goes edge-to-edge under the status bar so the
-      // env(safe-area-inset-top) padding in Layout actually takes effect (matches
-      // viewport-fit=cover in index.html).
-      StatusBar.setOverlaysWebView({ overlay: true });
-    }
-  }, []);
+    // Native shell setup: status bar, splash screen, app lifecycle, and deep
+    // links (initCapacitor no-ops on web and guards against double-init).
+    // Deep links route through the SPA router so https://loverescue.app/join/x
+    // opened from a share sheet lands on the right screen without a reload.
+    initCapacitor({
+      onDeepLink: (path) => navigate(path),
+    });
+  }, [navigate]);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -218,7 +227,10 @@ function App() {
           <Route path="gratitude" element={<Gratitude />} />
           <Route path="real-talk" element={<RealTalk />} />
           <Route path="real-talk/history" element={<RealTalkHistory />} />
-          {/* <Route path="subscribe" element={<Subscribe />} /> FREE ERA: removed */}
+          {/* Paywall — the funnel target when a gated call returns 402
+              SUBSCRIPTION_REQUIRED (see the axios interceptor in services/api.js)
+              and when a user taps upgrade prompts. The page itself is not gated. */}
+          <Route path="subscribe" element={<Subscribe />} />
           {/* Course routes */}
           <Route path="course" element={<CourseJourney />} />
           <Route path="course/week" element={<CourseWeekDetail />} />
@@ -227,7 +239,9 @@ function App() {
           <Route path="therapist/onboarding" element={<TherapistOnboarding />} />
           <Route path="therapist" element={<TherapistRoute><TherapistDashboard /></TherapistRoute>} />
           <Route path="therapist/clients" element={<TherapistRoute><TherapistClientLinking /></TherapistRoute>} />
+          <Route path="therapist/appointments" element={<TherapistRoute><TherapistAppointments /></TherapistRoute>} />
           <Route path="therapist/clients/:id" element={<TherapistRoute><ClientProgress /></TherapistRoute>} />
+          <Route path="therapist/clients/:id/notes" element={<TherapistRoute><TherapistClientNotes /></TherapistRoute>} />
           <Route path="therapist/clients/:id/session-prep" element={<TherapistRoute><SessionPrep /></TherapistRoute>} />
           <Route path="therapist/clients/:id/treatment-plan" element={<TherapistRoute><TreatmentPlanner /></TherapistRoute>} />
           <Route path="therapist/couples/:id" element={<TherapistRoute><CoupleView /></TherapistRoute>} />

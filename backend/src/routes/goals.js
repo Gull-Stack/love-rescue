@@ -1,5 +1,6 @@
 const express = require('express');
-const { authenticate, requireSubscription, loadRelationship } = require('../middleware/auth');
+const { authenticate, loadRelationship } = require('../middleware/auth');
+const { detectCrisisAndNotify } = require('../utils/therapistAlerts');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -48,8 +49,14 @@ router.get('/', authenticate, loadRelationship, async (req, res, next) => {
 /**
  * POST /api/goals
  * Create a new shared goal
+ *
+ * Deliberately NOT gated by requireSubscription: the shared-goals habit layer
+ * is free, and — safety-critical — crisis detection on the goal free-text
+ * (title + description) must always run. A paywall here would 402 an expired
+ * user before detectCrisisAndNotify ever fired (no 988 resources, no
+ * therapist alert).
  */
-router.post('/', authenticate, requireSubscription, loadRelationship, async (req, res, next) => {
+router.post('/', authenticate, loadRelationship, async (req, res, next) => {
   try {
     const { title, description, targetDate } = req.body;
 
@@ -76,7 +83,23 @@ router.post('/', authenticate, requireSubscription, loadRelationship, async (req
       relationshipId: req.relationship.id
     });
 
-    res.status(201).json({ goal });
+    // Crisis detection on the goal free-text (title + description), AFTER the
+    // save succeeded. Detection is synchronous regex (so resources can ride the
+    // response); therapist alerting + audit logging run fire-and-forget inside
+    // the hook — a detector or DB failure can never break the user's save.
+    const crisis = detectCrisisAndNotify(
+      req.user.id,
+      [title, description].filter(Boolean).join(' '),
+      { prisma: req.prisma, source: 'goals' }
+    );
+
+    res.status(201).json({
+      goal,
+      // Present only when acute/emergency crisis language was detected — carries
+      // 988/DV-hotline resources so the app can show them immediately. Never
+      // echoes the goal text.
+      ...(crisis ? { crisis } : {})
+    });
   } catch (error) {
     next(error);
   }

@@ -59,7 +59,7 @@ export const TherapistProvider = ({ children }) => {
     try {
       const response = await api.get('/therapist/alerts');
       setAlerts(response.data.alerts || []);
-      setActiveAlertsCount(response.data.activeCount || 0);
+      setActiveAlertsCount(response.data.unreadCount || 0);
       return response.data;
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load alerts');
@@ -116,16 +116,12 @@ export const TherapistProvider = ({ children }) => {
     }
   }, []);
 
-  const exportData = useCallback(async (format = 'pdf') => {
-    try {
-      const response = await api.get('/therapist/export', {
-        params: { format },
-        responseType: 'blob',
-      });
-      return response.data;
-    } catch (err) {
-      throw err;
-    }
+  // The export endpoint is a stub that returns JSON ({ message: 'Export coming
+  // soon', data: [] }) — return it as plain JSON rather than pretending it's a
+  // downloadable PDF/CSV blob. UI surfaces should treat export as "coming soon".
+  const exportData = useCallback(async (format = 'json') => {
+    const response = await api.get('/therapist/export', { params: { format } });
+    return response.data;
   }, []);
 
   const clearError = useCallback(() => setError(null), []);

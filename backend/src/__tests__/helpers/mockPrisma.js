@@ -1,6 +1,6 @@
 /**
  * Mock Prisma client for testing.
- * Provides jest.fn() mocks for all 14 Prisma models and their standard operations.
+ * Provides jest.fn() mocks for the Prisma models and their standard operations.
  */
 
 const PRISMA_METHODS = [
@@ -8,6 +8,7 @@ const PRISMA_METHODS = [
   'findFirst',
   'findMany',
   'create',
+  'createMany',
   'update',
   'updateMany',
   'delete',
@@ -25,12 +26,29 @@ const PRISMA_MODELS = [
   'strategy',
   'therapistTask',
   'auditLog',
+  'accessLog',
+  'consentLog',
   'token',
   'dailyInsight',
   'dailyVideo',
   'videoCompletion',
   'mediator',
-  'meeting'
+  'meeting',
+  'therapist',
+  'therapistClient',
+  'therapistAssignment',
+  'therapistAlert',
+  'sessionPrepReport',
+  'courseProgress',
+  'sharedGoal',
+  'gratitudeEntry',
+  'treatmentPlan',
+  'webhookEvent',
+  'integrationPartner',
+  'integrationPartnerTherapist',
+  'integrationAccessLog',
+  'sessionNote',
+  'appointment'
 ];
 
 /**
@@ -46,7 +64,7 @@ function createMockModel() {
 }
 
 /**
- * Create a complete mock Prisma client with all 14 models.
+ * Create a complete mock Prisma client.
  * Each model has mocked findUnique, findFirst, findMany, create, update,
  * updateMany, delete, deleteMany, upsert, and count methods.
  *

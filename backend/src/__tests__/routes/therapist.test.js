@@ -42,7 +42,9 @@ function createMockPrisma() {
         therapistId: 'therapist-123',
         clientId: 'user-test-123',
         consentStatus: 'GRANTED'
-      })
+      }),
+      // Default: no links — routes fall back to legacy relationship consent flags
+      findMany: jest.fn().mockResolvedValue([])
     },
     consentLog: {
       create: jest.fn().mockResolvedValue({})
@@ -156,7 +158,7 @@ describe('Therapist Routes', () => {
         });
 
       expect(res.status).toBe(401);
-      expect(res.body.error).toBe('Therapist API key required');
+      expect(res.body.error).toBe('Therapist authentication required');
     });
 
     test('returns 403 with wrong API key', async () => {
@@ -203,7 +205,7 @@ describe('Therapist Routes', () => {
 
     test('returns 403 when no consent (user1TherapistConsent=false)', async () => {
       await mockTherapistAuth();
-      mockPrisma.therapistClient.findFirst.mockResolvedValue(null); // No active link, fall back to legacy consent
+      mockPrisma.therapistClient.findMany.mockResolvedValue([]); // No active links, fall back to legacy consent
       mockPrisma.relationship.findUnique.mockResolvedValue({
         ...TEST_RELATIONSHIP,
         user1TherapistConsent: false,

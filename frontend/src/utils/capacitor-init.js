@@ -1,11 +1,23 @@
 import { isNative, isIOS } from './platform';
 
+// Module-level guards so listeners are only attached once, even though React
+// StrictMode double-invokes effects in development and multiple callers may
+// race (e.g. App mount + auth bootstrap).
+let capacitorInitialized = false;
+let pushListenersAttached = false;
+
 /**
  * Initialize Capacitor native plugins.
  * Call this once in your app entry point (e.g., App.js useEffect).
+ *
+ * @param {Object}   [options]
+ * @param {Function} [options.onDeepLink] Called with an SPA path
+ *   (pathname + search + hash) when the app is opened via a universal/custom
+ *   URL — pass the router's navigate so deep links land on the right screen.
  */
-export async function initCapacitor() {
-  if (!isNative()) return;
+export async function initCapacitor({ onDeepLink } = {}) {
+  if (!isNative() || capacitorInitialized) return;
+  capacitorInitialized = true;
 
   // Status Bar
   try {
@@ -28,18 +40,9 @@ export async function initCapacitor() {
     console.warn('SplashScreen plugin not available:', e);
   }
 
-  // Keyboard
-  try {
-    const { Keyboard } = await import('@capacitor/keyboard');
-    Keyboard.addListener('keyboardWillShow', (info) => {
-      document.body.style.setProperty('--keyboard-height', `${info.keyboardHeight}px`);
-    });
-    Keyboard.addListener('keyboardWillHide', () => {
-      document.body.style.setProperty('--keyboard-height', '0px');
-    });
-  } catch (e) {
-    console.warn('Keyboard plugin not available:', e);
-  }
+  // Keyboard: handled natively — capacitor.config.ts sets Keyboard.resize to
+  // 'native' so the web view resizes when the keyboard shows. No CSS-var
+  // plumbing needed here (nothing in the app consumed --keyboard-height).
 
   // App lifecycle
   try {
@@ -49,7 +52,20 @@ export async function initCapacitor() {
     });
     App.addListener('appUrlOpen', ({ url }) => {
       console.log('App opened with URL:', url);
-      // Handle deep links here
+      // Route deep links into the SPA: https://loverescue.app/join/abc?x=1
+      // (or a custom scheme) becomes /join/abc?x=1.
+      try {
+        const parsed = new URL(url);
+        const path = `${parsed.pathname}${parsed.search}${parsed.hash}` || '/';
+        if (onDeepLink) {
+          onDeepLink(path);
+        } else if (window.location.pathname !== parsed.pathname) {
+          // Fallback without a router hook: hard-navigate within the SPA.
+          window.location.assign(path);
+        }
+      } catch (err) {
+        console.warn('Unparseable deep link URL:', url, err);
+      }
     });
   } catch (e) {
     console.warn('App plugin not available:', e);
@@ -57,8 +73,8 @@ export async function initCapacitor() {
 }
 
 /**
- * Register for push notifications (native).
- * Returns the push token string or null.
+ * Register for push notifications (native), prompting for permission if
+ * needed. Returns the push token string or null.
  */
 export async function registerNativePush() {
   if (!isNative()) return null;
@@ -72,18 +88,7 @@ export async function registerNativePush() {
       return null;
     }
 
-    await PushNotifications.register();
-
-    return new Promise((resolve) => {
-      PushNotifications.addListener('registration', (token) => {
-        console.log('Push token:', token.value);
-        resolve(token.value);
-      });
-      PushNotifications.addListener('registrationError', (err) => {
-        console.error('Push registration error:', err);
-        resolve(null);
-      });
-    });
+    return await registerAndAwaitToken(PushNotifications);
   } catch (e) {
     console.error('Push registration failed:', e);
     return null;
@@ -91,10 +96,64 @@ export async function registerNativePush() {
 }
 
 /**
+ * Silent variant for app startup / login: refreshes the device token ONLY if
+ * the user has already granted push permission. Never prompts — first-time
+ * opt-in stays with explicit user actions (Settings toggle, post-check-in
+ * prompt in DailyLog).
+ */
+export async function registerNativePushIfGranted() {
+  if (!isNative()) return null;
+
+  try {
+    const { PushNotifications } = await import('@capacitor/push-notifications');
+
+    const permStatus = await PushNotifications.checkPermissions();
+    if (permStatus.receive !== 'granted') return null;
+
+    return await registerAndAwaitToken(PushNotifications);
+  } catch (e) {
+    console.error('Push registration failed:', e);
+    return null;
+  }
+}
+
+// Shared APNs/FCM registration; resolves the token (or null on error/timeout).
+// Listener handles are removed once settled so repeated calls don't stack
+// duplicate 'registration' listeners.
+async function registerAndAwaitToken(PushNotifications) {
+  await PushNotifications.register();
+
+  return new Promise((resolve) => {
+    const handles = [];
+    const cleanup = () => handles.forEach((h) => h?.remove?.());
+    const timeout = setTimeout(() => {
+      cleanup();
+      resolve(null);
+    }, 10000);
+
+    PushNotifications.addListener('registration', (token) => {
+      clearTimeout(timeout);
+      cleanup();
+      resolve(token.value);
+    }).then((h) => handles.push(h));
+
+    PushNotifications.addListener('registrationError', (err) => {
+      clearTimeout(timeout);
+      cleanup();
+      console.error('Push registration error:', err);
+      resolve(null);
+    }).then((h) => handles.push(h));
+  });
+}
+
+/**
  * Set up push notification listeners (foreground handling).
+ * Attaches at most once per app session (guarded), so calling on every login
+ * doesn't stack duplicate listeners.
  */
 export async function setupPushListeners(onNotification) {
-  if (!isNative()) return;
+  if (!isNative() || pushListenersAttached) return;
+  pushListenersAttached = true;
 
   try {
     const { PushNotifications } = await import('@capacitor/push-notifications');
@@ -109,6 +168,7 @@ export async function setupPushListeners(onNotification) {
       // Handle notification tap — navigate to relevant screen
     });
   } catch (e) {
+    pushListenersAttached = false;
     console.warn('Push listeners not available:', e);
   }
 }

@@ -9,9 +9,17 @@ jest.mock('../../utils/logger', () => ({
   debug: jest.fn()
 }));
 
+jest.mock('../../utils/email', () => ({
+  sendEmail: jest.fn().mockResolvedValue(true)
+}));
+
+const logger = require('../../utils/logger');
+const { sendEmail } = require('../../utils/email');
+
 // Mock Stripe before requiring the route
 const mockStripe = {
-  customers: { create: jest.fn(), retrieve: jest.fn() },
+  customers: { create: jest.fn(), retrieve: jest.fn(), update: jest.fn() },
+  prices: { retrieve: jest.fn() },
   checkout: { sessions: { create: jest.fn() } },
   subscriptions: { list: jest.fn(), update: jest.fn() },
   webhooks: { constructEvent: jest.fn() },
@@ -521,6 +529,509 @@ describe.skip('OBSOLETE (app fully free, no subscriptions): Payments Routes', ()
 
       expect(res.status).toBe(400);
       expect(res.body.error).toBe('No customer record found');
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ACTIVE: Stripe webhook hardening (idempotency, ordering, status mapping).
+// The webhook stays live even while the app is free, so it must be safe to
+// re-enable billing without touching this handler.
+// ---------------------------------------------------------------------------
+describe('Payments webhook hardening', () => {
+  let mockPrisma;
+  let app;
+  const userId = 'user-hook-1';
+  const EVENT_CREATED = 1751700000; // unix seconds
+  const eventCreatedDate = new Date(EVENT_CREATED * 1000);
+
+  const baseUser = {
+    id: userId,
+    email: 'hook@example.com',
+    firstName: 'Hope',
+    subscriptionStatus: 'paid',
+    lastStripeEventAt: null
+  };
+
+  function subscriptionUpdatedEvent({ id = 'evt_upd_1', created = EVENT_CREATED, status = 'active', priceId = 'price_standard_test' } = {}) {
+    return {
+      id,
+      type: 'customer.subscription.updated',
+      created,
+      data: {
+        object: {
+          id: 'sub_hook_1',
+          customer: 'cus_hook_1',
+          status,
+          items: { data: [{ price: { id: priceId } }] }
+        }
+      }
+    };
+  }
+
+  async function postWebhook(event) {
+    mockStripe.webhooks.constructEvent.mockReturnValue(event);
+    return request(app)
+      .post('/api/payments/webhook')
+      .set('stripe-signature', 'valid_sig')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify(event));
+  }
+
+  // The atomic watermark guard every entitlement write must carry: match the
+  // user only when this event is not older than the last one we processed.
+  function staleGuardedWhere(id = userId, createdAt = eventCreatedDate) {
+    return {
+      id,
+      OR: [{ lastStripeEventAt: null }, { lastStripeEventAt: { lt: createdAt } }]
+    };
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.STRIPE_PREMIUM_PRICE_ID = 'price_premium_test';
+    process.env.STRIPE_ANNUAL_PRICE_ID = 'price_annual_test';
+
+    mockPrisma = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ ...baseUser }),
+        update: jest.fn().mockResolvedValue({ ...baseUser }),
+        // Atomic watermark-gated write. Default: the row matched (applied).
+        updateMany: jest.fn().mockResolvedValue({ count: 1 })
+      },
+      webhookEvent: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({ id: 'evt_upd_1' })
+      }
+    };
+
+    mockStripe.customers.retrieve.mockResolvedValue({
+      id: 'cus_hook_1',
+      metadata: { userId }
+    });
+
+    app = createApp(mockPrisma);
+  });
+
+  // ── Idempotency ──────────────────────────────────────────────────────────
+  describe('idempotency (webhook_events dedupe)', () => {
+    test('records the event id only after successful handling', async () => {
+      const event = subscriptionUpdatedEvent({ id: 'evt_once' });
+      const res = await postWebhook(event);
+
+      expect(res.status).toBe(200);
+      // The entitlement write happened...
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledTimes(1);
+      // ...and only then was the event recorded on the ledger.
+      expect(mockPrisma.webhookEvent.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          id: 'evt_once',
+          type: 'customer.subscription.updated'
+        })
+      });
+      const updateManyOrder = mockPrisma.user.updateMany.mock.invocationCallOrder[0];
+      const createOrder = mockPrisma.webhookEvent.create.mock.invocationCallOrder[0];
+      expect(createOrder).toBeGreaterThan(updateManyOrder);
+    });
+
+    test('a redelivery already on the ledger short-circuits without reprocessing', async () => {
+      const event = subscriptionUpdatedEvent({ id: 'evt_dupe' });
+
+      const first = await postWebhook(event);
+      expect(first.status).toBe(200);
+      expect(first.body.received).toBe(true);
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledTimes(1);
+
+      // Redelivery: the pre-check finds the event already recorded.
+      mockPrisma.webhookEvent.findUnique.mockResolvedValueOnce({ id: 'evt_dupe' });
+
+      const second = await postWebhook(event);
+      expect(second.status).toBe(200);
+      expect(second.body.received).toBe(true);
+      expect(second.body.duplicate).toBe(true);
+      // No second entitlement mutation, no second ledger insert.
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.webhookEvent.create).toHaveBeenCalledTimes(1);
+    });
+
+    test('a concurrent redelivery losing the P2002 race is still acked as duplicate', async () => {
+      const event = subscriptionUpdatedEvent({ id: 'evt_race' });
+
+      // Pre-check misses (both deliveries raced past it), but the ledger insert
+      // loses the unique-constraint race.
+      const uniqueViolation = Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
+      mockPrisma.webhookEvent.create.mockRejectedValueOnce(uniqueViolation);
+
+      const res = await postWebhook(event);
+      expect(res.status).toBe(200);
+      expect(res.body.duplicate).toBe(true);
+    });
+
+    test('a handler failure does NOT record the event, so the retry reprocesses', async () => {
+      const event = subscriptionUpdatedEvent({ id: 'evt_transient' });
+
+      // First delivery: a transient DB error mid-handling.
+      mockPrisma.user.updateMany.mockRejectedValueOnce(
+        Object.assign(new Error('connection reset'), { code: undefined })
+      );
+
+      const first = await postWebhook(event);
+      expect(first.status).toBe(500);
+      // The event was NOT written to the ledger — otherwise the retry below
+      // would be swallowed as a duplicate and the state change lost forever.
+      expect(mockPrisma.webhookEvent.create).not.toHaveBeenCalled();
+
+      // Stripe retries. The pre-check still misses (nothing was recorded), so
+      // the handler runs again — this time succeeding.
+      const second = await postWebhook(event);
+      expect(second.status).toBe(200);
+      expect(second.body.received).toBe(true);
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledTimes(2);
+      expect(mockPrisma.webhookEvent.create).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ── Status mapping ───────────────────────────────────────────────────────
+  describe('customer.subscription.updated status mapping', () => {
+    test('active with premium price stays entitled as premium', async () => {
+      const res = await postWebhook(subscriptionUpdatedEvent({ status: 'active', priceId: 'price_premium_test' }));
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
+        data: { subscriptionStatus: 'premium', lastStripeEventAt: eventCreatedDate }
+      });
+    });
+
+    test('trialing stays entitled (paid tier for non-premium price)', async () => {
+      const res = await postWebhook(subscriptionUpdatedEvent({ status: 'trialing', priceId: 'price_standard_test' }));
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
+        data: { subscriptionStatus: 'paid', lastStripeEventAt: eventCreatedDate }
+      });
+    });
+
+    test('past_due keeps current entitlement (grace period) and logs a warning', async () => {
+      const res = await postWebhook(subscriptionUpdatedEvent({ status: 'past_due' }));
+
+      expect(res.status).toBe(200);
+      // Watermark advances, but subscriptionStatus is NOT touched
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
+        data: { lastStripeEventAt: eventCreatedDate }
+      });
+      const updateData = mockPrisma.user.updateMany.mock.calls[0][0].data;
+      expect(updateData).not.toHaveProperty('subscriptionStatus');
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('past_due'),
+        expect.objectContaining({ userId })
+      );
+    });
+
+    test.each(['canceled', 'unpaid', 'incomplete_expired'])('%s expires the entitlement', async (stripeStatus) => {
+      const res = await postWebhook(subscriptionUpdatedEvent({ status: stripeStatus }));
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
+        data: { subscriptionStatus: 'expired', lastStripeEventAt: eventCreatedDate }
+      });
+    });
+
+    test('incomplete makes no entitlement change', async () => {
+      const res = await postWebhook(subscriptionUpdatedEvent({ status: 'incomplete' }));
+
+      expect(res.status).toBe(200);
+      const updateData = mockPrisma.user.updateMany.mock.calls[0][0].data;
+      expect(updateData).not.toHaveProperty('subscriptionStatus');
+    });
+  });
+
+  // ── Out-of-order protection ──────────────────────────────────────────────
+  describe('out-of-order protection', () => {
+    test('atomic stale skip: updateMany matching 0 rows is a no-op (200, no reprocess)', async () => {
+      // The DB row fails the watermark guard (a newer event was already
+      // processed), so the atomic write matches nothing.
+      mockPrisma.user.updateMany.mockResolvedValue({ count: 0 });
+
+      const res = await postWebhook(subscriptionUpdatedEvent({ id: 'evt_stale', created: EVENT_CREATED, status: 'canceled' }));
+
+      expect(res.status).toBe(200);
+      expect(res.body.received).toBe(true);
+      // The staleness check is folded into the write: it carries the watermark
+      // guard, and count 0 tells us the stale 'canceled' did NOT clobber state.
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
+        data: { subscriptionStatus: 'expired', lastStripeEventAt: eventCreatedDate }
+      });
+      // No pre-read of the user; the single guarded write is the whole gate.
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    test('processes an event newer than the stored watermark', async () => {
+      mockPrisma.user.updateMany.mockResolvedValue({ count: 1 });
+
+      const res = await postWebhook(subscriptionUpdatedEvent({ id: 'evt_fresh', created: EVENT_CREATED, status: 'canceled' }));
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
+        data: { subscriptionStatus: 'expired', lastStripeEventAt: eventCreatedDate }
+      });
+    });
+  });
+
+  // ── Dunning email ────────────────────────────────────────────────────────
+  describe('invoice.payment_failed', () => {
+    const paymentFailedEvent = {
+      id: 'evt_payfail_1',
+      type: 'invoice.payment_failed',
+      created: EVENT_CREATED,
+      data: {
+        object: { id: 'inv_fail_1', customer: 'cus_hook_1' }
+      }
+    };
+
+    test('sends a dunning email to the user and advances the watermark', async () => {
+      const res = await postWebhook(paymentFailedEvent);
+
+      expect(res.status).toBe(200);
+      expect(sendEmail).toHaveBeenCalledTimes(1);
+      expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+        to: baseUser.email,
+        subject: expect.stringMatching(/payment/i)
+      }));
+      // Watermark advanced atomically via the guarded write.
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
+        data: { lastStripeEventAt: eventCreatedDate }
+      });
+    });
+
+    test('does not send email when the user does not exist', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      const res = await postWebhook(paymentFailedEvent);
+
+      expect(res.status).toBe(200);
+      expect(sendEmail).not.toHaveBeenCalled();
+      expect(mockPrisma.user.updateMany).not.toHaveBeenCalled();
+    });
+
+    test('stale redelivery (updateMany count 0) skips the dunning email', async () => {
+      mockPrisma.user.updateMany.mockResolvedValue({ count: 0 });
+
+      const res = await postWebhook(paymentFailedEvent);
+
+      expect(res.status).toBe(200);
+      // Watermark write was attempted, matched nothing, and no email was sent.
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledTimes(1);
+      expect(sendEmail).not.toHaveBeenCalled();
+    });
+
+    test('a failing/slow dunning email does not fail the webhook', async () => {
+      // SMTP is down: sendEmail rejects. Because it is fire-and-forget AFTER
+      // the DB write, the webhook must still return 200 and never throw.
+      sendEmail.mockRejectedValueOnce(new Error('SMTP connection timed out'));
+
+      const res = await postWebhook(paymentFailedEvent);
+
+      expect(res.status).toBe(200);
+      expect(res.body.received).toBe(true);
+      // Watermark still advanced, and the event was recorded as processed.
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: staleGuardedWhere(),
+        data: { lastStripeEventAt: eventCreatedDate }
+      });
+      expect(mockPrisma.webhookEvent.create).toHaveBeenCalledTimes(1);
+
+      // Let the rejected send settle; its failure is logged, not surfaced.
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringMatching(/dunning email/i),
+        expect.objectContaining({ userId })
+      );
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ACTIVE: billing re-enabled — /plans, /create-checkout, /subscription.
+// ---------------------------------------------------------------------------
+describe('Payments billing (re-enabled)', () => {
+  let mockPrisma;
+  let app;
+  const userId = 'user-bill-1';
+
+  const authUser = {
+    id: userId,
+    email: 'buyer@example.com',
+    firstName: 'Bea',
+    lastName: 'Buyer',
+    role: 'user',
+    subscriptionStatus: 'trial',
+    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    stripeCustomerId: null,
+    isPlatformAdmin: false,
+    tokenVersion: 0,
+    createdAt: new Date('2025-01-01')
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.STRIPE_PREMIUM_PRICE_ID = 'price_premium_test';
+    process.env.STRIPE_ANNUAL_PRICE_ID = 'price_annual_test';
+    process.env.FRONTEND_URL = 'https://app.example.com';
+    process.env.TRIAL_DAYS = '14';
+    delete process.env.PLAN_PREMIUM_DISPLAY;
+    delete process.env.PLAN_ANNUAL_DISPLAY;
+
+    mockPrisma = {
+      user: {
+        // auth middleware findUnique + route findUnique both served here
+        findUnique: jest.fn().mockResolvedValue(authUser),
+        update: jest.fn().mockResolvedValue(authUser)
+      },
+      relationship: { findFirst: jest.fn().mockResolvedValue(null) }
+    };
+
+    app = createApp(mockPrisma);
+  });
+
+  function token() {
+    return generateToken(userId);
+  }
+
+  // ── GET /plans ────────────────────────────────────────────────────────────
+  describe('GET /plans', () => {
+    test('returns both tiers from Stripe with trialDays', async () => {
+      mockStripe.prices.retrieve.mockImplementation(async (id) => {
+        if (id === 'price_premium_test') {
+          return { id, unit_amount: 4900, currency: 'usd', recurring: { interval: 'month' } };
+        }
+        return { id, unit_amount: 49000, currency: 'usd', recurring: { interval: 'year' } };
+      });
+
+      const res = await request(app).get('/api/payments/plans');
+
+      expect(res.status).toBe(200);
+      expect(res.body.trialDays).toBe(14);
+      expect(res.body.plans).toHaveLength(2);
+
+      const premium = res.body.plans.find((p) => p.id === 'premium');
+      expect(premium).toEqual(expect.objectContaining({
+        id: 'premium',
+        interval: 'month',
+        amount: 4900,
+        currency: 'usd',
+        priceId: 'price_premium_test',
+        priceDisplay: '$49/mo'
+      }));
+
+      const annual = res.body.plans.find((p) => p.id === 'annual');
+      expect(annual).toEqual(expect.objectContaining({
+        id: 'annual', interval: 'year', amount: 49000, priceDisplay: '$490/yr'
+      }));
+    });
+
+    test('falls back to defaults when Stripe retrieve fails', async () => {
+      mockStripe.prices.retrieve.mockRejectedValue(new Error('no such price'));
+
+      const res = await request(app).get('/api/payments/plans');
+
+      expect(res.status).toBe(200);
+      const premium = res.body.plans.find((p) => p.id === 'premium');
+      expect(premium.amount).toBe(4900);
+      expect(premium.priceDisplay).toBe('$49/mo');
+    });
+  });
+
+  // ── POST /create-checkout ───────────────────────────────────────────────
+  describe('POST /create-checkout', () => {
+    test('creates a subscription session with {userId,tier} metadata + trial days', async () => {
+      mockStripe.customers.create.mockResolvedValue({ id: 'cus_new_1', metadata: { userId } });
+      mockStripe.checkout.sessions.create.mockResolvedValue({ id: 'cs_1', url: 'https://checkout.stripe.com/cs_1' });
+
+      const res = await request(app)
+        .post('/api/payments/create-checkout')
+        .set('Authorization', `Bearer ${token()}`)
+        .send({ tier: 'premium' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.url).toBe('https://checkout.stripe.com/cs_1');
+      expect(res.body.sessionId).toBe('cs_1');
+
+      // New customer created WITH metadata.userId, and persisted.
+      expect(mockStripe.customers.create).toHaveBeenCalledWith({
+        email: authUser.email,
+        metadata: { userId }
+      });
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { stripeCustomerId: 'cus_new_1' }
+      });
+
+      const params = mockStripe.checkout.sessions.create.mock.calls[0][0];
+      expect(params).toEqual(expect.objectContaining({
+        mode: 'subscription',
+        customer: 'cus_new_1',
+        line_items: [{ price: 'price_premium_test', quantity: 1 }],
+        metadata: { userId, tier: 'premium' }
+      }));
+      // Trial user with ~7 days left → trial_period_days passed to Stripe.
+      expect(params.subscription_data.trial_period_days).toBeGreaterThan(0);
+      expect(params.success_url).toContain('https://app.example.com');
+    });
+
+    test('annual tier uses the annual price id', async () => {
+      mockStripe.customers.create.mockResolvedValue({ id: 'cus_new_2', metadata: { userId } });
+      mockStripe.checkout.sessions.create.mockResolvedValue({ id: 'cs_2', url: 'u' });
+
+      await request(app)
+        .post('/api/payments/create-checkout')
+        .set('Authorization', `Bearer ${token()}`)
+        .send({ tier: 'annual' });
+
+      const params = mockStripe.checkout.sessions.create.mock.calls[0][0];
+      expect(params.line_items).toEqual([{ price: 'price_annual_test', quantity: 1 }]);
+      expect(params.metadata.tier).toBe('annual');
+    });
+
+    test('reuses existing customer and updates its metadata; no trial days when not on trial', async () => {
+      const paidUser = { ...authUser, subscriptionStatus: 'paid', trialEndsAt: null, stripeCustomerId: 'cus_existing' };
+      mockPrisma.user.findUnique.mockResolvedValue(paidUser);
+      mockStripe.checkout.sessions.create.mockResolvedValue({ id: 'cs_3', url: 'u' });
+
+      const res = await request(app)
+        .post('/api/payments/create-checkout')
+        .set('Authorization', `Bearer ${token()}`)
+        .send({ tier: 'premium' });
+
+      expect(res.status).toBe(200);
+      expect(mockStripe.customers.create).not.toHaveBeenCalled();
+      expect(mockStripe.customers.update).toHaveBeenCalledWith('cus_existing', { metadata: { userId } });
+      const params = mockStripe.checkout.sessions.create.mock.calls[0][0];
+      expect(params).not.toHaveProperty('subscription_data');
+    });
+  });
+
+  // ── GET /subscription ─────────────────────────────────────────────────────
+  describe('GET /subscription', () => {
+    test('returns the resolved trial shape', async () => {
+      const res = await request(app)
+        .get('/api/payments/subscription')
+        .set('Authorization', `Bearer ${token()}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual(expect.objectContaining({
+        status: 'trial',
+        isPremium: false,
+        tier: 'trial',
+        coveredByPartner: false
+      }));
+      expect(res.body.trialDaysRemaining).toBeGreaterThan(0);
     });
   });
 });

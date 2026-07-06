@@ -1,32 +1,48 @@
 /**
- * Apple In-App Purchase (IAP) routes — DISABLED
+ * Apple In-App Purchase (IAP) routes.
  *
- * The app is now fully free. Apple IAP receipt validation is no longer performed.
- * This endpoint is retained for backward compatibility with older app versions
- * but simply returns a success response.
+ * POST /verify — real Apple App Store receipt validation. Posts the receipt to
+ * the production verifyReceipt endpoint and, on status 21007, retries against
+ * sandbox. On a valid active auto-renewable receipt the user is granted premium
+ * with subscriptionSource APPLE; invalid/expired receipts grant nothing. The
+ * same path serves "restore purchases" (client re-sends the receipt). The
+ * client's claimed status is never trusted.
  *
- * The Stripe webhook remains active in routes/payments.js.
+ * The Stripe webhook remains the Stripe entitlement writer in routes/payments.js.
  */
 
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { applyAppleReceipt } = require('../lib/appleEntitlement');
 
 const router = express.Router();
 
 /**
- * POST /api/iap/verify
- * IAP disabled — app is free. Returns success without performing any validation.
+ * POST /api/iap/verify  { receipt }  (optional { restore: true } — same path)
+ * Returns { success, subscriptionStatus, source, expiresAt } on success, or an
+ * error with the appropriate status on rejection.
  */
-router.post('/verify', authenticate, async (req, res) => {
-  res.json({
-    success: true,
-    message: 'LoveRescue is now free — no purchase verification required.',
-    user: {
-      id: req.user.id,
-      email: req.user.email,
+router.post('/verify', authenticate, async (req, res, next) => {
+  try {
+    const receipt = req.body?.receipt || req.body?.receiptData;
+    const result = await applyAppleReceipt(req.prisma, req.user.id, receipt);
+
+    if (!result.success) {
+      return res.status(result.status || 400).json({
+        error: result.error,
+        ...(result.code ? { code: result.code } : {})
+      });
+    }
+
+    return res.json({
+      success: true,
       subscriptionStatus: 'premium',
-    },
-  });
+      source: 'APPLE',
+      expiresAt: result.expiresAt
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = router;

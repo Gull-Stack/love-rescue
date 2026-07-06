@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import api, { setTokens, getToken, clearTokens, biometricApi } from '../services/api';
+import api, { setTokens, getToken, getRefreshToken, clearTokens, biometricApi } from '../services/api';
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import { Capacitor } from '@capacitor/core';
-import { registerNativePush, setupPushListeners } from '../utils/capacitor-init';
+import { registerNativePushIfGranted, setupPushListeners } from '../utils/capacitor-init';
 import { trackEvent } from '../utils/analytics';
+import { clearSubscriptionCache } from '../components/common/PremiumGate';
 
 // TODO: HIGH-01 — Move JWT storage from localStorage to httpOnly cookies.
 // This requires backend changes (set-cookie headers, cookie-parser middleware,
@@ -91,9 +92,12 @@ export const AuthProvider = ({ children }) => {
       setUser(response.data.user);
       setRelationship(response.data.relationship);
 
-      // Register for native push notifications after successful auth
+      // Refresh the native push device token after successful auth — but only
+      // if the user already granted push permission. First-time opt-in is an
+      // explicit action (Settings toggle / DailyLog post-check-in prompt), so
+      // this never triggers the iOS permission dialog on login.
       if (Capacitor.isNativePlatform()) {
-        registerNativePush().then((token) => {
+        registerNativePushIfGranted().then((token) => {
           if (token) {
             api.post('/push/register-device', {
               token,
@@ -101,6 +105,7 @@ export const AuthProvider = ({ children }) => {
             }).catch((err) => console.warn('Push register failed:', err));
           }
         });
+        // Guarded internally — attaches foreground listeners at most once.
         setupPushListeners((notification) => {
           console.log('Foreground push:', notification);
         });
@@ -240,11 +245,50 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Best-effort server-side logout: revokes the refresh token and bumps
+    // tokenVersion so access tokens die on ALL devices, not just this one.
+    // Fire-and-forget — local logout must never be blocked by a network
+    // failure. Auth header is pinned explicitly because tokens are cleared
+    // from storage synchronously below, before the request is dispatched.
+    const token = getToken();
+    if (token) {
+      api.post(
+        '/auth/logout',
+        { refreshToken: getRefreshToken() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      ).catch(() => { /* already logged out locally; server revoke is best-effort */ });
+    }
+
     clearTokens();
+    // Drop the module-level PremiumGate cache — user A's entitlement must
+    // never leak to user B logging in later in the same SPA session.
+    clearSubscriptionCache();
     setUser(null);
     setRelationship(null);
     setBiometricEnabled(false);
     // Don't clear biometricEmail - we need it for biometric login
+  };
+
+  // Change password for the current user. The server revokes every OTHER
+  // session (bumps tokenVersion, kills outstanding refresh tokens) and returns
+  // a FRESH token pair for THIS device so the current session stays alive.
+  // We must persist those new tokens the same way login does — otherwise the
+  // tokens still in storage carry the old tokenVersion and the next request
+  // 401s with TOKEN_REVOKED, kicking the user out of the device they just used.
+  const changePassword = async (currentPassword, newPassword) => {
+    const response = await api.post('/auth/change-password', {
+      currentPassword,
+      newPassword,
+    });
+
+    // Store the replacement tokens using the user's existing "Remember Me"
+    // preference (same mechanism the axios refresh interceptor uses).
+    if (response.data?.token) {
+      const remember = localStorage.getItem('rememberMe') === 'true';
+      setTokens(response.data.token, response.data.refreshToken, remember);
+    }
+
+    return response.data;
   };
 
   const invitePartner = async (partnerEmail) => {
@@ -276,6 +320,7 @@ export const AuthProvider = ({ children }) => {
     googleLogin,
     appleLogin,
     logout,
+    changePassword,
     invitePartner,
     joinRelationship,
     refreshUser: fetchUser,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -26,14 +26,20 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useAuth } from '../../contexts/AuthContext';
-import api, { calendarApi, therapistApi, progressRingsApi } from '../../services/api';
+import api, { calendarApi, therapistApi, progressRingsApi, paymentsApi } from '../../services/api';
+import { isNative, useAppleIAP } from '../../utils/platform';
+import iapService from '../../services/iapService';
+import { isPremiumUser } from '../../utils/featureGating';
+import { clearSubscriptionCache } from '../../components/common/PremiumGate';
 import MyTherapistSection from './MyTherapistSection';
 import NotificationSettings from '../../components/NotificationSettings';
 
 const Settings = () => {
   const [searchParams] = useSearchParams();
-  const { user, relationship, invitePartner, refreshUser, biometricEnabled, checkBiometricAvailability, registerBiometric, logout } = useAuth();
+  const navigate = useNavigate();
+  const { user, relationship, invitePartner, refreshUser, biometricEnabled, checkBiometricAvailability, registerBiometric, logout, changePassword } = useAuth();
   const [loading, setLoading] = useState({});
+  const [subscription, setSubscription] = useState(null);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [inviteLink, setInviteLink] = useState('');
@@ -82,8 +88,11 @@ const Settings = () => {
     const calendar = searchParams.get('calendar');
 
     if (payment === 'success') {
-      setSuccess('Payment information received.');
+      setSuccess('Subscription active — thank you! Your access is unlocked.');
+      // Entitlement changed — drop the PremiumGate cache so gates re-check.
+      clearSubscriptionCache();
       refreshUser();
+      refreshSubscription();
     } else if (payment === 'cancelled') {
       setError('Payment was cancelled.');
     }
@@ -97,14 +106,16 @@ const Settings = () => {
 
   const fetchSettings = async () => {
     try {
-      const [calRes, consentRes, ringsRes] = await Promise.all([
+      const [calRes, consentRes, ringsRes, subRes] = await Promise.all([
         calendarApi.getStatus().catch(() => ({ data: { connected: false } })),
         therapistApi.getConsent().catch(() => ({ data: { consent: false } })),
         progressRingsApi.get().catch(() => ({ data: null })),
+        paymentsApi.getSubscription().catch(() => ({ data: null })),
       ]);
 
       setCalendarStatus(calRes.data);
       setTherapistConsent(consentRes.data.consent);
+      setSubscription(subRes.data);
       if (ringsRes.data) {
         const rings = ringsRes.data;
         const connPct = rings.connection?.percent ?? 0;
@@ -199,6 +210,69 @@ const Settings = () => {
     }
   };
 
+  const refreshSubscription = async () => {
+    try {
+      const res = await paymentsApi.getSubscription();
+      setSubscription(res.data);
+    } catch {
+      /* keep prior state on failure */
+    }
+  };
+
+  const handleManageBilling = async () => {
+    setLoading({ ...loading, billing: true });
+    setError('');
+    try {
+      const res = await paymentsApi.openBillingPortal();
+      const url = res.data?.url;
+      if (url) {
+        window.location.href = url;
+      } else {
+        setError('Could not open the billing portal. Please try again.');
+        setLoading({ ...loading, billing: false });
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not open the billing portal.');
+      setLoading({ ...loading, billing: false });
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    setLoading({ ...loading, cancel: true });
+    setError('');
+    try {
+      await paymentsApi.cancelSubscription();
+      await refreshSubscription();
+      setSuccess('Your subscription will end at the close of the current billing period.');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not cancel your subscription.');
+    } finally {
+      setLoading({ ...loading, cancel: false });
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    setLoading({ ...loading, restore: true });
+    setError('');
+    try {
+      const receipt = await iapService.restorePurchases();
+      if (!receipt) {
+        setError('No previous purchases were found to restore.');
+        return;
+      }
+      await paymentsApi.verifyAppleReceipt(receipt);
+      // The user just regained entitlement — stale gate caches must not keep
+      // showing the upgrade prompt.
+      clearSubscriptionCache();
+      await refreshSubscription();
+      setSuccess('Purchases restored.');
+    } catch (err) {
+      setError(err?.message || 'Could not restore purchases.');
+    } finally {
+      setLoading({ ...loading, restore: false });
+    }
+  };
+
   const handleDeleteAccount = async () => {
     setLoading({ ...loading, deleteAccount: true });
     try {
@@ -228,19 +302,42 @@ const Settings = () => {
     }
     setLoading({ ...loading, password: true });
     try {
-      await api.post('/auth/change-password', {
-        currentPassword: passwordForm.current,
-        newPassword: passwordForm.next,
-      });
+      // changePassword stores the fresh token pair the server returns so this
+      // device stays signed in; only other devices are logged out.
+      await changePassword(passwordForm.current, passwordForm.next);
       setPasswordDialog(false);
       setPasswordForm({ current: '', next: '', confirm: '' });
-      setSuccess('Password updated successfully');
+      setSuccess('Password updated. You have been signed out on your other devices.');
     } catch (err) {
       setPasswordError(err.response?.data?.error || 'Failed to update password');
     } finally {
       setLoading({ ...loading, password: false });
     }
   };
+
+  // Subscription display values (backend snapshot first, user fallback).
+  const subStatusRaw =
+    subscription?.status || subscription?.tier || user?.subscriptionStatus || 'free';
+  const subStatusLabel = String(subStatusRaw).toUpperCase();
+  const subEntitled = isPremiumUser(subscription) || isPremiumUser(user);
+  const trialLeft = subscription?.trialDaysRemaining ?? subscription?.trialDaysLeft ?? null;
+  // A lapsed trial (status still 'trial'/'trialing' but 0 days left) is NOT an
+  // active trial — never show the "days left" line or trial chip styling for it.
+  const onTrial =
+    subscription?.isTrial === true ||
+    (String(subStatusRaw).toLowerCase().startsWith('trial') && (trialLeft ?? 0) > 0);
+  const renewalDate = subscription?.currentPeriodEnd
+    ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
+    : null;
+  const coveredByPartner = subscription?.coveredByPartner === true;
+  const onAppleIAP = useAppleIAP();
+  const subChipColor = coveredByPartner
+    ? 'info'
+    : subEntitled
+    ? onTrial
+      ? 'info'
+      : 'success'
+    : 'default';
 
   return (
     <Box maxWidth="md" mx="auto">
@@ -374,6 +471,85 @@ const Settings = () => {
                 : 'N/A'}
             </Typography>
           </Box>
+        </CardContent>
+      </Card>
+
+      {/* Subscription */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
+            <Typography variant="h6">Subscription</Typography>
+            <Chip label={subStatusLabel} color={subChipColor} size="small" />
+          </Box>
+
+          {coveredByPartner ? (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Your access is covered by your partner’s subscription. One plan covers
+              both of you — there’s nothing to pay.
+            </Typography>
+          ) : (
+            <Box sx={{ mb: 2 }}>
+              {trialLeft != null && onTrial && (
+                <Typography variant="body2" color="text.secondary">
+                  Free trial — <strong>{trialLeft} {trialLeft === 1 ? 'day' : 'days'} left</strong>.
+                </Typography>
+              )}
+              {renewalDate && (
+                <Typography variant="body2" color="text.secondary">
+                  {subscription?.cancelAtPeriodEnd
+                    ? `Access ends ${renewalDate}.`
+                    : `Renews ${renewalDate}.`}
+                </Typography>
+              )}
+              {!subEntitled && (
+                <Typography variant="body2" color="text.secondary">
+                  You don’t have an active subscription. Unlock everything for you and
+                  your partner.
+                </Typography>
+              )}
+            </Box>
+          )}
+
+          {!coveredByPartner && (
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {!subEntitled && (
+                <Button variant="contained" onClick={() => navigate('/subscribe')}>
+                  See Plans
+                </Button>
+              )}
+
+              {subEntitled && !onAppleIAP && (
+                <Button
+                  variant="outlined"
+                  onClick={handleManageBilling}
+                  disabled={loading.billing}
+                >
+                  {loading.billing ? <CircularProgress size={20} /> : 'Manage Billing'}
+                </Button>
+              )}
+
+              {subEntitled && !onAppleIAP && !subscription?.cancelAtPeriodEnd && (
+                <Button
+                  variant="text"
+                  color="error"
+                  onClick={handleCancelSubscription}
+                  disabled={loading.cancel}
+                >
+                  {loading.cancel ? <CircularProgress size={20} /> : 'Cancel'}
+                </Button>
+              )}
+
+              {onAppleIAP && (
+                <Button
+                  variant="outlined"
+                  onClick={handleRestorePurchases}
+                  disabled={loading.restore}
+                >
+                  {loading.restore ? <CircularProgress size={20} /> : 'Restore Purchases'}
+                </Button>
+              )}
+            </Box>
+          )}
         </CardContent>
       </Card>
 
@@ -528,6 +704,15 @@ const Settings = () => {
                 Disconnect
               </Button>
             </Box>
+          ) : isNative() ? (
+            /* Google's OAuth page blocks embedded webviews (403: disallowed_useragent)
+               and the OAuth callback redirects to the website, so the flow can't
+               complete inside the app. Point users at the web app instead. */
+            <Typography variant="body2" color="text.secondary">
+              Connecting Google Calendar isn't available inside the app. Sign in
+              at <strong>loverescue.app</strong> in your browser to connect it —
+              once connected, your activities sync everywhere, including here.
+            </Typography>
           ) : calendarStatus?.calendarAvailable === false ? (
             <Tooltip title="Google Calendar integration is not yet configured by the administrator.">
               <span>

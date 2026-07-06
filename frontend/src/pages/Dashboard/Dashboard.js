@@ -100,6 +100,19 @@ const Dashboard = () => {
 
   const fetchDashboardData = useCallback(async () => {
     setLoadError(false);
+    // Each call degrades gracefully on its own, but count the failures: if
+    // most of the dashboard failed to load (offline, API down) the outer
+    // fallback data would otherwise render a convincing-but-empty dashboard
+    // with no hint that anything went wrong.
+    let totalCalls = 0;
+    let failedCalls = 0;
+    const orFallback = (promise, fallbackData) => {
+      totalCalls += 1;
+      return promise.catch(() => {
+        failedCalls += 1;
+        return { data: fallbackData };
+      });
+    };
     try {
       const [
         promptRes,
@@ -114,31 +127,37 @@ const Dashboard = () => {
         ringsRes,
         realTalkRes,
       ] = await Promise.all([
-        logsApi.getPrompt().catch(() => ({ data: { prompt: null, hasLoggedToday: false } })),
-        logsApi.getStats('7d').catch(() => ({ data: { stats: null } })),
-        assessmentsApi.getResults().catch(() => ({ data: { completed: [], pending: [] } })),
-        meetingsApi.getUpcoming().catch(() => ({ data: { meetings: [] } })),
-        paymentsApi.getSubscription().catch(() => ({ data: null })),
-        gratitudeApi.getToday().catch(() => ({ data: { entry: null } })),
-        gratitudeApi.getStreak().catch(() => ({ data: { currentStreak: 0, longestStreak: 0, totalEntries: 0 } })),
-        gratitudeApi.getLoveNote().catch(() => ({ data: { loveNote: null } })),
-        streaksApi.getStreak().catch(() => ({ data: { currentStreak: 0 } })),
-        progressRingsApi.get().catch(() => ({ data: null })),
-        realTalkApi.list({ limit: 1, offset: 0 }).catch(() => ({ data: { pagination: { total: 0 } } })),
+        orFallback(logsApi.getPrompt(), { prompt: null, hasLoggedToday: false }),
+        orFallback(logsApi.getStats('7d'), { stats: null }),
+        orFallback(assessmentsApi.getResults(), { completed: [], pending: [] }),
+        orFallback(meetingsApi.getUpcoming(), { meetings: [] }),
+        orFallback(paymentsApi.getSubscription(), null),
+        orFallback(gratitudeApi.getToday(), { entry: null }),
+        orFallback(gratitudeApi.getStreak(), { currentStreak: 0, longestStreak: 0, totalEntries: 0 }),
+        orFallback(gratitudeApi.getLoveNote(), { loveNote: null }),
+        orFallback(streaksApi.getStreak(), { currentStreak: 0 }),
+        orFallback(progressRingsApi.get(), null),
+        orFallback(realTalkApi.list({ limit: 1, offset: 0 }), { pagination: { total: 0 } }),
       ]);
 
       let matchupData = null;
       let strategyData = null;
 
-      const strategyPromise = strategiesApi.getCurrent().catch(() => ({ data: { strategy: null } }));
+      const strategyPromise = orFallback(strategiesApi.getCurrent(), { strategy: null });
 
       if (relationship?.hasPartner) {
         [matchupData, strategyData] = await Promise.all([
-          matchupApi.getCurrent().catch(() => ({ data: { matchup: null } })),
+          orFallback(matchupApi.getCurrent(), { matchup: null }),
           strategyPromise,
         ]);
       } else {
         strategyData = await strategyPromise;
+      }
+
+      // All (or a clear majority) failed => surface the Retry banner instead
+      // of a silent blank dashboard.
+      if (failedCalls > totalCalls / 2) {
+        setLoadError(true);
       }
 
       setData({
@@ -216,8 +235,13 @@ const Dashboard = () => {
   }
 
   // Calculate derived state
-  const totalAssessments = 13;
   const assessmentsDone = data.assessments?.completed?.length || 0;
+  // The API returns every valid assessment type split into completed +
+  // pending, so their sum IS the real catalog size (backend VALID_TYPES /
+  // the list in Assessments.js) — never hardcode it. Falls back to 10 when
+  // the assessments call failed and both arrays are empty.
+  const totalAssessments =
+    (assessmentsDone + (data.assessments?.pending?.length || 0)) || 10;
   const daysActive = getDaysActive(user?.createdAt);
   const strategyCycle = data.strategy?.cycle || 0;
 

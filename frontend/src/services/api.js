@@ -20,6 +20,10 @@ if (
 
 const api = axios.create({
   baseURL: API_URL,
+  // Fail fast instead of hanging forever on a dead connection (mobile radios,
+  // captive portals). Timeouts reject with code ECONNABORTED and flow through
+  // the normal catch/interceptor paths — they are never swallowed here.
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -97,12 +101,47 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // 402 PAYMENT REQUIRED — a gated route rejected the request because the
+    // user (and their partner) is not entitled. The backend uses two codes for
+    // this (SUBSCRIPTION_REQUIRED and PREMIUM_REQUIRED); treat them the same.
+    // This is NOT an auth failure: the session is valid, so we must NOT clear
+    // tokens or bounce to /login. Surface it by routing to the paywall so the
+    // user can subscribe. A flag is attached to the error so callers (e.g.
+    // PremiumGate, a page catch) can detect the condition without re-parsing
+    // the response shape.
+    const paywallCode = error.response?.data?.code;
+    if (
+      error.response?.status === 402 &&
+      (paywallCode === 'SUBSCRIPTION_REQUIRED' || paywallCode === 'PREMIUM_REQUIRED')
+    ) {
+      error.isSubscriptionRequired = true;
+      if (
+        typeof window !== 'undefined' &&
+        window.location.pathname !== '/subscribe'
+      ) {
+        window.location.href = '/subscribe';
+      }
+      return Promise.reject(error);
+    }
+
     // If 401 and we haven't already tried to refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Don't try to refresh on login/signup/refresh endpoints
+      // TOKEN_REVOKED = the session was revoked server-side (global logout,
+      // password reset, tokenVersion bump). The refresh token is dead too, so
+      // treat it as an expired session immediately — never spin on refresh.
+      if (error.response?.data?.code === 'TOKEN_REVOKED') {
+        clearTokens();
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+
+      // Don't try to refresh on login/signup/refresh/logout endpoints
       if (originalRequest.url?.includes('/auth/login') ||
           originalRequest.url?.includes('/auth/signup') ||
           originalRequest.url?.includes('/auth/refresh') ||
+          originalRequest.url?.includes('/auth/logout') ||
           originalRequest.url?.includes('/auth/webauthn/login')) {
         return Promise.reject(error);
       }
@@ -123,8 +162,13 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       const refreshToken = getRefreshToken();
-      
+
       if (!refreshToken) {
+        // Release the latch and fail any queued requests — otherwise every
+        // subsequent 401 queues behind a refresh that will never happen and
+        // hangs forever.
+        isRefreshing = false;
+        processQueue(error, null);
         clearTokens();
         if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
           window.location.href = '/login';
@@ -217,8 +261,24 @@ export const therapistApi = {
 };
 
 export const paymentsApi = {
+  // Available plans + prices, read from Stripe (never hardcode dollars in the
+  // client — the display strings come from here). Also carries trialDays.
+  getPlans: () => api.get('/payments/plans'),
+  // Web: create a Stripe Checkout session for a tier and return { url }.
   createCheckout: (tier) => api.post('/payments/create-checkout', { tier }),
+  // Stripe billing portal (manage/cancel/update card) → { url }.
+  openBillingPortal: () => api.post('/payments/portal'),
+  // Cancel at period end.
+  cancelSubscription: () => api.post('/payments/cancel'),
+  // Full subscription snapshot (status, isPremium, trial, renewal, partner cover).
   getSubscription: () => api.get('/payments/subscription'),
+  // Lightweight status used by gates: { status, source, isActive, isTrial, trialDaysLeft }.
+  getSubscriptionStatus: () => api.get('/subscriptions/status'),
+  // iOS Apple IAP: hand the StoreKit receipt to the backend for validation +
+  // entitlement. Hits the couple-aware verify-apple endpoint.
+  verifyAppleReceipt: (receipt) => api.post('/subscriptions/verify-apple', { receipt }),
+
+  // Back-compat aliases (kept so existing callers/tests keep working).
   cancel: () => api.post('/payments/cancel'),
   getPortal: () => api.post('/payments/portal'),
 };

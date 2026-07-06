@@ -1,5 +1,27 @@
 const logger = require('../utils/logger');
 
+// SECURITY FIX: query params that carry credentials (OAuth codes/state, tokens,
+// API keys/secrets) must never be persisted in audit logs.
+const SENSITIVE_QUERY_PARAMS = new Set(['code', 'state', 'token', 'password', 'credential']);
+const SENSITIVE_QUERY_PATTERN = /secret|key|token|password|credential|auth/i;
+
+/**
+ * Return a copy of the query object with sensitive values redacted.
+ * @param {Object} query - req.query
+ * @returns {Object} Redacted copy
+ */
+function redactQuery(query) {
+  const redacted = {};
+  for (const [key, value] of Object.entries(query)) {
+    if (SENSITIVE_QUERY_PARAMS.has(key.toLowerCase()) || SENSITIVE_QUERY_PATTERN.test(key)) {
+      redacted[key] = '[REDACTED]';
+    } else {
+      redacted[key] = value;
+    }
+  }
+  return redacted;
+}
+
 /**
  * HIPAA-compliant audit logging middleware
  * Logs all API requests for compliance and security
@@ -33,7 +55,7 @@ const auditLogger = async (req, res, next) => {
       metadata: {
         statusCode: res.statusCode,
         duration,
-        query: Object.keys(req.query).length > 0 ? req.query : undefined
+        query: Object.keys(req.query).length > 0 ? redactQuery(req.query) : undefined
       }
     };
 
@@ -63,4 +85,4 @@ const auditLogger = async (req, res, next) => {
   next();
 };
 
-module.exports = { auditLogger };
+module.exports = { auditLogger, redactQuery };

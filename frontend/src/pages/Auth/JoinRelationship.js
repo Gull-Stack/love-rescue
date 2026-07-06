@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box,
@@ -20,13 +20,9 @@ const JoinRelationship = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    if (user && code && !success) {
-      handleJoin();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, code]);
-
+  // No auto-join on link open: joining a relationship links accounts and
+  // shares data, so it always requires the explicit "Join Relationship" tap
+  // below — a forwarded/mis-tapped link must never join silently.
   const handleJoin = async () => {
     setLoading(true);
     setError('');

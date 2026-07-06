@@ -26,6 +26,7 @@ import ShareIcon from '@mui/icons-material/Share';
 import { gratitudeApi } from '../../services/api';
 import { sectionColors, brandGradients } from '../../theme';
 import PageLoader from '../../components/common/PageLoader';
+import CrisisSupportDialog from '../../components/common/CrisisSupportDialog';
 
 const CATEGORIES = [
   { label: 'Kindness', value: 'kindness', emoji: '💛' },
@@ -55,6 +56,7 @@ const Gratitude = () => {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [crisis, setCrisis] = useState(null);
   const [editing, setEditing] = useState(false);
 
   const [todayEntry, setTodayEntry] = useState(null);
@@ -116,7 +118,13 @@ const Gratitude = () => {
       const res = await gratitudeApi.submitEntry({ text: text.trim(), category });
       setTodayEntry(res.data.entry);
       setEditing(false);
-      setSuccess(todayEntry ? 'Gratitude updated! 💛' : 'Gratitude saved! 💛');
+      // The entry is saved regardless; if the backend flagged crisis language,
+      // surface support resources instead of the celebratory confirmation.
+      if (res.data.crisis?.detected) {
+        setCrisis(res.data.crisis);
+      } else {
+        setSuccess(todayEntry ? 'Gratitude updated! 💛' : 'Gratitude saved! 💛');
+      }
 
       // Refresh streak and history
       const [streakRes, historyRes] = await Promise.all([
@@ -182,6 +190,12 @@ const Gratitude = () => {
           {error}
         </Alert>
       )}
+
+      <CrisisSupportDialog
+        open={Boolean(crisis)}
+        crisis={crisis}
+        onDismiss={() => setCrisis(null)}
+      />
 
       <Grid container spacing={3}>
         {/* Today's Gratitude Section */}

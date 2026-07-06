@@ -86,6 +86,7 @@ enum ConsentStatus {
   PENDING
   GRANTED
   REVOKED
+  DECLINED
 }
 
 // Therapist alert types
@@ -142,11 +143,20 @@ model User {
   subscriptionStatus SubscriptionStatus @default(trial) @map("subscription_status")
   trialEndsAt        DateTime?          @map("trial_ends_at")
   stripeCustomerId   String?            @map("stripe_customer_id") @db.VarChar(255)
+  lastStripeEventAt  DateTime?          @map("last_stripe_event_at") // Stripe `created` of the newest processed webhook event for this user (out-of-order protection)
   isPlatformAdmin    Boolean            @default(false) @map("is_platform_admin")
+  adminRevokedAt     DateTime?          @map("admin_revoked_at") // set when an operator explicitly demotes; bootstrap never re-promotes
+  tokenVersion       Int                @default(0) @map("token_version") // bumped to revoke all outstanding access tokens
+  failedLoginCount   Int                @default(0) @map("failed_login_count") // DB-backed lockout fallback (no Redis)
+  lastFailedLoginAt  DateTime?          @map("last_failed_login_at")
+  lockedUntil        DateTime?          @map("locked_until")
   pushToken          String?            @map("push_token") @db.VarChar(500)
   pushPlatform       String?            @map("push_platform") @db.VarChar(10) // ios, android, web
   subscriptionSource SubscriptionSource @default(NONE) @map("subscription_source")
   appleReceiptData   String?            @map("apple_receipt_data") @db.Text
+  appleExpiresAt     DateTime?          @map("apple_expires_at") // Apple auto-renewable subscription expiry from the validated receipt
+  appleOriginalTransactionId String?    @unique @map("apple_original_transaction_id") @db.VarChar(255) // replay guard: one Apple purchase entitles at most one account
+  subscriptionCurrentPeriodEnd DateTime? @map("subscription_current_period_end") // current billing period end (Stripe)
   metadata           Json?              @db.JsonB
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
@@ -168,6 +178,9 @@ model User {
   therapistLinks         TherapistClient[]
   therapistAlerts        TherapistAlert[]
   realTalks              RealTalk[]
+  treatmentPlans         TreatmentPlan[]
+  sessionNotes           SessionNote[]
+  appointments           Appointment[]
 
   @@map("users")
   @@index([email])
@@ -191,6 +204,8 @@ model Therapist {
 
   licenseType    String?  @map("license_type") @db.VarChar(50)
   practiceName   String?  @map("practice_name") @db.VarChar(255)
+  approach       String?  @db.VarChar(50) // therapeutic orientation: eft, gottman, cbt, psychodynamic, integrative
+  preferences    Json?    @db.JsonB // notification preferences (per-category push/email/sms toggles)
 
   // Relations
   assignments    TherapistAssignment[]
@@ -198,6 +213,10 @@ model Therapist {
   clientLinks    TherapistClient[]
   alerts         TherapistAlert[]
   sessionReports SessionPrepReport[]
+  integrationPartnerLinks IntegrationPartnerTherapist[]
+  treatmentPlans TreatmentPlan[]
+  sessionNotes   SessionNote[]
+  appointments   Appointment[]
 
   @@map("therapists")
   @@index([email])
@@ -214,6 +233,7 @@ model TherapistClient {
   consentStatus    ConsentStatus   @default(PENDING) @map("consent_status")
   consentGrantedAt DateTime?       @map("consent_granted_at")
   consentRevokedAt DateTime?       @map("consent_revoked_at")
+  consentDeclinedAt DateTime?      @map("consent_declined_at")
   permissionLevel  PermissionLevel @default(BASIC) @map("permission_level")
   createdAt        DateTime        @default(now()) @map("created_at")
   updatedAt        DateTime        @updatedAt @map("updated_at")
@@ -327,6 +347,8 @@ model Relationship {
   sharedGoals        SharedGoal[]
   therapistAssignments TherapistAssignment[]
   therapistClients     TherapistClient[]
+  sessionNotes         SessionNote[]
+  appointments         Appointment[]
 
   @@map("relationships")
   @@index([user1Id])
@@ -536,6 +558,7 @@ model Token {
   email     String   @db.VarChar(255)
   token     String   @unique @db.VarChar(255)
   type      String   @db.VarChar(50) // 'email_verify', 'password_reset', 'invite'
+  attempts  Int      @default(0) // failed verification attempts (password reset codes lock after 5)
   expiresAt DateTime @map("expires_at")
   usedAt    DateTime? @map("used_at")
   createdAt DateTime @default(now()) @map("created_at")
@@ -802,11 +825,31 @@ model IntegrationPartner {
   updatedAt       DateTime                 @updatedAt @map("updated_at")
 
   // Relations
-  accessLogs IntegrationAccessLog[]
+  accessLogs     IntegrationAccessLog[]
+  therapistLinks IntegrationPartnerTherapist[]
 
   @@map("integration_partners")
   @@index([apiKey])
   @@index([status])
+}
+
+// Binds an integration partner to the specific therapists it may act for.
+// Partners with zero bindings can mint no integration tokens (fail closed).
+model IntegrationPartnerTherapist {
+  id          String   @id @default(uuid()) @db.Uuid
+  partnerId   String   @map("partner_id") @db.Uuid
+  therapistId String   @map("therapist_id") @db.Uuid
+  createdBy   String?  @map("created_by") @db.Uuid // platform admin user id
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  partner   IntegrationPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  therapist Therapist          @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerId, therapistId])
+  @@map("integration_partner_therapists")
+  @@index([partnerId])
+  @@index([therapistId])
 }
 
 // HIPAA-compliant integration access logging
@@ -826,4 +869,108 @@ model IntegrationAccessLog {
   @@index([partnerId, createdAt(sort: Desc)])
   @@index([clientId])
   @@index([createdAt(sort: Desc)])
+}
+
+// Persisted therapist treatment plans — one per therapist/client pair.
+// `plan` stores the full plan payload (modules, pace, per-module notes, goals).
+model TreatmentPlan {
+  id          String   @id @default(uuid()) @db.Uuid
+  therapistId String   @map("therapist_id") @db.Uuid
+  clientId    String   @map("client_id") @db.Uuid
+  plan        Json     @db.JsonB
+  approach    String?  @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  therapist Therapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  client    User      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([therapistId, clientId])
+  @@map("treatment_plans")
+  @@index([therapistId])
+  @@index([clientId])
+}
+
+// Clinical session notes — the therapist's own work product.
+// `content` (and the optional structured `soap` payload) hold the most
+// sensitive text in the product; the route layer encrypts them at rest via
+// utils/encryption when CONTENT_ENCRYPTION is enabled (same AES-256-GCM path
+// the journal uses through lib/contentEncryption). Notes are soft-deleted
+// (deletedAt) — clinical records are never hard-deleted. Content must NEVER
+// be exposed to clients, emails, or access-log metadata.
+model SessionNote {
+  id             String    @id @default(uuid()) @db.Uuid
+  therapistId    String    @map("therapist_id") @db.Uuid
+  clientId       String?   @map("client_id") @db.Uuid       // individual-client note
+  relationshipId String?   @map("relationship_id") @db.Uuid // couple note (optional)
+  appointmentId  String?   @map("appointment_id") @db.Uuid
+  sessionDate    DateTime  @map("session_date")
+  content        String    @db.Text // encrypted at rest when CONTENT_ENCRYPTION is on
+  noteFormat     String?   @map("note_format") @db.VarChar(20) // 'freeform' | 'soap'
+  soap           Json?     @db.JsonB // { subjective, objective, assessment, plan } — encrypted wrapper when enabled
+  deletedAt      DateTime? @map("deleted_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  therapist    Therapist     @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  client       User?         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  relationship Relationship? @relation(fields: [relationshipId], references: [id], onDelete: SetNull)
+  appointment  Appointment?  @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@map("session_notes")
+  @@index([therapistId, clientId, sessionDate])
+  @@index([clientId])
+  @@index([relationshipId])
+  @@index([appointmentId])
+  @@index([therapistId, deletedAt])
+}
+
+// Therapy appointments. `clientNote` is the ONLY free-text field the client
+// ever sees — session-note content never touches this model.
+// status: scheduled | completed | cancelled | no_show
+// locationType: video | phone | in_person
+model Appointment {
+  id              String    @id @default(uuid()) @db.Uuid
+  therapistId     String    @map("therapist_id") @db.Uuid
+  clientId        String    @map("client_id") @db.Uuid
+  relationshipId  String?   @map("relationship_id") @db.Uuid
+  scheduledAt     DateTime  @map("scheduled_at")
+  durationMinutes Int       @default(50) @map("duration_minutes") @db.SmallInt
+  status          String    @default("scheduled") @db.VarChar(20)
+  locationType    String?   @map("location_type") @db.VarChar(20)
+  timezone        String?   @db.VarChar(64) // IANA timezone the appointment was scheduled in; emails render in it (UTC fallback)
+  clientNote      String?   @map("client_note") @db.Text // client-visible logistics note
+  cancelledBy     String?   @map("cancelled_by") @db.VarChar(20) // 'therapist' | 'client'
+  reminderSentAt  DateTime? @map("reminder_sent_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  therapist    Therapist     @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  client       User          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  relationship Relationship? @relation(fields: [relationshipId], references: [id], onDelete: SetNull)
+  sessionNotes SessionNote[]
+
+  @@map("appointments")
+  @@index([therapistId, scheduledAt])
+  @@index([clientId, scheduledAt])
+  @@index([status])
+  @@index([reminderSentAt, scheduledAt])
+}
+
+// Stripe webhook delivery ledger — one row per processed event.
+// The primary key IS the Stripe event id (evt_...), so a redelivered event
+// hits the unique constraint and is acknowledged without being reprocessed
+// (idempotency). payloadSummary keeps a tiny audit trail, not the full payload.
+model WebhookEvent {
+  id             String   @id @db.VarChar(255) // Stripe event id (evt_...)
+  type           String   @db.VarChar(100)
+  processedAt    DateTime @default(now()) @map("processed_at")
+  payloadSummary Json?    @map("payload_summary") @db.JsonB
+
+  @@map("webhook_events")
+  @@index([type])
+  @@index([processedAt])
 }

@@ -126,6 +126,34 @@ describe('errorHandler', () => {
     process.env.NODE_ENV = originalEnv;
   });
 
+  test('hides Prisma schema error details (P2021/P2022) in production', () => {
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+
+    const err = new Error('The table `public.secret_table` does not exist in the current database.');
+    err.code = 'P2021';
+
+    errorHandler(err, req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res._json.error).toBe('An unexpected error occurred');
+    expect(res._json.hint).toBeUndefined();
+    expect(JSON.stringify(res._json)).not.toContain('secret_table');
+
+    process.env.NODE_ENV = originalEnv;
+  });
+
+  test('surfaces Prisma schema error details with migration hint outside production', () => {
+    const err = new Error('The column `users.token_version` does not exist.');
+    err.code = 'P2022';
+
+    errorHandler(err, req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res._json.error).toContain('token_version');
+    expect(res._json.hint).toBe('Database schema mismatch - migrations may need to run');
+  });
+
   test('returns custom statusCode when set on error', () => {
     const err = new Error('Rate limit exceeded');
     err.statusCode = 429;

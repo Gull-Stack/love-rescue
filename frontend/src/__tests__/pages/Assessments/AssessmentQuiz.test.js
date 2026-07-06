@@ -1,9 +1,8 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ThemeProvider } from '@mui/material/styles';
-import { MemoryRouter } from 'react-router-dom';
-import theme from '../../../theme';
+import { renderWithProviders } from '../../../testHelpers/renderWithProviders';
+import { createAuthValue } from '../../../testHelpers/mockAuthContext';
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -12,24 +11,32 @@ jest.mock('react-router-dom', () => ({
   useParams: () => ({ type: 'attachment' }),
 }));
 
-jest.mock('../../../services/api', () => ({
-  __esModule: true,
-  default: { get: jest.fn(), post: jest.fn() },
-  assessmentsApi: {
-    getQuestions: jest.fn(),
-    submit: jest.fn(),
-  },
+jest.mock('../../../contexts/AuthContext', () => ({
+  useAuth: jest.fn(),
+}));
+
+jest.mock('../../../services/api', () =>
+  require('../../../testHelpers/mockApi').buildApiModuleMock()
+);
+
+jest.mock('canvas-confetti', () => jest.fn());
+
+jest.mock('../../../utils/haptics', () => ({
+  hapticLight: jest.fn(),
+  hapticMedium: jest.fn(),
+  hapticSuccess: jest.fn(),
 }));
 
 import AssessmentQuiz from '../../../pages/Assessments/AssessmentQuiz';
+import { useAuth } from '../../../contexts/AuthContext';
 import { assessmentsApi } from '../../../services/api';
 
 const mockQuestions = {
   data: {
     type: 'attachment',
     questions: [
-      { id: 1, text: 'Question 1', category: 'anxious' },
-      { id: 2, text: 'Question 2', category: 'secure' },
+      { id: 1, text: 'I worry my partner will stop loving me.', category: 'anxious' },
+      { id: 2, text: 'I find it easy to depend on my partner.', category: 'secure' },
     ],
   },
 };
@@ -41,192 +48,180 @@ const mockSubmitResult = {
       id: 'a-1',
       type: 'attachment',
       score: { style: 'secure' },
+      interpretation: 'You have a secure attachment style.',
+      actionSteps: [],
+      strengths: [],
+      growthEdges: [],
       completedAt: new Date().toISOString(),
     },
   },
 };
 
-const renderComponent = () => {
-  return render(
-    <ThemeProvider theme={theme}>
-      <MemoryRouter>
-        <AssessmentQuiz />
-      </MemoryRouter>
-    </ThemeProvider>
-  );
+const answerCurrentQuestion = async (value = 5) => {
+  // Likert buttons are labeled "<n> — <label>", e.g. "5 — Slightly Agree"
+  const buttons = screen.getAllByRole('button', { name: new RegExp(`^${value} — `) });
+  fireEvent.click(buttons[0]);
 };
+
+const renderPage = () => renderWithProviders(<AssessmentQuiz />);
 
 describe('AssessmentQuiz', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useAuth.mockReturnValue(createAuthValue());
     assessmentsApi.getQuestions.mockResolvedValue(mockQuestions);
     assessmentsApi.submit.mockResolvedValue(mockSubmitResult);
   });
 
-  test('shows loading spinner initially', () => {
-    // Make the API call hang so the spinner stays visible
+  test('shows page skeleton while questions load', () => {
     assessmentsApi.getQuestions.mockReturnValue(new Promise(() => {}));
-    renderComponent();
-    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    renderPage();
+    expect(screen.getByLabelText('Loading')).toBeInTheDocument();
   });
 
-  test('renders assessment title after loading', async () => {
-    renderComponent();
+  test('shows an error when questions fail to load', async () => {
+    assessmentsApi.getQuestions.mockRejectedValueOnce(new Error('network'));
+    renderPage();
     await waitFor(() => {
-      expect(screen.getByText('Attachment Style Assessment')).toBeInTheDocument();
-    });
-  });
-
-  test('displays first question', async () => {
-    renderComponent();
-    await waitFor(() => {
-      expect(screen.getByText('Question 1')).toBeInTheDocument();
-    });
-    expect(screen.getByText('Question 1 of 2')).toBeInTheDocument();
-  });
-
-  test('shows radio options from Strongly Disagree through Strongly Agree', async () => {
-    renderComponent();
-    await waitFor(() => {
-      expect(screen.getByText('Question 1')).toBeInTheDocument();
-    });
-    expect(screen.getByLabelText('Strongly Disagree')).toBeInTheDocument();
-    expect(screen.getByLabelText('Disagree')).toBeInTheDocument();
-    expect(screen.getByLabelText('Neutral')).toBeInTheDocument();
-    expect(screen.getByLabelText('Agree')).toBeInTheDocument();
-    expect(screen.getByLabelText('Strongly Agree')).toBeInTheDocument();
-  });
-
-  test('Next button advances to next question', async () => {
-    const user = userEvent.setup();
-    renderComponent();
-    await waitFor(() => {
-      expect(screen.getByText('Question 1')).toBeInTheDocument();
-    });
-
-    // Select an answer to enable the Next button
-    await user.click(screen.getByLabelText('Agree'));
-    await user.click(screen.getByRole('button', { name: /next/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Question 2')).toBeInTheDocument();
-    });
-    expect(screen.getByText('Question 2 of 2')).toBeInTheDocument();
-  });
-
-  test('Back button goes to previous question', async () => {
-    const user = userEvent.setup();
-    renderComponent();
-    await waitFor(() => {
-      expect(screen.getByText('Question 1')).toBeInTheDocument();
-    });
-
-    // Answer and move to question 2
-    await user.click(screen.getByLabelText('Agree'));
-    await user.click(screen.getByRole('button', { name: /next/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Question 2')).toBeInTheDocument();
-    });
-
-    // Go back - use exact name to avoid matching "Back to Assessments"
-    const backButtons = screen.getAllByRole('button', { name: /back/i });
-    const navBackButton = backButtons.find((btn) => btn.textContent.trim() === 'Back');
-    await user.click(navBackButton);
-    await waitFor(() => {
-      expect(screen.getByText('Question 1')).toBeInTheDocument();
+      expect(screen.getByText(/failed to load questions/i)).toBeInTheDocument();
     });
   });
 
-  test('Back button is disabled on first question', async () => {
-    renderComponent();
-    await waitFor(() => {
-      expect(screen.getByText('Question 1')).toBeInTheDocument();
-    });
+  test('renders the first question with progress and a 7-point Likert scale', async () => {
+    renderPage();
 
-    const backButtons = screen.getAllByRole('button', { name: /back/i });
-    // The navigation Back button (with disabled prop) is the one at the bottom
-    const navBackButton = backButtons.find(
-      (btn) => btn.hasAttribute('disabled') || btn.closest('[disabled]')
-    );
-    // At minimum, the bottom navigation Back should be disabled
-    expect(
-      backButtons.some((btn) => btn.disabled)
-    ).toBe(true);
+    await waitFor(() => {
+      expect(screen.getByText('I worry my partner will stop loving me.')).toBeInTheDocument();
+    });
+    expect(screen.getByText('1 / 2')).toBeInTheDocument();
+
+    // Endpoint anchors + all seven scale buttons
+    expect(screen.getByRole('button', { name: '1 — Strongly Disagree' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '4 — Neutral' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '7 — Strongly Agree' })).toBeInTheDocument();
+
+    // Back is disabled on the first question
+    expect(screen.getByRole('button', { name: /← back/i })).toBeDisabled();
   });
 
-  test('Submit button appears on last question', async () => {
-    const user = userEvent.setup();
-    renderComponent();
+  test('answering auto-advances to the next question', async () => {
+    renderPage();
     await waitFor(() => {
-      expect(screen.getByText('Question 1')).toBeInTheDocument();
+      expect(screen.getByText('1 / 2')).toBeInTheDocument();
     });
 
-    // Answer first question and advance
-    await user.click(screen.getByLabelText('Agree'));
-    await user.click(screen.getByRole('button', { name: /next/i }));
+    await answerCurrentQuestion(6);
 
     await waitFor(() => {
-      expect(screen.getByText('Question 2')).toBeInTheDocument();
+      expect(screen.getByText('I find it easy to depend on my partner.')).toBeInTheDocument();
     });
-
-    // On the last question, Submit should appear instead of Next
-    expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /next/i })).not.toBeInTheDocument();
+    expect(screen.getByText('2 / 2')).toBeInTheDocument();
   });
 
-  test('shows result after successful submit', async () => {
-    const user = userEvent.setup();
-    renderComponent();
+  test('Back returns to the previous question with the answer preserved', async () => {
+    renderPage();
     await waitFor(() => {
-      expect(screen.getByText('Question 1')).toBeInTheDocument();
+      expect(screen.getByText('1 / 2')).toBeInTheDocument();
     });
 
-    // Answer question 1
-    await user.click(screen.getByLabelText('Agree'));
-    await user.click(screen.getByRole('button', { name: /next/i }));
-
+    await answerCurrentQuestion(6);
     await waitFor(() => {
-      expect(screen.getByText('Question 2')).toBeInTheDocument();
+      expect(screen.getByText('2 / 2')).toBeInTheDocument();
     });
 
-    // Answer question 2 and submit
-    await user.click(screen.getByLabelText('Strongly Agree'));
-    await user.click(screen.getByRole('button', { name: /submit/i }));
+    fireEvent.click(screen.getByRole('button', { name: /← back/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('1 / 2')).toBeInTheDocument();
+    });
+    // The previously chosen value renders its selected-label feedback
+    expect(screen.getByText('I worry my partner will stop loving me.')).toBeInTheDocument();
+  });
+
+  test('number keys answer via keyboard shortcuts', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('1 / 2')).toBeInTheDocument();
+    });
+
+    fireEvent.keyDown(window, { key: '3' });
+
+    await waitFor(() => {
+      expect(screen.getByText('2 / 2')).toBeInTheDocument();
+    });
+  });
+
+  test('Complete is disabled until every question is answered', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('1 / 2')).toBeInTheDocument();
+    });
+
+    await answerCurrentQuestion(6);
+    await waitFor(() => {
+      expect(screen.getByText('2 / 2')).toBeInTheDocument();
+    });
+
+    const completeButton = screen.getByRole('button', { name: /complete/i });
+    expect(completeButton).toBeDisabled();
+
+    await answerCurrentQuestion(7);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /complete/i })).not.toBeDisabled();
+    });
+  });
+
+  test('submitting shows the rich result view', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('1 / 2')).toBeInTheDocument();
+    });
+
+    await answerCurrentQuestion(6);
+    await waitFor(() => {
+      expect(screen.getByText('2 / 2')).toBeInTheDocument();
+    });
+    await answerCurrentQuestion(7);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /complete/i })).not.toBeDisabled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /complete/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Assessment Complete!')).toBeInTheDocument();
     });
-    expect(screen.getByText('secure Attachment')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /back to assessments/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /view matchup/i })).toBeInTheDocument();
+    expect(assessmentsApi.submit).toHaveBeenCalledWith(
+      'attachment',
+      expect.objectContaining({ 1: 6, 2: 7 })
+    );
+    expect(screen.getByText('Your Result')).toBeInTheDocument();
   });
 
-  test('shows error on failed submit', async () => {
+  test('shows server error when submission fails', async () => {
     assessmentsApi.submit.mockRejectedValue({
       response: { data: { error: 'Submission failed' } },
     });
 
-    const user = userEvent.setup();
-    renderComponent();
+    renderPage();
     await waitFor(() => {
-      expect(screen.getByText('Question 1')).toBeInTheDocument();
+      expect(screen.getByText('1 / 2')).toBeInTheDocument();
     });
 
-    // Answer question 1
-    await user.click(screen.getByLabelText('Agree'));
-    await user.click(screen.getByRole('button', { name: /next/i }));
-
+    await answerCurrentQuestion(6);
     await waitFor(() => {
-      expect(screen.getByText('Question 2')).toBeInTheDocument();
+      expect(screen.getByText('2 / 2')).toBeInTheDocument();
+    });
+    await answerCurrentQuestion(7);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /complete/i })).not.toBeDisabled();
     });
 
-    // Answer question 2 and submit
-    await user.click(screen.getByLabelText('Strongly Agree'));
-    await user.click(screen.getByRole('button', { name: /submit/i }));
+    fireEvent.click(screen.getByRole('button', { name: /complete/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Submission failed')).toBeInTheDocument();
     });
+    expect(screen.queryByText('Assessment Complete!')).not.toBeInTheDocument();
   });
 });

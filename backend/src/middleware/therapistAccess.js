@@ -6,7 +6,7 @@
  * Permission Levels:
  *   BASIC:    assessment scores + activity completion only
  *   STANDARD: + mood trends + crisis alerts + session prep
- *   FULL:     + individual responses + journal entries + messaging
+ *   FULL:     + individual responses + journal entries
  */
 
 const logger = require('../utils/logger');
@@ -173,7 +173,10 @@ function requireClientAccess(requiredCategory) {
 
 /**
  * Middleware factory: require access to a couple (via coupleId param).
- * Checks that the therapist has a consented link to at least one partner.
+ * Couple-level data exposes BOTH partners, so this requires a GRANTED consent
+ * link from EVERY partner in the relationship — one partner's consent never
+ * unlocks the other partner's data. The effective permission level is the
+ * lowest among the partners' links.
  *
  * @param {string} [requiredCategory] - Data category that must be permitted
  * @returns {Function} Express middleware
@@ -192,29 +195,49 @@ function requireCoupleAccess(requiredCategory) {
         return res.status(400).json({ error: 'Couple/relationship ID is required' });
       }
 
-      // Find all links for this couple
+      const relationship = await req.prisma.relationship.findUnique({
+        where: { id: coupleId },
+      });
+
+      if (!relationship) {
+        return res.status(404).json({ error: 'Couple not found' });
+      }
+
+      const partnerIds = [relationship.user1Id, relationship.user2Id].filter(Boolean);
+
+      // Find GRANTED links to the partners themselves (not just rows tagged
+      // with the coupleId) so revoked/declined links never count.
       const links = await req.prisma.therapistClient.findMany({
         where: {
           therapistId,
-          coupleId,
+          clientId: { in: partnerIds },
           consentStatus: 'GRANTED',
         },
       });
 
-      if (links.length === 0) {
-        await logAccess(req.prisma, {
+      const grantedClientIds = new Set(links.map((l) => l.clientId));
+      const allPartnersGranted = partnerIds.every((id) => grantedClientIds.has(id));
+
+      if (!allPartnersGranted) {
+        const partial = links.length > 0;
+        await Promise.all(partnerIds.map((partnerId) => logAccess(req.prisma, {
           accessorId: therapistId,
           resourceType: requiredCategory || 'couple_data',
           resourceId: coupleId,
+          resourceOwnerId: partnerId,
           action: 'read',
           accessGranted: false,
-          reason: 'No active consent links for couple',
+          reason: partial
+            ? 'Partner consent missing for couple-level data'
+            : 'No active consent links for couple',
           ipAddress: req.ip,
-        });
+        })));
 
         return res.status(403).json({
-          error: 'No active consent from partners in this couple',
-          code: 'CONSENT_REQUIRED',
+          error: partial
+            ? 'Both partners must grant you access before couple-level data is available'
+            : 'No active consent from partners in this couple',
+          code: partial ? 'PARTNER_CONSENT_REQUIRED' : 'CONSENT_REQUIRED',
         });
       }
 
@@ -244,17 +267,20 @@ function requireCoupleAccess(requiredCategory) {
         });
       }
 
-      await logAccess(req.prisma, {
+      // Log a row per partner so each client's sharing history shows the read
+      await Promise.all(partnerIds.map((partnerId) => logAccess(req.prisma, {
         accessorId: therapistId,
         resourceType: requiredCategory || 'couple_data',
         resourceId: coupleId,
+        resourceOwnerId: partnerId,
         action: 'read',
         accessGranted: true,
         ipAddress: req.ip,
-      });
+      })));
 
       req.therapistClientLinks = links;
       req.effectivePermissionLevel = lowestLevel;
+      req.coupleRelationship = relationship;
       next();
     } catch (error) {
       logger.error('therapistAccess couple middleware error', { error: error.message });

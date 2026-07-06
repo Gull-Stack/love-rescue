@@ -12,10 +12,6 @@ import {
   Chip,
   IconButton,
   Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Radio,
   RadioGroup,
   FormControlLabel,
@@ -54,10 +50,21 @@ const PERMISSION_LEVELS = [
   {
     value: 'full',
     label: 'Full Access',
-    description: '+ individual responses, journal entries, and messaging',
+    description: '+ individual responses and journal entries',
     color: 'secondary',
   },
 ];
+
+// Rank levels by declaration order (basic < standard < full) so we can compare
+// an invite's ceiling against the options offered.
+const LEVEL_RANK = PERMISSION_LEVELS.reduce((acc, level, idx) => {
+  acc[level.value] = idx;
+  return acc;
+}, {});
+
+// Backend sends the ceiling uppercase ('BASIC'/'STANDARD'/'FULL'); the UI works
+// in lowercase.
+const normalizeLevel = (value) => String(value || '').toLowerCase();
 
 const STATUS_CONFIG = {
   pending: { label: 'Pending', color: 'warning', icon: <HourglassEmptyIcon fontSize="small" /> },
@@ -77,6 +84,7 @@ const TherapistClientLinking = () => {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [warning, setWarning] = useState('');
 
   const fetchInvites = useCallback(async () => {
     try {
@@ -96,12 +104,27 @@ const TherapistClientLinking = () => {
   const handleGenerateInvite = async () => {
     setActionLoading(true);
     setError('');
+    setWarning('');
+    setSuccess('');
+    const email = clientEmail.trim();
     try {
       const response = await api.post('/therapist/clients/invite', {
-        email: clientEmail || undefined,
+        // The backend reads clientEmail; keep the legacy `email` field for one
+        // release so an older server still receives the address.
+        clientEmail: email || undefined,
+        email: email || undefined,
       });
       setInviteLink(response.data.inviteLink);
-      setSuccess('Invite link generated!');
+      // Be honest about whether the invite email actually went out.
+      if (email && response.data.emailSent === true) {
+        setSuccess(`Invite sent to ${email} — they'll get an email with your link.`);
+      } else if (email && response.data.emailSent === false) {
+        setWarning(
+          "We couldn't email the invite — copy the link below and share it directly."
+        );
+      } else {
+        setSuccess('Invite link generated!');
+      }
       setClientEmail('');
       fetchInvites();
     } catch (err) {
@@ -135,6 +158,7 @@ const TherapistClientLinking = () => {
       </Typography>
 
       {success && <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>{success}</Alert>}
+      {warning && <Alert severity="warning" sx={{ mb: 3 }} onClose={() => setWarning('')}>{warning}</Alert>}
       {error && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>{error}</Alert>}
 
       {/* Generate Invite */}
@@ -271,6 +295,14 @@ const ClientLinkingAccept = ({ token: tokenProp }) => {
     try {
       const response = await api.get(`/therapist/clients/invite/${token}`);
       setInvite(response.data);
+      // The invite carries a permission ceiling (invite.permissionLevel). Seed
+      // the picker to that ceiling so accept never exceeds it — the backend
+      // rejects anything higher with PERMISSION_EXCEEDS_INVITE. Fall back to the
+      // default only when the invite omits a valid ceiling.
+      const ceiling = normalizeLevel(response.data?.permissionLevel);
+      if (ceiling in LEVEL_RANK) {
+        setPermissionLevel(ceiling);
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Invalid or expired invite');
     } finally {
@@ -360,9 +392,20 @@ const ClientLinkingAccept = ({ token: tokenProp }) => {
         <Typography color="text.secondary" paragraph>
           You can change your sharing preferences anytime from Settings.
         </Typography>
+        <Button variant="contained" size="large" sx={{ mt: 1 }} onClick={() => navigate('/')}>
+          Go to my dashboard
+        </Button>
       </Box>
     );
   }
+
+  // The invite's permissionLevel is a ceiling: only offer levels at or below it
+  // so the client can't pick something the therapist's invite forbids.
+  const ceilingLevel = normalizeLevel(invite?.permissionLevel);
+  const ceilingRank = ceilingLevel in LEVEL_RANK ? LEVEL_RANK[ceilingLevel] : PERMISSION_LEVELS.length - 1;
+  const availableLevels = PERMISSION_LEVELS.filter((l) => LEVEL_RANK[l.value] <= ceilingRank);
+  const ceilingConfig = PERMISSION_LEVELS.find((l) => l.value === ceilingLevel);
+  const ceilingLimited = ceilingConfig && ceilingRank < PERMISSION_LEVELS.length - 1;
 
   return (
     <Box maxWidth="sm" mx="auto" py={4}>
@@ -396,12 +439,18 @@ const ClientLinkingAccept = ({ token: tokenProp }) => {
               Choose what to share
             </Typography>
 
+            {ceilingLimited && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Your therapist limited this invite to {ceilingConfig.label} access, so higher levels aren't available here. You can adjust sharing later from Settings.
+              </Alert>
+            )}
+
             <FormControl component="fieldset" fullWidth>
               <RadioGroup
                 value={permissionLevel}
                 onChange={(e) => setPermissionLevel(e.target.value)}
               >
-                {PERMISSION_LEVELS.map((level) => (
+                {availableLevels.map((level) => (
                   <Card
                     key={level.value}
                     variant="outlined"

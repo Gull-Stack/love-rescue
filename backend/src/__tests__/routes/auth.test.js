@@ -658,7 +658,7 @@ describe('Auth Routes', () => {
       expect(generateAuthenticationOptions).toHaveBeenCalled();
     });
 
-    it('should return 400 when biometric not set up', async () => {
+    it('should return generic 401 when biometric not set up (enumeration-safe)', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         ...mockUser,
         biometricKeyId: null
@@ -668,8 +668,19 @@ describe('Auth Routes', () => {
         .post('/api/auth/webauthn/login/options')
         .send({ email: 'test@example.com' });
 
-      expect(res.status).toBe(400);
-      expect(res.body.error).toBe('Biometric login not set up for this account');
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('Invalid credentials');
+    });
+
+    it('should return the same generic 401 when the account does not exist', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      const res = await request(app)
+        .post('/api/auth/webauthn/login/options')
+        .send({ email: 'nobody@example.com' });
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('Invalid credentials');
     });
   });
 

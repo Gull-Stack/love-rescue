@@ -109,11 +109,26 @@ function checkValidServiceWorker(swUrl, config) {
     });
 }
 
-export function unregister() {
+// Unregister ONLY the legacy CRA app-shell service worker (service-worker.js),
+// which caused COOP/Google Sign-In issues. Never touch /push-sw.js — that
+// registration powers web push notifications (see usePushNotifications). This
+// deliberately replaces the old blanket unregister(), which killed the push
+// registration on every startup.
+export function unregisterLegacy() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.ready
-      .then((registration) => {
-        registration.unregister();
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((registrations) => {
+        registrations.forEach((registration) => {
+          const scriptURL =
+            registration.active?.scriptURL ||
+            registration.waiting?.scriptURL ||
+            registration.installing?.scriptURL ||
+            '';
+          if (scriptURL.endsWith('/service-worker.js')) {
+            registration.unregister();
+          }
+        });
       })
       .catch((error) => {
         console.error(error.message);

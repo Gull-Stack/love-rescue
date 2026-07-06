@@ -2,12 +2,28 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Card, CardContent, Grid, Chip, Button, Divider,
-  Alert, Skeleton, IconButton, List, ListItem, ListItemText,
+  Alert, Skeleton, IconButton, Table, TableBody, TableCell, TableHead, TableRow,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import PersonIcon from '@mui/icons-material/Person';
 import therapistService from '../../services/therapistService';
-import { CoupleRadarChart, PursueWithdrawIndicator } from '../../components/therapist';
+import { CoupleRadarChart } from '../../components/therapist';
+
+/** Humanize an assessment type key like "gottman_checkup" → "Gottman Checkup". */
+const typeLabel = (type) =>
+  String(type || '')
+    .replace(/[_-]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+const partnerName = (user, fallback) =>
+  user ? [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || fallback : fallback;
+
+const asNumber = (score) => {
+  if (typeof score === 'number') return score;
+  const n = Number(score);
+  return Number.isFinite(n) ? n : null;
+};
 
 const CoupleView = () => {
   const { id } = useParams();
@@ -16,26 +32,41 @@ const CoupleView = () => {
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
 
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    // Fetch the two endpoints independently. The comparison endpoint 403s
+    // (PARTNER_CONSENT_REQUIRED) until BOTH partners consent, while getCouple
+    // still returns a redacted 200 when only one has. A shared Promise.all
+    // would reject the whole page on that expected 403, so settle them apart:
+    // the couple response drives the page, the comparison is best-effort.
+    const [coupleResult, compResult] = await Promise.allSettled([
+      therapistService.getCouple(id),
+      therapistService.getCoupleComparison(id),
+    ]);
+    setLoading(false);
+
+    if (coupleResult.status !== 'fulfilled') {
+      const err = coupleResult.reason;
+      setError(err?.response?.data?.error || err?.response?.data?.message || 'Failed to load couple data');
+      return;
+    }
+
+    const comparisonAvailable = compResult.status === 'fulfilled';
+    setData({
+      couple: coupleResult.value.data?.couple || null,
+      partnerConsentRequired: Boolean(coupleResult.value.data?.partnerConsentRequired),
+      comparisonAvailable,
+      partners: comparisonAvailable ? (compResult.value.data?.partners || null) : null,
+      comparison: comparisonAvailable ? (compResult.value.data?.comparison || []) : [],
+      comparisonMessage: comparisonAvailable ? (compResult.value.data?.message || null) : null,
+    });
+  }, [id]);
+
   useEffect(() => {
     document.title = 'Couple View | Love Rescue';
     fetchData();
-  }, [id]);
-
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [coupleRes, compRes] = await Promise.all([
-        therapistService.getCouple(id),
-        therapistService.getCoupleComparison(id),
-      ]);
-      setData({ ...coupleRes.data, comparison: compRes.data });
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load couple data');
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
+  }, [fetchData]);
 
   if (loading) {
     return (
@@ -59,74 +90,73 @@ const CoupleView = () => {
   }
 
   const {
-    partnerA, partnerB, narrativeSummary, attachmentDynamic,
-    loveLanguages, conflictStyles, pursueWithdraw,
-    sharedStrengths = [], growthEdges = [], comparison,
+    couple,
+    comparison = [],
+    comparisonMessage,
+    comparisonAvailable = false,
+    partnerConsentRequired = false,
   } = data || {};
+  const user1 = couple?.user1 || data?.partners?.user1 || null;
+  const user2 = couple?.user2 || data?.partners?.user2 || null;
+  const nameA = partnerName(user1, 'Partner 1');
+  const nameB = partnerName(user2, 'Partner 2');
+
+  // Radar chart can only plot numeric scores; structured results are listed in the table below.
+  const numericRows = comparison.filter(c => asNumber(c.user1) != null || asNumber(c.user2) != null);
+  const radarLabels = numericRows.map(c => typeLabel(c.type));
+  const radarA = { name: nameA, scores: numericRows.map(c => asNumber(c.user1) ?? 0) };
+  const radarB = { name: nameB, scores: numericRows.map(c => asNumber(c.user2) ?? 0) };
 
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3, flexWrap: 'wrap' }}>
         <IconButton onClick={() => navigate('/therapist')} sx={{ minWidth: 44, minHeight: 44 }} aria-label="Back">
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h4" fontWeight={600} sx={{ flex: 1 }}>
           <FavoriteIcon sx={{ verticalAlign: 'middle', mr: 1, color: 'primary.main' }} />
-          {partnerA?.name} & {partnerB?.name}
+          {nameA} & {nameB}
         </Typography>
+        {couple?.status && (
+          <Chip label={couple.status} size="small" color="primary" variant="outlined" sx={{ textTransform: 'capitalize' }} />
+        )}
       </Box>
-
-      {/* Therapist Narrative Summary */}
-      {narrativeSummary && (
-        <Card sx={{ mb: 3, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>Therapist Summary</Typography>
-            <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>{narrativeSummary}</Typography>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Radar Chart Comparison */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>Assessment Comparison</Typography>
-          <CoupleRadarChart
-            partnerA={comparison?.partnerA}
-            partnerB={comparison?.partnerB}
-            labels={comparison?.labels || []}
-            height={350}
-          />
-        </CardContent>
-      </Card>
 
       {/* Two-Column Partner Details */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        {[partnerA, partnerB].map((partner, idx) => (
+        {[{ user: user1, name: nameA }, { user: user2, name: nameB }].map((partner, idx) => (
           <Grid item xs={12} md={6} key={idx}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
-                <Typography variant="h6" color={idx === 0 ? 'primary' : 'secondary'} gutterBottom>
-                  {partner?.name || `Partner ${idx === 0 ? 'A' : 'B'}`}
-                </Typography>
-                <Divider sx={{ mb: 1.5 }} />
-                {partner?.attachmentStyle && (
-                  <Box sx={{ mb: 1 }}>
-                    <Typography variant="caption" color="text.secondary">Attachment Style</Typography>
-                    <Typography variant="body2" fontWeight={600}>{partner.attachmentStyle}</Typography>
-                  </Box>
-                )}
-                {partner?.loveLanguage && (
-                  <Box sx={{ mb: 1 }}>
-                    <Typography variant="caption" color="text.secondary">Love Language</Typography>
-                    <Typography variant="body2" fontWeight={600}>{partner.loveLanguage}</Typography>
-                  </Box>
-                )}
-                {partner?.conflictStyle && (
-                  <Box sx={{ mb: 1 }}>
-                    <Typography variant="caption" color="text.secondary">Conflict Style</Typography>
-                    <Typography variant="body2" fontWeight={600}>{partner.conflictStyle}</Typography>
-                  </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PersonIcon color={idx === 0 ? 'primary' : 'secondary'} />
+                  <Typography variant="h6" color={idx === 0 ? 'primary' : 'secondary'}>
+                    {partner.name}
+                  </Typography>
+                </Box>
+                <Divider sx={{ my: 1.5 }} />
+                {partner.user ? (
+                  <>
+                    {partner.user.email && (
+                      <Box sx={{ mb: 1 }}>
+                        <Typography variant="caption" color="text.secondary">Email</Typography>
+                        <Typography variant="body2" fontWeight={600}>{partner.user.email}</Typography>
+                      </Box>
+                    )}
+                    {comparisonAvailable && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Assessments Completed</Typography>
+                        <Typography variant="body2" fontWeight={600}>
+                          {comparison.filter(c => (idx === 0 ? c.user1 : c.user2) != null).length} of {comparison.length || 0}
+                        </Typography>
+                      </Box>
+                    )}
+                  </>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    This partner hasn't joined Love Rescue yet.
+                  </Typography>
                 )}
               </CardContent>
             </Card>
@@ -134,74 +164,71 @@ const CoupleView = () => {
         ))}
       </Grid>
 
-      {/* Attachment Dynamic */}
-      {attachmentDynamic && (
+      {/* Comparison requires BOTH partners to have consented. When only one has,
+          the comparison endpoint 403s and we render an inline note instead of
+          the radar/table (the couple view above still renders from getCouple). */}
+      {!comparisonAvailable ? (
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <Typography variant="h6" gutterBottom>Attachment Dynamic</Typography>
-            <Box sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant="h5" fontWeight={700} color="primary">
-                {attachmentDynamic.pattern}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, maxWidth: 500, mx: 'auto' }}>
-                {attachmentDynamic.description}
-              </Typography>
-            </Box>
+            <Typography variant="h6" gutterBottom>Assessment Comparison</Typography>
+            <Alert severity="info" sx={{ mt: 1 }}>
+              {partnerConsentRequired
+                ? 'Both partners must consent to see the side-by-side comparison. This view shows only the partner who has connected with you.'
+                : 'The side-by-side comparison is unavailable right now.'}
+            </Alert>
           </CardContent>
         </Card>
-      )}
-
-      {/* Pursue-Withdraw Pattern */}
-      {pursueWithdraw && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>Pursue-Withdraw Pattern</Typography>
-            <PursueWithdrawIndicator
-              pursuer={pursueWithdraw.pursuer}
-              withdrawer={pursueWithdraw.withdrawer}
-              intensity={pursueWithdraw.intensity}
-              trend={pursueWithdraw.trend}
-              description={pursueWithdraw.description}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Strengths & Growth Edges */}
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Card sx={{ height: '100%' }}>
+      ) : (
+        <>
+          {/* Radar Chart Comparison */}
+          <Card sx={{ mb: 3 }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom color="success.main">💪 Shared Strengths</Typography>
-              {sharedStrengths.length === 0 ? (
-                <Typography color="text.secondary">No strengths identified yet.</Typography>
+              <Typography variant="h6" gutterBottom>Assessment Comparison</Typography>
+              {radarLabels.length >= 3 ? (
+                <CoupleRadarChart
+                  partnerA={radarA}
+                  partnerB={radarB}
+                  labels={radarLabels}
+                  height={350}
+                />
               ) : (
-                <List dense>
-                  {sharedStrengths.map((s, i) => (
-                    <ListItem key={i}><ListItemText primary={s} /></ListItem>
-                  ))}
-                </List>
+                <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                  {comparisonMessage || 'The comparison chart will appear once both partners complete at least three scored assessments.'}
+                </Typography>
               )}
             </CardContent>
           </Card>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom color="warning.main">🌱 Growth Edges</Typography>
-              {growthEdges.length === 0 ? (
-                <Typography color="text.secondary">No growth edges identified yet.</Typography>
-              ) : (
-                <List dense>
-                  {growthEdges.map((g, i) => (
-                    <ListItem key={i}><ListItemText primary={g} /></ListItem>
-                  ))}
-                </List>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+
+          {/* Side-by-side scores table */}
+          {comparison.length > 0 && (
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Latest Scores Side by Side</Typography>
+                <Box sx={{ overflowX: 'auto' }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Assessment</TableCell>
+                        <TableCell align="right">{nameA}</TableCell>
+                        <TableCell align="right">{nameB}</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {comparison.map((c) => (
+                        <TableRow key={c.type}>
+                          <TableCell>{typeLabel(c.type)}</TableCell>
+                          <TableCell align="right">{asNumber(c.user1) ?? (c.user1 != null ? 'Completed' : '—')}</TableCell>
+                          <TableCell align="right">{asNumber(c.user2) ?? (c.user2 != null ? 'Completed' : '—')}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Box>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
     </Box>
   );
 };
