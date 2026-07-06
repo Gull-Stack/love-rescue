@@ -8,6 +8,7 @@ const PRISMA_METHODS = [
   'findFirst',
   'findMany',
   'create',
+  'createMany',
   'update',
   'updateMany',
   'delete',
@@ -45,7 +46,9 @@ const PRISMA_MODELS = [
   'webhookEvent',
   'integrationPartner',
   'integrationPartnerTherapist',
-  'integrationAccessLog'
+  'integrationAccessLog',
+  'sessionNote',
+  'appointment'
 ];
 
 /**

@@ -49,6 +49,7 @@ const strategiesRoutes = require('./routes/strategies');
 const reportsRoutes = require('./routes/reports');
 const calendarRoutes = require('./routes/calendar');
 const therapistRoutes = require('./routes/therapist');
+const therapistPracticeRoutes = require('./routes/therapist-practice');
 const paymentsRoutes = require('./routes/payments');
 const insightsRoutes = require('./routes/insights');
 const videosRoutes = require('./routes/videos');
@@ -187,6 +188,11 @@ app.use('/api/strategies', strategiesRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/therapist', therapistRoutes);
+// Practice management (session notes + appointments). Mounted at the same
+// prefix AFTER the main therapist router — its paths (/clients/:id/notes,
+// /notes/*, /appointments*, /my/*) don't collide with therapist.js routes,
+// so unmatched requests fall through to it.
+app.use('/api/therapist', therapistPracticeRoutes);
 app.use('/api/payments', paymentsRoutes);
 // Alias: Stripe dashboard configured to send to /api/stripe/webhooks
 app.post('/api/stripe/webhooks', express.raw({ type: 'application/json' }), (req, res, next) => {
@@ -348,6 +354,51 @@ function startAlertScheduler() {
   );
 }
 
+// Appointment-reminder scheduler. Same in-process setInterval idiom as the
+// alert scheduler above: hourly tick, overlap guard, kill switch env, and
+// startup jitter. Each tick emails clients whose scheduled appointment starts
+// within the next 24h and hasn't been reminded (reminderSentAt null); the
+// scan stamps reminderSentAt before sending so it can never double-send, and
+// failures are isolated per appointment (see routes/therapist-practice.js).
+const APPOINTMENT_REMINDER_INTERVAL_MS = 60 * 60 * 1000; // hourly tick
+let appointmentReminderRunning = false;
+async function runAppointmentReminderScan() {
+  if (appointmentReminderRunning) return; // don't overlap a slow run
+  appointmentReminderRunning = true;
+  try {
+    const { scanAndSendAppointmentReminders } = require('./routes/therapist-practice');
+    const summary = await scanAndSendAppointmentReminders(prisma);
+    if (summary.scanned > 0) {
+      logger.info(
+        `Appointment reminder scan done: ${summary.scanned} due, ` +
+        `${summary.sent} sent, ${summary.failures} failures`
+      );
+    }
+  } catch (err) {
+    logger.error('Appointment reminder scan failed', { error: err.message });
+  } finally {
+    appointmentReminderRunning = false;
+  }
+}
+function startAppointmentReminderScheduler() {
+  if (process.env.NODE_ENV === 'test') return;
+  if (process.env.ENABLE_APPOINTMENT_REMINDER_SCHEDULER === 'false') {
+    logger.info('Appointment reminder scheduler disabled via ENABLE_APPOINTMENT_REMINDER_SCHEDULER=false');
+    return;
+  }
+  // 5-15 min startup jitter: never scan during boot, and de-synchronize ticks
+  // if the process is restart-looping.
+  const startupJitterMs = 5 * 60 * 1000 + Math.floor(Math.random() * 10 * 60 * 1000);
+  setTimeout(() => {
+    runAppointmentReminderScan();
+    setInterval(runAppointmentReminderScan, APPOINTMENT_REMINDER_INTERVAL_MS);
+  }, startupJitterMs);
+  logger.info(
+    `Appointment reminder scheduler started (hourly, ` +
+    `first tick in ${Math.round(startupJitterMs / 60000)} min)`
+  );
+}
+
 // Graceful shutdown
 const gracefulShutdown = async () => {
   logger.info('Shutting down gracefully...');
@@ -463,6 +514,9 @@ async function startServer() {
 
     // Start the daily therapist alert scan (risk + milestone generation).
     startAlertScheduler();
+
+    // Start the hourly appointment reminder scan (24h-ahead client emails).
+    startAppointmentReminderScheduler();
 
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);

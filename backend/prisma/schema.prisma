@@ -178,6 +178,8 @@ model User {
   therapistAlerts        TherapistAlert[]
   realTalks              RealTalk[]
   treatmentPlans         TreatmentPlan[]
+  sessionNotes           SessionNote[]
+  appointments           Appointment[]
 
   @@map("users")
   @@index([email])
@@ -212,6 +214,8 @@ model Therapist {
   sessionReports SessionPrepReport[]
   integrationPartnerLinks IntegrationPartnerTherapist[]
   treatmentPlans TreatmentPlan[]
+  sessionNotes   SessionNote[]
+  appointments   Appointment[]
 
   @@map("therapists")
   @@index([email])
@@ -342,6 +346,8 @@ model Relationship {
   sharedGoals        SharedGoal[]
   therapistAssignments TherapistAssignment[]
   therapistClients     TherapistClient[]
+  sessionNotes         SessionNote[]
+  appointments         Appointment[]
 
   @@map("relationships")
   @@index([user1Id])
@@ -883,6 +889,73 @@ model TreatmentPlan {
   @@map("treatment_plans")
   @@index([therapistId])
   @@index([clientId])
+}
+
+// Clinical session notes — the therapist's own work product.
+// `content` (and the optional structured `soap` payload) hold the most
+// sensitive text in the product; the route layer encrypts them at rest via
+// utils/encryption when CONTENT_ENCRYPTION is enabled (same AES-256-GCM path
+// the journal uses through lib/contentEncryption). Notes are soft-deleted
+// (deletedAt) — clinical records are never hard-deleted. Content must NEVER
+// be exposed to clients, emails, or access-log metadata.
+model SessionNote {
+  id             String    @id @default(uuid()) @db.Uuid
+  therapistId    String    @map("therapist_id") @db.Uuid
+  clientId       String?   @map("client_id") @db.Uuid       // individual-client note
+  relationshipId String?   @map("relationship_id") @db.Uuid // couple note (optional)
+  appointmentId  String?   @map("appointment_id") @db.Uuid
+  sessionDate    DateTime  @map("session_date")
+  content        String    @db.Text // encrypted at rest when CONTENT_ENCRYPTION is on
+  noteFormat     String?   @map("note_format") @db.VarChar(20) // 'freeform' | 'soap'
+  soap           Json?     @db.JsonB // { subjective, objective, assessment, plan } — encrypted wrapper when enabled
+  deletedAt      DateTime? @map("deleted_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  therapist    Therapist     @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  client       User?         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  relationship Relationship? @relation(fields: [relationshipId], references: [id], onDelete: SetNull)
+  appointment  Appointment?  @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@map("session_notes")
+  @@index([therapistId, clientId, sessionDate])
+  @@index([clientId])
+  @@index([relationshipId])
+  @@index([appointmentId])
+  @@index([therapistId, deletedAt])
+}
+
+// Therapy appointments. `clientNote` is the ONLY free-text field the client
+// ever sees — session-note content never touches this model.
+// status: scheduled | completed | cancelled | no_show
+// locationType: video | phone | in_person
+model Appointment {
+  id              String    @id @default(uuid()) @db.Uuid
+  therapistId     String    @map("therapist_id") @db.Uuid
+  clientId        String    @map("client_id") @db.Uuid
+  relationshipId  String?   @map("relationship_id") @db.Uuid
+  scheduledAt     DateTime  @map("scheduled_at")
+  durationMinutes Int       @default(50) @map("duration_minutes") @db.SmallInt
+  status          String    @default("scheduled") @db.VarChar(20)
+  locationType    String?   @map("location_type") @db.VarChar(20)
+  clientNote      String?   @map("client_note") @db.Text // client-visible logistics note
+  cancelledBy     String?   @map("cancelled_by") @db.VarChar(20) // 'therapist' | 'client'
+  reminderSentAt  DateTime? @map("reminder_sent_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  therapist    Therapist     @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  client       User          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  relationship Relationship? @relation(fields: [relationshipId], references: [id], onDelete: SetNull)
+  sessionNotes SessionNote[]
+
+  @@map("appointments")
+  @@index([therapistId, scheduledAt])
+  @@index([clientId, scheduledAt])
+  @@index([status])
+  @@index([reminderSentAt, scheduledAt])
 }
 
 // Stripe webhook delivery ledger — one row per processed event.
