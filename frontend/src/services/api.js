@@ -101,6 +101,26 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // 402 PAYMENT REQUIRED — a gated route rejected the request because the
+    // user (and their partner) is not entitled. This is NOT an auth failure:
+    // the session is valid, so we must NOT clear tokens or bounce to /login.
+    // Surface it by routing to the paywall so the user can subscribe. A flag
+    // is attached to the error so callers (e.g. PremiumGate, a page catch) can
+    // detect the condition without re-parsing the response shape.
+    if (
+      error.response?.status === 402 &&
+      error.response?.data?.code === 'SUBSCRIPTION_REQUIRED'
+    ) {
+      error.isSubscriptionRequired = true;
+      if (
+        typeof window !== 'undefined' &&
+        window.location.pathname !== '/subscribe'
+      ) {
+        window.location.href = '/subscribe';
+      }
+      return Promise.reject(error);
+    }
+
     // If 401 and we haven't already tried to refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       // TOKEN_REVOKED = the session was revoked server-side (global logout,
@@ -233,8 +253,24 @@ export const therapistApi = {
 };
 
 export const paymentsApi = {
+  // Available plans + prices, read from Stripe (never hardcode dollars in the
+  // client — the display strings come from here). Also carries trialDays.
+  getPlans: () => api.get('/payments/plans'),
+  // Web: create a Stripe Checkout session for a tier and return { url }.
   createCheckout: (tier) => api.post('/payments/create-checkout', { tier }),
+  // Stripe billing portal (manage/cancel/update card) → { url }.
+  openBillingPortal: () => api.post('/payments/portal'),
+  // Cancel at period end.
+  cancelSubscription: () => api.post('/payments/cancel'),
+  // Full subscription snapshot (status, isPremium, trial, renewal, partner cover).
   getSubscription: () => api.get('/payments/subscription'),
+  // Lightweight status used by gates: { status, source, isActive, isTrial, trialDaysLeft }.
+  getSubscriptionStatus: () => api.get('/subscriptions/status'),
+  // iOS Apple IAP: hand the StoreKit receipt to the backend for validation +
+  // entitlement. Hits the couple-aware verify-apple endpoint.
+  verifyAppleReceipt: (receipt) => api.post('/subscriptions/verify-apple', { receipt }),
+
+  // Back-compat aliases (kept so existing callers/tests keep working).
   cancel: () => api.post('/payments/cancel'),
   getPortal: () => api.post('/payments/portal'),
 };

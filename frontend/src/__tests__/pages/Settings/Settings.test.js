@@ -18,10 +18,14 @@ jest.mock('../../../services/api', () => ({
     disconnect: jest.fn(),
   },
   paymentsApi: {
+    getPlans: jest.fn(),
     getSubscription: jest.fn(),
     createCheckout: jest.fn(),
     cancel: jest.fn(),
+    cancelSubscription: jest.fn(),
     getPortal: jest.fn(),
+    openBillingPortal: jest.fn(),
+    verifyAppleReceipt: jest.fn(),
   },
   therapistApi: {
     getConsent: jest.fn(),
@@ -57,6 +61,11 @@ const defaultAuthValue = {
   relationship: { hasPartner: false },
   invitePartner: jest.fn(),
   refreshUser: jest.fn(),
+  biometricEnabled: false,
+  checkBiometricAvailability: jest.fn().mockResolvedValue(false),
+  registerBiometric: jest.fn(),
+  logout: jest.fn(),
+  changePassword: jest.fn(),
 };
 
 describe('Settings', () => {

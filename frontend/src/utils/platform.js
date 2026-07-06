@@ -2,7 +2,10 @@ import { Capacitor } from '@capacitor/core';
 
 /**
  * Platform detection utilities for Love Rescue.
- * IAP/payment hooks always return false — the app is fully free.
+ *
+ * Payment path is split for App Store compliance:
+ *   - Web browser  → Stripe Checkout
+ *   - iOS native   → Apple In-App Purchase (StoreKit)
  */
 
 export const isNative = () => Capacitor.isNativePlatform();
@@ -19,11 +22,13 @@ export const isWeb = () => Capacitor.getPlatform() === 'web';
 export const getPlatform = () => Capacitor.getPlatform();
 
 /**
- * Apple IAP — always disabled; app is free.
+ * Apple IAP — enabled only inside the iOS native shell (StoreKit). Apple
+ * requires digital-goods purchases on iOS to go through IAP, not Stripe.
  */
-export const useAppleIAP = () => false;
+export const useAppleIAP = () => isIOS() && isNative();
 
 /**
- * Stripe checkout — always disabled; app is free.
+ * Stripe checkout — used on the web (any browser, desktop or mobile). Native
+ * iOS is excluded (must use Apple IAP); native Android can still use Stripe.
  */
-export const useStripeCheckout = () => false;
+export const useStripeCheckout = () => isWeb();
