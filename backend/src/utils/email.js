@@ -177,6 +177,97 @@ async function sendWeeklyDigest(email, firstName, stats = {}) {
   });
 }
 
+/**
+ * Therapist → client: deliver a progress-sharing invite link.
+ * @param {string} email - Invited client's email
+ * @param {Object} options
+ * @param {string} options.therapistName - Therapist's display name
+ * @param {string|null} options.practiceName - Therapist's practice name (optional)
+ * @param {string} options.inviteLink - Invite acceptance link
+ */
+async function sendTherapistClientInviteEmail(email, { therapistName, practiceName, inviteLink }) {
+  const fromLine = practiceName
+    ? `${therapistName} from ${practiceName}`
+    : therapistName;
+  return sendEmail({
+    to: email,
+    subject: `${therapistName} invited you to share your Love Rescue progress`,
+    text: `${fromLine} has invited you to share your Love Rescue progress.\n\nSharing is always on your terms: when you accept, you choose exactly how much to share, and you can change or revoke access at any time from Settings.\n\nReview the invitation: ${inviteLink}\n\nThis invitation expires in 7 days. If you weren't expecting this, you can safely ignore this email.`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #6366f1;">You're Invited to Share Your Progress</h2>
+        <p><strong>${fromLine}</strong> has invited you to share your Love Rescue progress.</p>
+        <p style="color: #444;">Sharing is always on your terms:</p>
+        <ul style="color: #444;">
+          <li>You choose exactly how much to share when you accept.</li>
+          <li>You can change or revoke access at any time from Settings.</li>
+        </ul>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${inviteLink}" style="background: #6366f1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Review Invitation</a>
+        </div>
+        <p style="color: #666; font-size: 13px;">If the button doesn't work, copy and paste this link into your browser:<br/>
+          <a href="${inviteLink}" style="color: #6366f1; word-break: break-all;">${inviteLink}</a>
+        </p>
+        <p style="color: #666;">This invitation expires in 7 days.</p>
+        <p style="color: #999; font-size: 12px;">If you weren't expecting this, you can safely ignore this email.</p>
+      </div>
+    `
+  });
+}
+
+/**
+ * Client → therapist: notify that an invited client accepted.
+ * Intentionally contains NO clinical data — only the client's first name,
+ * the granted permission level, and a link to the therapist dashboard.
+ * @param {string} email - Therapist's email
+ * @param {Object} options
+ * @param {string} options.clientFirstName - Client's first name
+ * @param {string} options.permissionLevel - Granted permission level (BASIC/STANDARD/FULL)
+ */
+async function sendTherapistInviteAcceptedEmail(email, { clientFirstName, permissionLevel }) {
+  const name = clientFirstName || 'A client';
+  const dashboardUrl = `${process.env.FRONTEND_URL || 'https://loverescue.app'}/therapist`;
+  return sendEmail({
+    to: email,
+    subject: `${name} accepted your Love Rescue invite`,
+    text: `${name} accepted your invite and granted ${permissionLevel} access to their Love Rescue progress.\n\nView your clients: ${dashboardUrl}\n\n— Love Rescue`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #6366f1;">Invite Accepted</h2>
+        <p><strong>${name}</strong> accepted your invite and granted <strong>${permissionLevel}</strong> access to their Love Rescue progress.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${dashboardUrl}" style="background: #6366f1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Open Your Dashboard</a>
+        </div>
+      </div>
+    `
+  });
+}
+
+/**
+ * Client → therapist: neutral notice that an invited client declined.
+ * Privacy: never includes the decliner's name or account email — a decliner
+ * must not be identified beyond what the therapist already knows. The invited
+ * email may be passed only when it is what the therapist themselves entered.
+ * @param {string} email - Therapist's email
+ * @param {Object} [options]
+ * @param {string} [options.invitedEmail] - The email the therapist invited (optional)
+ */
+async function sendTherapistInviteDeclinedEmail(email, { invitedEmail } = {}) {
+  const who = invitedEmail ? `An invited client (${invitedEmail})` : 'An invited client';
+  return sendEmail({
+    to: email,
+    subject: 'A Love Rescue invite was declined',
+    text: `${who} has declined your invitation to share their Love Rescue progress.\n\nNo action is needed. You can send a new invite from your dashboard at any time.\n\n— Love Rescue`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #6366f1;">Invite Declined</h2>
+        <p>${who} has declined your invitation to share their Love Rescue progress.</p>
+        <p style="color: #666;">No action is needed. You can send a new invite from your dashboard at any time.</p>
+      </div>
+    `
+  });
+}
+
 /** True if any email transport is configured (SMTP or SendGrid). */
 function isEmailConfigured() {
   return Boolean(
@@ -191,5 +282,8 @@ module.exports = {
   sendPartnerInviteEmail,
   sendStreakBreakNudge,
   sendWeeklyDigest,
+  sendTherapistClientInviteEmail,
+  sendTherapistInviteAcceptedEmail,
+  sendTherapistInviteDeclinedEmail,
   isEmailConfigured
 };

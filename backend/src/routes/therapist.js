@@ -17,6 +17,12 @@ const {
 } = require('../middleware/therapistAccess');
 const { generateSessionPrepReport } = require('../utils/sessionPrep');
 const { MODULE_LIBRARY, generateTreatmentPlanOptions } = require('../utils/treatmentPlan');
+const {
+  sendTherapistClientInviteEmail,
+  sendTherapistInviteAcceptedEmail,
+  sendTherapistInviteDeclinedEmail,
+  isEmailConfigured,
+} = require('../utils/email');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -762,6 +768,29 @@ router.get('/consent/history', authenticate, async (req, res, next) => {
 // ─── Client Linking (Invite / Accept) ─────────────────────────────
 
 /**
+ * Fire-and-forget therapist notification for invite accept/decline outcomes.
+ * Looks up the therapist's email and hands it to the supplied sender.
+ * Never throws — notification failure must not affect the request.
+ * @param {object} prisma
+ * @param {string} therapistId
+ * @param {(therapistEmail: string) => Promise<any>} send
+ */
+function notifyTherapistOfInviteOutcome(prisma, therapistId, send) {
+  Promise.resolve()
+    .then(async () => {
+      const therapist = await prisma.therapist.findUnique({
+        where: { id: therapistId },
+        select: { email: true },
+      });
+      if (therapist?.email) await send(therapist.email);
+    })
+    .catch((error) => logger.error('Failed to send therapist invite notification', {
+      therapistId,
+      error: error.message,
+    }));
+}
+
+/**
  * POST /api/therapist/clients/link
  * Therapist sends an invite code to a client. Client accepts with a consent level.
  * If called by therapist: creates a PENDING link with an invite code.
@@ -838,6 +867,15 @@ router.post('/clients/link', async (req, res, next) => {
         therapistId: updated.therapistId,
         permissionLevel: level,
       });
+
+      // Notify the therapist (fire-and-forget; no clinical data in the email).
+      const acceptedFirstName = req.user.firstName;
+      notifyTherapistOfInviteOutcome(req.prisma, updated.therapistId, (therapistEmail) =>
+        sendTherapistInviteAcceptedEmail(therapistEmail, {
+          clientFirstName: acceptedFirstName,
+          permissionLevel: level,
+        })
+      );
 
       return res.json({
         message: 'Therapist link accepted',
@@ -2027,7 +2065,25 @@ router.post('/clients/invite', authenticateTherapist, async (req, res, next) => 
       }
     }
 
-    res.json({ inviteLink, permissionLevel, expiresIn: '7 days', ...(linkId ? { linkId } : {}) });
+    // Deliver the invite by email when the therapist supplied a client email.
+    // Fire-and-forget — email failure must never break invite generation.
+    // emailSent tells the UI whether a send was attempted (false when no
+    // clientEmail was given or no email transport is configured), so the
+    // therapist knows whether to share the link manually.
+    let emailSent = false;
+    if (clientEmail) {
+      emailSent = isEmailConfigured();
+      sendTherapistClientInviteEmail(String(clientEmail).toLowerCase().trim(), {
+        therapistName: `${req.therapist.firstName} ${req.therapist.lastName}`,
+        practiceName: req.therapist.practiceName || null,
+        inviteLink,
+      }).catch((error) => logger.error('Failed to send therapist client invite email', {
+        therapistId: req.therapist.id,
+        error: error.message,
+      }));
+    }
+
+    res.json({ inviteLink, permissionLevel, expiresIn: '7 days', ...(linkId ? { linkId } : {}), emailSent });
   } catch (error) { next(error); }
 });
 
@@ -2122,6 +2178,15 @@ router.post('/clients/invite/:token/accept', authenticate, async (req, res, next
       });
     }
 
+    // Notify the therapist (fire-and-forget; no clinical data in the email).
+    const acceptedFirstName = req.user.firstName;
+    notifyTherapistOfInviteOutcome(req.prisma, payload.therapistId, (therapistEmail) =>
+      sendTherapistInviteAcceptedEmail(therapistEmail, {
+        clientFirstName: acceptedFirstName,
+        permissionLevel: level,
+      })
+    );
+
     res.json({ message: 'Connected successfully', permissionLevel: level });
   } catch (error) { next(error); }
 });
@@ -2177,6 +2242,15 @@ router.post('/clients/invite/:token/decline', authenticate, async (req, res, nex
       therapistId: payload.therapistId,
       clientId: req.user.id,
     });
+
+    // Neutral notification (fire-and-forget). Privacy: never identify the
+    // decliner — the JWT invite link is open, so the account that declined may
+    // not even be the address the therapist invited, and the invited email is
+    // not carried in the token. The therapist just learns "an invite was
+    // declined".
+    notifyTherapistOfInviteOutcome(req.prisma, payload.therapistId, (therapistEmail) =>
+      sendTherapistInviteDeclinedEmail(therapistEmail)
+    );
 
     res.json({ message: 'Invite declined' });
   } catch (error) { next(error); }
