@@ -84,6 +84,7 @@ const TherapistClientLinking = () => {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [warning, setWarning] = useState('');
 
   const fetchInvites = useCallback(async () => {
     try {
@@ -103,12 +104,27 @@ const TherapistClientLinking = () => {
   const handleGenerateInvite = async () => {
     setActionLoading(true);
     setError('');
+    setWarning('');
+    setSuccess('');
+    const email = clientEmail.trim();
     try {
       const response = await api.post('/therapist/clients/invite', {
-        email: clientEmail || undefined,
+        // The backend reads clientEmail; keep the legacy `email` field for one
+        // release so an older server still receives the address.
+        clientEmail: email || undefined,
+        email: email || undefined,
       });
       setInviteLink(response.data.inviteLink);
-      setSuccess('Invite link generated!');
+      // Be honest about whether the invite email actually went out.
+      if (email && response.data.emailSent === true) {
+        setSuccess(`Invite sent to ${email} — they'll get an email with your link.`);
+      } else if (email && response.data.emailSent === false) {
+        setWarning(
+          "We couldn't email the invite — copy the link below and share it directly."
+        );
+      } else {
+        setSuccess('Invite link generated!');
+      }
       setClientEmail('');
       fetchInvites();
     } catch (err) {
@@ -142,6 +158,7 @@ const TherapistClientLinking = () => {
       </Typography>
 
       {success && <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>{success}</Alert>}
+      {warning && <Alert severity="warning" sx={{ mb: 3 }} onClose={() => setWarning('')}>{warning}</Alert>}
       {error && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>{error}</Alert>}
 
       {/* Generate Invite */}

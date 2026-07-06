@@ -44,6 +44,15 @@ jest.mock('../../utils/capacitor-init', () => ({
   setupPushListeners: jest.fn(),
 }));
 
+// logout() must drop the PremiumGate module cache so user A's entitlement
+// never leaks to user B in the same SPA session.
+jest.mock('../../components/common/PremiumGate', () => ({
+  __esModule: true,
+  default: () => null,
+  clearSubscriptionCache: jest.fn(),
+  primeSubscriptionCache: jest.fn(),
+}));
+
 import apiModule from '../../services/api';
 import {
   setTokens,
@@ -52,6 +61,7 @@ import {
   getRefreshToken,
   biometricApi,
 } from '../../services/api';
+import { clearSubscriptionCache } from '../../components/common/PremiumGate';
 
 const api = apiModule;
 
@@ -342,6 +352,9 @@ describe('AuthContext', () => {
 
     expect(screen.getByTestId('user')).toHaveTextContent('null');
     expect(clearTokens).toHaveBeenCalled();
+    // Subscription entitlement is cached at module scope in PremiumGate —
+    // logout must clear it so the next user starts from a clean slate.
+    expect(clearSubscriptionCache).toHaveBeenCalled();
     // Best-effort server revoke with the refresh token + pinned auth header.
     expect(api.post).toHaveBeenCalledWith(
       '/auth/logout',

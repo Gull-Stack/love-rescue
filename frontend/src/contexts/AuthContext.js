@@ -4,6 +4,7 @@ import { startAuthentication, startRegistration } from '@simplewebauthn/browser'
 import { Capacitor } from '@capacitor/core';
 import { registerNativePushIfGranted, setupPushListeners } from '../utils/capacitor-init';
 import { trackEvent } from '../utils/analytics';
+import { clearSubscriptionCache } from '../components/common/PremiumGate';
 
 // TODO: HIGH-01 — Move JWT storage from localStorage to httpOnly cookies.
 // This requires backend changes (set-cookie headers, cookie-parser middleware,
@@ -259,6 +260,9 @@ export const AuthProvider = ({ children }) => {
     }
 
     clearTokens();
+    // Drop the module-level PremiumGate cache — user A's entitlement must
+    // never leak to user B logging in later in the same SPA session.
+    clearSubscriptionCache();
     setUser(null);
     setRelationship(null);
     setBiometricEnabled(false);

@@ -1,10 +1,11 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { ThemeProvider } from '@mui/material/styles';
 import { MemoryRouter } from 'react-router-dom';
 import theme from '../../../theme';
 import Subscribe from '../../../pages/Subscribe/Subscribe';
 import { paymentsApi } from '../../../services/api';
+import { clearSubscriptionCache } from '../../../components/common/PremiumGate';
 
 jest.mock('../../../services/api', () => ({
   paymentsApi: {
@@ -13,6 +14,14 @@ jest.mock('../../../services/api', () => ({
     createCheckout: jest.fn(),
     verifyAppleReceipt: jest.fn(),
   },
+}));
+
+// Spy on the gate cache so we can assert checkout success invalidates it.
+jest.mock('../../../components/common/PremiumGate', () => ({
+  __esModule: true,
+  default: () => null,
+  clearSubscriptionCache: jest.fn(),
+  primeSubscriptionCache: jest.fn(),
 }));
 
 // Web funnel: Stripe checkout, no Apple IAP.
@@ -29,10 +38,10 @@ jest.mock('../../../services/iapService', () => ({
   default: { purchase: jest.fn(), restorePurchases: jest.fn() },
 }));
 
-const renderWithProviders = (ui) =>
+const renderWithProviders = (ui, initialEntries = ['/subscribe']) =>
   render(
     <ThemeProvider theme={theme}>
-      <MemoryRouter>{ui}</MemoryRouter>
+      <MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>
     </ThemeProvider>
   );
 
@@ -91,7 +100,7 @@ describe('Subscribe (web paywall)', () => {
     );
   });
 
-  test('surfaces a cancelled checkout without error styling break', async () => {
+  test('surfaces a cancelled checkout (legacy payment= param) without error styling break', async () => {
     render(
       <ThemeProvider theme={theme}>
         <MemoryRouter initialEntries={['/subscribe?payment=cancelled']}>
@@ -100,6 +109,113 @@ describe('Subscribe (web paywall)', () => {
       </ThemeProvider>
     );
 
-    await waitFor(() => expect(screen.getByText(/cancelled/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/checkout was cancelled — no charge was made/i)).toBeInTheDocument()
+    );
+  });
+
+  test('status=cancelled (backend redirect param) shows the no-charge notice', async () => {
+    renderWithProviders(<Subscribe />, ['/subscribe?status=cancelled']);
+
+    await waitFor(() =>
+      expect(screen.getByText(/checkout was cancelled — no charge was made/i)).toBeInTheDocument()
+    );
+    // Cancel is informational, not a failure state — plans remain available.
+    expect(await screen.findByText('Monthly')).toBeInTheDocument();
+  });
+
+  test('status=success clears the gate cache and confirms once the entitlement is live', async () => {
+    paymentsApi.getSubscription.mockResolvedValue({
+      data: { status: 'active', isPremium: true },
+    });
+
+    renderWithProviders(<Subscribe />, ['/subscribe?status=success']);
+
+    expect(
+      await screen.findByText(/your subscription is active — welcome aboard/i)
+    ).toBeInTheDocument();
+    expect(clearSubscriptionCache).toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /go to dashboard/i })).toBeInTheDocument();
+    // The trial banner must not show alongside the confirmation.
+    expect(screen.queryByText(/day free trial/i)).not.toBeInTheDocument();
+  });
+
+  test('status=success polls until the webhook lands (activation delay)', async () => {
+    jest.useFakeTimers();
+    try {
+      paymentsApi.getSubscription
+        // First two calls (initial page load + poll attempt 1): not yet premium.
+        .mockResolvedValueOnce({ data: { status: 'none', isPremium: false } })
+        .mockResolvedValueOnce({ data: { status: 'none', isPremium: false } })
+        // Webhook landed by the second poll attempt.
+        .mockResolvedValue({ data: { status: 'active', isPremium: true } });
+
+      renderWithProviders(<Subscribe />, ['/subscribe?status=success']);
+
+      // Flush the initial load + first poll attempt.
+      await act(async () => {});
+      expect(screen.getByText(/payment received — activating your subscription/i)).toBeInTheDocument();
+      expect(clearSubscriptionCache).toHaveBeenCalled();
+
+      // Advance past the poll interval — second attempt sees the entitlement.
+      await act(async () => {
+        jest.advanceTimersByTime(2100);
+      });
+      expect(
+        screen.getByText(/your subscription is active — welcome aboard/i)
+      ).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('status=success falls back to a pending notice when polling never confirms', async () => {
+    jest.useFakeTimers();
+    try {
+      paymentsApi.getSubscription.mockResolvedValue({
+        data: { status: 'none', isPremium: false },
+      });
+
+      renderWithProviders(<Subscribe />, ['/subscribe?status=success']);
+
+      await act(async () => {});
+      // Exhaust all 5 attempts (4 waits between them).
+      for (let i = 0; i < 4; i++) {
+        // eslint-disable-next-line no-await-in-loop
+        await act(async () => {
+          jest.advanceTimersByTime(2100);
+        });
+      }
+      expect(
+        screen.getByText(/taking a moment to activate/i)
+      ).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('an expired trial does not render the "days remaining" trial banner', async () => {
+    paymentsApi.getSubscription.mockResolvedValue({
+      data: { status: 'trial', isPremium: false, isTrial: false, trialDaysRemaining: 0 },
+    });
+
+    renderWithProviders(<Subscribe />);
+
+    await waitFor(() => expect(screen.getByText('Monthly')).toBeInTheDocument());
+    expect(screen.queryByText(/you’re on a free trial/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/days remaining/i)).not.toBeInTheDocument();
+  });
+
+  test('an active trial still shows the remaining days', async () => {
+    paymentsApi.getSubscription.mockResolvedValue({
+      data: { status: 'trial', isTrial: true, trialDaysRemaining: 5 },
+    });
+
+    renderWithProviders(<Subscribe />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/you’re on a free trial/i)).toBeInTheDocument()
+    );
+    expect(screen.getByText(/5 days remaining/i)).toBeInTheDocument();
   });
 });

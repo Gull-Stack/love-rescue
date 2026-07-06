@@ -102,14 +102,17 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // 402 PAYMENT REQUIRED — a gated route rejected the request because the
-    // user (and their partner) is not entitled. This is NOT an auth failure:
-    // the session is valid, so we must NOT clear tokens or bounce to /login.
-    // Surface it by routing to the paywall so the user can subscribe. A flag
-    // is attached to the error so callers (e.g. PremiumGate, a page catch) can
-    // detect the condition without re-parsing the response shape.
+    // user (and their partner) is not entitled. The backend uses two codes for
+    // this (SUBSCRIPTION_REQUIRED and PREMIUM_REQUIRED); treat them the same.
+    // This is NOT an auth failure: the session is valid, so we must NOT clear
+    // tokens or bounce to /login. Surface it by routing to the paywall so the
+    // user can subscribe. A flag is attached to the error so callers (e.g.
+    // PremiumGate, a page catch) can detect the condition without re-parsing
+    // the response shape.
+    const paywallCode = error.response?.data?.code;
     if (
       error.response?.status === 402 &&
-      error.response?.data?.code === 'SUBSCRIPTION_REQUIRED'
+      (paywallCode === 'SUBSCRIPTION_REQUIRED' || paywallCode === 'PREMIUM_REQUIRED')
     ) {
       error.isSubscriptionRequired = true;
       if (

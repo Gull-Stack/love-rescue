@@ -244,6 +244,53 @@ describe('api service', () => {
       expect(window.location.href).toBe('http://localhost/dashboard');
     });
 
+    test.each(['SUBSCRIPTION_REQUIRED', 'PREMIUM_REQUIRED'])(
+      '402 %s routes to the paywall without clearing tokens',
+      async (code) => {
+        localStorage.setItem('token', 'valid-token');
+        localStorage.setItem('refreshToken', 'valid-refresh');
+
+        const error = {
+          config: { url: '/matchup/current', headers: {} },
+          response: { status: 402, data: { code } },
+        };
+
+        await expect(getResponseErrorHandler()(error)).rejects.toBe(error);
+
+        // Not an auth failure — the session stays intact.
+        expect(getToken()).toBe('valid-token');
+        expect(getRefreshToken()).toBe('valid-refresh');
+        // Flagged for callers (PremiumGate, page catches) and routed to plans.
+        expect(error.isSubscriptionRequired).toBe(true);
+        expect(window.location.href).toBe('/subscribe');
+      }
+    );
+
+    test('402 while already on /subscribe does not redirect-loop', async () => {
+      window.location = { pathname: '/subscribe', href: 'http://localhost/subscribe' };
+      localStorage.setItem('token', 'valid-token');
+
+      const error = {
+        config: { url: '/matchup/current', headers: {} },
+        response: { status: 402, data: { code: 'PREMIUM_REQUIRED' } },
+      };
+
+      await expect(getResponseErrorHandler()(error)).rejects.toBe(error);
+      expect(error.isSubscriptionRequired).toBe(true);
+      expect(window.location.href).toBe('http://localhost/subscribe');
+    });
+
+    test('402 with an unknown code passes through without paywall redirect', async () => {
+      const error = {
+        config: { url: '/matchup/current', headers: {} },
+        response: { status: 402, data: { code: 'SOMETHING_ELSE' } },
+      };
+
+      await expect(getResponseErrorHandler()(error)).rejects.toBe(error);
+      expect(error.isSubscriptionRequired).toBeUndefined();
+      expect(window.location.href).toBe('http://localhost/dashboard');
+    });
+
     test('non-401 errors pass straight through', async () => {
       const error = {
         config: { url: '/logs/daily', headers: {} },

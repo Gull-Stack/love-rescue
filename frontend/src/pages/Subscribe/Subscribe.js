@@ -29,6 +29,11 @@ const PLAN_PERKS = [
   'One subscription covers both partners',
 ];
 
+// Stripe webhook propagation can lag a couple of seconds behind the redirect,
+// so after a successful checkout we poll the subscription until it flips.
+const CHECKOUT_POLL_INTERVAL_MS = 2000;
+const CHECKOUT_POLL_MAX_ATTEMPTS = 5;
+
 const Subscribe = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -40,17 +45,69 @@ const Subscribe = () => {
   const [loadError, setLoadError] = useState(false);
   const [error, setError] = useState('');
   const [purchasing, setPurchasing] = useState(null); // tier being purchased
+  // null | 'activating' | 'active' | 'pending' — post-checkout activation state
+  const [checkoutState, setCheckoutState] = useState(null);
 
   const onApple = useAppleIAP();
   const onWeb = useStripeCheckout();
 
   useEffect(() => {
     document.title = 'Plans | Love Rescue';
-    // Surface a cancelled Stripe redirect (Settings also handles this param).
-    if (searchParams.get('payment') === 'cancelled') {
-      setError('Checkout was cancelled. You can pick a plan whenever you’re ready.');
+  }, []);
+
+  useEffect(() => {
+    // Backend redirects to /subscribe?status=success|cancelled. Accept the
+    // legacy payment= param too so old links keep working.
+    const status = searchParams.get('status') || searchParams.get('payment');
+    if (!status) return;
+
+    // Strip the query param so a refresh doesn't re-trigger this handling.
+    try {
+      window.history.replaceState(null, '', window.location.pathname);
+    } catch {
+      /* history unavailable (some embedded webviews) — worst case a re-run */
     }
-  }, [searchParams]);
+
+    if (status === 'cancelled') {
+      setError('Checkout was cancelled — no charge was made.');
+      return;
+    }
+
+    if (status !== 'success') return;
+
+    // Payment done — the entitlement may still be propagating via webhook.
+    // Clear the gate cache, then poll until the subscription flips.
+    let alive = true;
+    clearSubscriptionCache();
+    setCheckoutState('activating');
+
+    (async () => {
+      for (let attempt = 0; attempt < CHECKOUT_POLL_MAX_ATTEMPTS; attempt++) {
+        try {
+          const res = await paymentsApi.getSubscription();
+          if (!alive) return;
+          if (isPremiumUser(res.data)) {
+            setSubscription(res.data);
+            setCheckoutState('active');
+            return;
+          }
+        } catch {
+          /* transient failure — keep polling */
+        }
+        if (attempt < CHECKOUT_POLL_MAX_ATTEMPTS - 1) {
+          await new Promise((resolve) => setTimeout(resolve, CHECKOUT_POLL_INTERVAL_MS));
+          if (!alive) return;
+        }
+      }
+      if (alive) setCheckoutState('pending');
+    })();
+
+    return () => {
+      alive = false;
+    };
+    // Run once for the landing URL — the param is stripped immediately above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -118,11 +175,14 @@ const Subscribe = () => {
   };
 
   const entitled = isPremiumUser(subscription);
-  const onTrial =
-    subscription &&
-    (subscription.status === 'trial' || subscription.trialDaysRemaining > 0);
   const trialLeft =
     subscription?.trialDaysRemaining ?? subscription?.trialDaysLeft ?? null;
+  // A lapsed trial (status 'trial'/'expired' with 0 days left) must NOT show
+  // the trial banner — only an explicit isTrial flag or a trial with days left.
+  const onTrial =
+    !!subscription &&
+    (subscription.isTrial === true ||
+      (subscription.status === 'trial' && (trialLeft ?? 0) > 0));
 
   if (loading) {
     return (
@@ -157,6 +217,38 @@ const Subscribe = () => {
       {error && (
         <Alert severity="info" sx={{ mb: 3 }} onClose={() => setError('')}>
           {error}
+        </Alert>
+      )}
+
+      {/* Post-checkout activation states */}
+      {checkoutState === 'activating' && (
+        <Alert
+          severity="info"
+          icon={<CircularProgress size={18} />}
+          sx={{ mb: 3 }}
+        >
+          Payment received — activating your subscription…
+        </Alert>
+      )}
+      {checkoutState === 'active' && (
+        <Alert
+          severity="success"
+          sx={{ mb: 3 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => navigate('/')}>
+              Go to Dashboard
+            </Button>
+          }
+        >
+          Your subscription is active — welcome aboard! Everything is unlocked
+          for you and your partner.
+        </Alert>
+      )}
+      {checkoutState === 'pending' && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Payment received! Your subscription is taking a moment to activate —
+          it will unlock automatically. If it hasn’t after a minute, refresh
+          this page.
         </Alert>
       )}
 

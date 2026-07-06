@@ -98,11 +98,16 @@ const AppointmentFormDialog = ({ open, onClose, clients = [], appointment = null
     }
     setSaving(true);
     try {
+      // The backend stores the therapist's IANA timezone with the appointment
+      // and uses it to format times in client emails — send it on create AND
+      // reschedule so notifications always show the intended local time.
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       let res;
       if (isReschedule) {
         res = await therapistService.updateAppointment(appointment.id, {
           scheduledAt: parsed.toISOString(),
           durationMinutes: duration,
+          timezone,
         });
       } else {
         res = await therapistService.createAppointment({
@@ -110,6 +115,7 @@ const AppointmentFormDialog = ({ open, onClose, clients = [], appointment = null
           scheduledAt: parsed.toISOString(),
           durationMinutes: duration,
           locationType,
+          timezone,
           ...(clientNote.trim() ? { clientNote: clientNote.trim() } : {}),
         });
       }

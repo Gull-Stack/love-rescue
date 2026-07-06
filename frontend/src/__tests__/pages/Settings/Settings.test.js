@@ -13,18 +13,28 @@ jest.mock('../../../services/api', () =>
 );
 
 // Owned by other flows/agents — keep Settings' test isolated from their internals.
+// mockAppleIAP is mutable so individual tests can exercise the Apple IAP path.
+var mockAppleIAP = false;
 jest.mock('../../../utils/platform', () => ({
   isNative: () => false,
   isIOS: () => false,
   isAndroid: () => false,
   isWeb: () => true,
   getPlatform: () => 'web',
-  useAppleIAP: () => false,
+  useAppleIAP: () => mockAppleIAP,
   useStripeCheckout: () => true,
 }));
 jest.mock('../../../services/iapService', () => ({
   __esModule: true,
   default: { restorePurchases: jest.fn() },
+}));
+
+// Spy on the PremiumGate cache so entitlement-changing flows can be asserted.
+jest.mock('../../../components/common/PremiumGate', () => ({
+  __esModule: true,
+  default: () => null,
+  clearSubscriptionCache: jest.fn(),
+  primeSubscriptionCache: jest.fn(),
 }));
 
 // Child sections with their own data fetching are covered by their own suites.
@@ -44,6 +54,8 @@ jest.mock('react-router-dom', () => ({
 import Settings from '../../../pages/Settings/Settings';
 import { useAuth } from '../../../contexts/AuthContext';
 import api, { calendarApi, therapistApi, progressRingsApi, paymentsApi } from '../../../services/api';
+import { clearSubscriptionCache } from '../../../components/common/PremiumGate';
+import iapService from '../../../services/iapService';
 
 const renderPage = (initialEntries = ['/settings']) =>
   renderWithProviders(<Settings />, { initialEntries });
@@ -53,6 +65,7 @@ describe('Settings', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAppleIAP = false;
     auth = createAuthValue({
       user: {
         id: 'user-1',
@@ -207,12 +220,63 @@ describe('Settings', () => {
     expect(auth.logout).toHaveBeenCalled();
   });
 
-  test('payment=success query param confirms the subscription and refreshes user', async () => {
+  test('payment=success query param confirms the subscription, clears the gate cache, and refreshes user', async () => {
     renderPage(['/settings?payment=success']);
 
     await waitFor(() => {
       expect(screen.getByText(/subscription active — thank you/i)).toBeInTheDocument();
     });
     expect(auth.refreshUser).toHaveBeenCalled();
+    // The PremiumGate module cache must be invalidated so gates re-check.
+    expect(clearSubscriptionCache).toHaveBeenCalled();
+  });
+
+  test('restore purchases clears the stale gate cache after the receipt verifies', async () => {
+    mockAppleIAP = true;
+    iapService.restorePurchases.mockResolvedValue('apple-receipt');
+    paymentsApi.verifyAppleReceipt.mockResolvedValue({ data: { ok: true } });
+    paymentsApi.getSubscription.mockResolvedValue({
+      data: { status: 'active', isPremium: true },
+    });
+
+    renderPage();
+
+    const restoreBtn = await screen.findByRole('button', { name: /restore purchases/i });
+    fireEvent.click(restoreBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Purchases restored.')).toBeInTheDocument();
+    });
+    expect(paymentsApi.verifyAppleReceipt).toHaveBeenCalledWith('apple-receipt');
+    expect(clearSubscriptionCache).toHaveBeenCalled();
+  });
+
+  test('an expired trial (status trial, 0 days left) does not show the trial "days left" line', async () => {
+    paymentsApi.getSubscription.mockResolvedValue({
+      data: { status: 'trial', isPremium: false, isTrial: false, trialDaysRemaining: 0 },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('TRIAL')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/free trial —/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/days left/i)).not.toBeInTheDocument();
+    // A lapsed trial is unentitled — the upsell CTA must be offered.
+    expect(screen.getByRole('button', { name: /see plans/i })).toBeInTheDocument();
+  });
+
+  test('an active trial shows the remaining days', async () => {
+    paymentsApi.getSubscription.mockResolvedValue({
+      data: { status: 'trial', isTrial: true, trialDaysRemaining: 7 },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText(/free trial —/i)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/7 days left/i)).toBeInTheDocument();
   });
 });

@@ -93,11 +93,15 @@ const SessionNoteEditor = ({ open, onClose, clientId, note = null, onSaved }) =>
     for (const { key } of SOAP_FIELDS) {
       if (soap[key] && soap[key].trim()) soapValue[key] = soap[key];
     }
+    const hasSoapContent = noteFormat === 'soap' && Object.keys(soapValue).length > 0;
     const payload = {
       content,
       sessionDate: parsedDate.toISOString(),
       noteFormat,
-      ...(noteFormat === 'soap' && Object.keys(soapValue).length > 0 ? { soap: soapValue } : {}),
+      // The backend treats a MISSING soap key as "no change" and null as
+      // "clear". Saving as freeform, or as SOAP with every field empty, must
+      // send an explicit null so cleared clinical content is actually removed.
+      soap: hasSoapContent ? soapValue : null,
       ...(note?.appointmentId ? { appointmentId: note.appointmentId } : {}),
     };
     setSaving(true);

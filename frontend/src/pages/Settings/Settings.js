@@ -30,6 +30,7 @@ import api, { calendarApi, therapistApi, progressRingsApi, paymentsApi } from '.
 import { isNative, useAppleIAP } from '../../utils/platform';
 import iapService from '../../services/iapService';
 import { isPremiumUser } from '../../utils/featureGating';
+import { clearSubscriptionCache } from '../../components/common/PremiumGate';
 import MyTherapistSection from './MyTherapistSection';
 import NotificationSettings from '../../components/NotificationSettings';
 
@@ -88,6 +89,8 @@ const Settings = () => {
 
     if (payment === 'success') {
       setSuccess('Subscription active — thank you! Your access is unlocked.');
+      // Entitlement changed — drop the PremiumGate cache so gates re-check.
+      clearSubscriptionCache();
       refreshUser();
       refreshSubscription();
     } else if (payment === 'cancelled') {
@@ -258,6 +261,9 @@ const Settings = () => {
         return;
       }
       await paymentsApi.verifyAppleReceipt(receipt);
+      // The user just regained entitlement — stale gate caches must not keep
+      // showing the upgrade prompt.
+      clearSubscriptionCache();
       await refreshSubscription();
       setSuccess('Purchases restored.');
     } catch (err) {
@@ -315,6 +321,11 @@ const Settings = () => {
   const subStatusLabel = String(subStatusRaw).toUpperCase();
   const subEntitled = isPremiumUser(subscription) || isPremiumUser(user);
   const trialLeft = subscription?.trialDaysRemaining ?? subscription?.trialDaysLeft ?? null;
+  // A lapsed trial (status still 'trial'/'trialing' but 0 days left) is NOT an
+  // active trial — never show the "days left" line or trial chip styling for it.
+  const onTrial =
+    subscription?.isTrial === true ||
+    (String(subStatusRaw).toLowerCase().startsWith('trial') && (trialLeft ?? 0) > 0);
   const renewalDate = subscription?.currentPeriodEnd
     ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
     : null;
@@ -323,7 +334,7 @@ const Settings = () => {
   const subChipColor = coveredByPartner
     ? 'info'
     : subEntitled
-    ? String(subStatusRaw).toLowerCase().startsWith('trial')
+    ? onTrial
       ? 'info'
       : 'success'
     : 'default';
@@ -478,7 +489,7 @@ const Settings = () => {
             </Typography>
           ) : (
             <Box sx={{ mb: 2 }}>
-              {trialLeft != null && String(subStatusRaw).toLowerCase().startsWith('trial') && (
+              {trialLeft != null && onTrial && (
                 <Typography variant="body2" color="text.secondary">
                   Free trial — <strong>{trialLeft} {trialLeft === 1 ? 'day' : 'days'} left</strong>.
                 </Typography>
