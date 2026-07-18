@@ -67,6 +67,47 @@ All other AC verified directly (greps clean, tests green, code read).
 - Landing stats ("94% of couples…", "10K+ couples") were out of ticket scope and remain unverified marketing claims — flagging for honesty review.
 - Mobile drawer is CSS-only: no focus trap / Escape handling (matches "minimum viable"; add a client component if a11y bar rises).
 
+## Addendum 2026-07-18 — Full-stack end-to-end verification
+
+The entire product was stood up locally (Postgres + LR backend + CRA frontend +
+SMB api/web) and exercised end to end:
+
+- **API suite** (`117 checks, all green`): client signup→all 10 assessments→results/profile,
+  daily logs, insights, videos, streaks, 16-week course, strategies, gratitude, reports
+  (weekly/progress/monthly), real-talk, skill tree, progress rings, transformation,
+  weekly summary, payments/subscriptions, mediators/meetings; partner invite→join→
+  **matchup generate/current** (requires all 10 from both partners — confirmed working);
+  therapist onboard (allowlist)→invites→client accepts (BASIC/STANDARD/FULL)→roster→
+  client detail/progress/assessments→session prep→notes→tasks→appointments (overlap
+  guard verified)→alerts/outcomes/modules→couple create/view/comparison; billing SSO
+  (therapist 200 / client 403).
+- **Browser suite** (`26 checks, all green`, Playwright): landing truth claims, signup→
+  disclaimer v2 (crisis resources)→dashboard, assessments hub 0/10 denominator, quizzes
+  (incl. hormonal banner), therapist login→/therapist→roster, session-prep **cold load**,
+  couple view, billing SSO shell (brand, back link, no dead nav), 390px drawer
+  open/close, cookie banner vs sticky CTA geometry, zero uncaught page errors.
+- **SMB API surfaces** all verified with the seeded demo login: sessions, claims,
+  patients, payers, codes, reports/*, denials, appeals, ar/aging+statements, era,
+  eligibility, authorizations, credentialing, compliance/*, provider-credentials/*;
+  integration `revenue-summary` returns honest zeros (`hasActivity:false`) for a
+  practice with no data.
+
+**Defects found and fixed during E2E (both committed):**
+1. `backend/src/routes/auth.js` — login/Google/Apple/refresh responses omitted
+   `role`, so therapists logging in with a password landed on the couple
+   dashboard instead of `/therapist` (Login.js routes on `data.user.role`). Fixed;
+   verified in-browser.
+2. SMB `apps/api/src/routes/auth.ts` — SSO redemption ignored the documented
+   token contract: no `iss`/`aud` validation and replayable tokens. Now enforces
+   issuer/audience and one-time `jti`. Verified live: replay → 401,
+   integration-purpose token as login → 401, normal handoff + integration API
+   unaffected.
+
+**Known non-blocking observations:** `integration/practice-analytics` referenced by
+the audit does not exist in the pushed SMB repo (only `revenue-summary`); the
+first-visit disclaimer dialog overlays public pages (login/landing) — pre-existing
+behavior, unchanged.
+
 ## Explicitly NOT done (P2+)
 
 - Quick Start result persistence into signup
