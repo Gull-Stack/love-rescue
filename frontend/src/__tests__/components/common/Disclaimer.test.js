@@ -41,8 +41,10 @@ describe('Disclaimer', () => {
       screen.getByText(/Welcome to Love Rescue App/)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/It is not a substitute for professional therapy./)
+      screen.getByText(/It is not a substitute for professional therapy/)
     ).toBeInTheDocument();
+    expect(screen.getByText(/988/)).toBeInTheDocument();
+    expect(screen.getByText(/1-800-799-7233/)).toBeInTheDocument();
     expect(
       screen.getByText(/educational and informational purposes only/)
     ).toBeInTheDocument();
@@ -60,6 +62,22 @@ describe('Disclaimer', () => {
       expect(screen.queryByText('Important Notice')).not.toBeInTheDocument();
     });
 
-    expect(window.localStorage.setItem).toHaveBeenCalledWith('disclaimerAccepted', 'true');
+    expect(window.localStorage.setItem).toHaveBeenCalledWith('disclaimerAccepted:v2', 'true');
+  });
+
+  test('re-prompts users who only accepted the old (v1) disclaimer', () => {
+    localStorageMock.disclaimerAccepted = 'true';
+
+    renderWithProviders(<Disclaimer />);
+
+    expect(screen.getByText('Important Notice')).toBeInTheDocument();
+  });
+
+  test('does not show dialog when v2 disclaimer already accepted', () => {
+    localStorageMock['disclaimerAccepted:v2'] = 'true';
+
+    renderWithProviders(<Disclaimer />);
+
+    expect(screen.queryByText('Important Notice')).not.toBeInTheDocument();
   });
 });

@@ -445,6 +445,15 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
         </Typography>
       </Paper>
 
+      {/* Medical disclaimer — hormonal results are a wellness screen, never a diagnosis */}
+      {type === 'hormonal_health' && (
+        <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
+          <strong>Not a diagnosis. Not medical advice.</strong>{' '}
+          {interpretation?.disclaimer ||
+            'This is a wellness self-screener. It highlights patterns worth discussing with a licensed clinician — always consult a healthcare provider before making health decisions.'}
+        </Alert>
+      )}
+
       {/* Primary Result */}
       <Card sx={{ mb: 3, borderRadius: 3 }}>
         <CardContent sx={{ p: 4 }}>
@@ -1314,6 +1323,14 @@ const AssessmentQuiz = () => {
       {error && (
         <Alert severity="error" sx={{ my: 2, borderRadius: 2 }}>
           {error}
+        </Alert>
+      )}
+
+      {/* Medical disclaimer — shown throughout the hormonal wellness screener */}
+      {type === 'hormonal_health' && (
+        <Alert severity="info" sx={{ my: 2, borderRadius: 2 }}>
+          <strong>Not a diagnosis. Not medical advice.</strong> This is a wellness
+          self-screener — consult a licensed clinician about any health concerns.
         </Alert>
       )}
 

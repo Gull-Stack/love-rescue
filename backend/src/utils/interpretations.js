@@ -452,9 +452,9 @@ const hormonalHealthInterpretations = {
     description: 'These symptoms may suggest low or declining testosterone levels — which affects both men and women.',
     low: 'Minimal testosterone-related symptoms. Your energy, motivation, and physical resilience appear strong in this area.',
     moderate: 'Some testosterone-related symptoms present. You may be experiencing gradual changes in energy, motivation, body composition, or confidence that could have a hormonal component.',
-    high: 'Significant testosterone-related symptoms. Loss of drive, muscle mass, confidence, and emotional resilience can all point to testosterone changes. Consider getting your levels checked — a simple blood test can provide clarity.',
+    high: 'Significant testosterone-related symptoms. Loss of drive, muscle mass, confidence, and emotional resilience can all point to testosterone changes. If these symptoms persist, they are worth discussing with your healthcare provider.',
     relationshipImpact: 'Testosterone affects desire, confidence, assertiveness, and physical vitality — all of which directly impact how you show up in your relationship. Low T can make you withdraw, feel less interested in intimacy, or lose the "edge" your partner fell in love with.',
-    actionSteps: ['Consider comprehensive bloodwork (total T, free T, SHBG)', 'Prioritize strength training — resistance exercise is the #1 natural testosterone booster', 'Optimize sleep — testosterone is primarily produced during deep sleep', 'Reduce chronic stress — cortisol directly suppresses testosterone production', 'Review medications that may affect hormone levels with your doctor']
+    actionSteps: ['If these symptoms persist, discuss them with your healthcare provider — they can advise whether hormone testing makes sense for you', 'Prioritize strength training — resistance exercise is the #1 natural testosterone booster', 'Optimize sleep — testosterone is primarily produced during deep sleep', 'Reduce chronic stress — cortisol directly suppresses testosterone production', 'Review medications that may affect hormone levels with your doctor']
   },
   estrogen_progesterone: {
     title: 'Estrogen/Progesterone Symptoms',
@@ -463,7 +463,7 @@ const hormonalHealthInterpretations = {
     moderate: 'Some symptoms suggesting estrogen/progesterone fluctuations. Cyclical mood shifts, physical changes, and emotional reactivity may have a hormonal component worth exploring.',
     high: 'Significant estrogen/progesterone-related symptoms. Hot flashes, mood swings, and physical changes can be deeply disruptive. These are real physiological experiences, not "all in your head."',
     relationshipImpact: 'Hormonal fluctuations directly affect emotional reactivity, patience, desire, and physical comfort. When your partner seems "different" at certain times, hormones may be a major factor. Understanding this reduces blame and increases compassion — for yourself and from your partner.',
-    actionSteps: ['Track symptoms alongside your cycle to identify patterns', 'Consider hormone panel testing (estradiol, progesterone, FSH, LH)', 'Discuss findings with a hormone-literate healthcare provider', 'Communicate with your partner about cyclical patterns — awareness reduces conflict', 'Explore lifestyle factors: sleep, stress management, nutrition, and exercise all influence hormonal balance']
+    actionSteps: ['Track symptoms alongside your cycle to identify patterns', 'If symptoms are disruptive, discuss them with your healthcare provider — they can advise whether hormone evaluation makes sense for you', 'Communicate with your partner about cyclical patterns — awareness reduces conflict', 'Explore lifestyle factors: sleep, stress management, nutrition, and exercise all influence hormonal balance']
   },
   cortisol_stress: {
     title: 'Cortisol/Stress Symptoms',
@@ -472,7 +472,7 @@ const hormonalHealthInterpretations = {
     moderate: 'Some signs of cortisol dysregulation. The "wired but tired" pattern, afternoon crashes, and belly fat accumulation suggest your stress response may need attention.',
     high: 'Significant cortisol-related symptoms. Chronic stress has likely shifted your body into survival mode — affecting sleep, weight, energy, cravings, and your ability to be emotionally present.',
     relationshipImpact: 'Cortisol is the relationship killer hiding in plain sight. When your body is in chronic stress mode, you have LESS capacity for patience, empathy, intimacy, and emotional availability. You\'re literally running on survival brain — and relationships require thriving brain.',
-    actionSteps: ['Consider a 4-point cortisol saliva test (morning, noon, evening, night)', 'Implement a daily nervous system regulation practice (breathwork, meditation, cold exposure)', 'Audit your stress load — what can be eliminated, delegated, or reduced?', 'Protect your sleep — cortisol disruption and sleep disruption form a vicious cycle', 'Reduce stimulant intake — excessive caffeine keeps cortisol elevated']
+    actionSteps: ['If stress symptoms persist, discuss them with your healthcare provider', 'Implement a daily nervous system regulation practice (breathwork, meditation, cold exposure)', 'Audit your stress load — what can be eliminated, delegated, or reduced?', 'Protect your sleep — cortisol disruption and sleep disruption form a vicious cycle', 'Reduce stimulant intake — excessive caffeine keeps cortisol elevated']
   },
   thyroid_energy: {
     title: 'Thyroid/Energy Symptoms',
@@ -480,8 +480,8 @@ const hormonalHealthInterpretations = {
     low: 'Minimal thyroid-related symptoms. Your metabolic energy appears healthy.',
     moderate: 'Some thyroid-related symptoms present. Persistent fatigue, temperature sensitivity, weight resistance, and low mood can all indicate thyroid changes worth investigating.',
     high: 'Significant thyroid-related symptoms. If you\'re doing "everything right" but still feel sluggish, cold, foggy, and heavy — your thyroid may need attention. This is one of the most commonly missed and undertreated hormonal issues.',
-    relationshipImpact: 'Thyroid dysfunction drains the energy you need to invest in your relationship. It\'s hard to be an engaged, present, passionate partner when your body feels like it\'s running on 50% power. Getting this checked could be transformative.',
-    actionSteps: ['Request comprehensive thyroid panel (TSH, Free T3, Free T4, TPO antibodies, reverse T3)', 'Don\'t accept "normal" TSH alone — optimal and "normal range" are not the same thing', 'Review diet for thyroid-supporting nutrients (selenium, zinc, iodine)', 'Address gut health — a significant portion of T4-to-T3 conversion happens in the gut', 'Consider working with a functional medicine practitioner if standard tests seem "normal" but symptoms persist']
+    relationshipImpact: 'Thyroid dysfunction drains the energy you need to invest in your relationship. It\'s hard to be an engaged, present, passionate partner when your body feels like it\'s running on 50% power. Discussing it with your healthcare provider could be transformative.',
+    actionSteps: ['Discuss persistent fatigue, temperature sensitivity, or weight changes with your healthcare provider — they can advise whether thyroid evaluation makes sense', 'Bring a symptom log to your appointment — patterns help your provider help you', 'Review diet for thyroid-supporting nutrients (selenium, zinc, iodine)', 'Address gut health — a significant portion of T4-to-T3 conversion happens in the gut', 'If test results are normal but symptoms persist, share that with your provider and ask about next steps']
   },
   libido_drive: {
     title: 'Libido & Drive',
@@ -490,7 +490,7 @@ const hormonalHealthInterpretations = {
     moderate: 'Some libido-related changes. Decreased desire, slower arousal, or feeling disconnected from your body may reflect hormonal shifts, stress, or relational factors.',
     high: 'Significant libido and drive symptoms. Loss of desire is one of the most relationship-impacting hormonal symptoms — and one of the least discussed. This is NOT a character flaw. It often has a physiological root.',
     relationshipImpact: 'Desire is the spark of romantic connection. When it fades, both partners feel it — one feels rejected, the other feels pressured. Understanding that libido has PHYSIOLOGICAL drivers (not just emotional ones) changes the entire conversation from blame to problem-solving.',
-    actionSteps: ['Get hormone levels tested — low testosterone, estrogen imbalance, and high cortisol all suppress desire', 'Address the "desire killers": poor sleep, chronic stress, medication side effects, and body image', 'Have an honest conversation with your partner about what you\'re experiencing — vulnerability builds connection', 'Explore whether responsive desire (vs. spontaneous) is your natural pattern — this is normal and healthy', 'Consider whether relationship dynamics are also contributing — desire is both physical AND emotional']
+    actionSteps: ['If desire changes persist, discuss possible physiological factors with your healthcare provider — hormones, stress, and medications can all play a role', 'Address the "desire killers": poor sleep, chronic stress, medication side effects, and body image', 'Have an honest conversation with your partner about what you\'re experiencing — vulnerability builds connection', 'Explore whether responsive desire (vs. spontaneous) is your natural pattern — this is normal and healthy', 'Consider whether relationship dynamics are also contributing — desire is both physical AND emotional']
   }
 };
 
@@ -741,7 +741,7 @@ function getInterpretation(type, score, options = {}) {
       return {
         title: 'Hormonal Wellness Assessment',
         description: score.level === 'high_concern'
-          ? 'Your responses suggest significant hormonal symptoms across multiple areas. This is valuable self-awareness — and a strong signal to get comprehensive bloodwork done.'
+          ? 'Your responses suggest significant hormonal symptoms across multiple areas. This is valuable self-awareness — and a strong signal to talk with your healthcare provider.'
           : score.level === 'moderate_concern'
             ? 'Your responses suggest moderate hormonal symptoms. Some areas are more affected than others. Targeted investigation could uncover easy wins.'
             : score.level === 'mild_symptoms'
