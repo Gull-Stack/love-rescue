@@ -71,6 +71,30 @@ fit with the marketing tooling already in this repo), and individual giving thro
 
 ---
 
+## Live open & forecasted opportunities (queried from the Grants.gov API, July 18, 2026)
+
+Pulled directly from `api.grants.gov/v1/api/search2`. The re-runnable query script is in
+`tools/grants-search.md`. Best-fit rows first:
+
+| Opportunity | Program | Agency | Status | Close date | Fit |
+|---|---|---|---|---|---|
+| HHS-2026-ACF-ACYF-SR-0012 | General Departmental Sexual Risk Avoidance Education (SRAE) — includes **healthy relationship education for youth** | ACF/FYSB | **Posted** | **08/17/2026** | High — nonprofits eligible, mission-adjacent (youth relationship skills) |
+| HHS-2026-ACF-ACYF-AK-0014 | Competitive Personal Responsibility Education Program (PREP) | ACF/FYSB | **Posted** | **08/17/2026** | High — youth relationship/life-skills education |
+| HHS-2026-ACF-ACYF-AP-0003 | PREP Innovative Strategies (PREIS) | ACF/FYSB | **Posted** | **08/18/2026** | High — innovation track suits an app-based model |
+| HHS-2026-ACF-ACYF-TS-0013 | Title V Competitive SRAE | ACF/FYSB | Posted | 08/17/2026 | Medium-high |
+| SM-26-014 | CCBHC Planning, Development & Implementation (≤$1M/yr) | SAMHSA | Posted | 08/17/2026 | Medium — needs clinical partner as lead |
+| SM-26-015 | CCBHC Improvement & Advancement | SAMHSA | Posted | 08/17/2026 | Medium — partner role only |
+| HHS-2026-ACF-OFA-PG-0059 | National Research Center for Promoting Work and **Strong Families** | ACF/OFA | Forecasted | opens ~05/2026 | Medium — research-center scale |
+| HHS-2026-ACF-ACYF-CF-0004 | Kinship Navigator Programs: Evaluations | ACF/CB | Posted | 08/07/2026 | Low-medium |
+| HHS-2026-ACF-OFVPS-EV-0010 | National Resource Centers (family violence prevention) | ACF/OFVPS | Forecasted | ~05/13/2026 | Low-medium |
+| PA-FPH-27-001 | Title X Family Planning Services | HHS/OPHS | Posted | 01/11/2027 | Low — clinical services required |
+
+**Read on the August 17–18 cluster:** the ACF youth programs (SRAE/PREP/PREIS) are the only
+posted, mission-fit opportunities a nonprofit Love Rescue could pursue this cycle — but the
+501(c)(3) + SAM.gov pipeline takes ~6–10 weeks, which lands almost exactly on the deadline.
+Realistic play: partner as a subrecipient/curriculum-tech provider with an established
+applicant this cycle, and be registration-ready to apply directly next cycle.
+
 ## Registration pipeline (start the day the EIN arrives)
 
 Required before ANY federal application, all free
