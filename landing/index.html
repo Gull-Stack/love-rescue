@@ -1761,8 +1761,8 @@
 <div class="cookie-banner" id="cookieBanner">
   <p>We use cookies to improve your experience and analyze site traffic. By continuing, you agree to our <a href="/privacy">Cookie Policy</a>.</p>
   <div class="cookie-btns">
-    <button class="btn-ghost" onclick="document.getElementById('cookieBanner').classList.remove('visible');localStorage.setItem('cookies','rejected')">Decline</button>
-    <button class="btn btn-primary" onclick="document.getElementById('cookieBanner').classList.remove('visible');localStorage.setItem('cookies','accepted')">Accept</button>
+    <button class="btn-ghost" onclick="dismissCookieBanner('rejected')">Decline</button>
+    <button class="btn btn-primary" onclick="dismissCookieBanner('accepted')">Accept</button>
   </div>
 </div>
 
@@ -1813,11 +1813,26 @@
   }, { passive: true });
 
   // ── Cookie consent ──
+  // The banner and the sticky Start Free CTA are both fixed to the bottom.
+  // While the banner is visible, lift the sticky CTA above it so the primary
+  // action is never trapped behind cookie consent.
+  var cookieBannerEl = document.getElementById('cookieBanner');
+  function syncStickyCtaOffset() {
+    var lifted = cookieBannerEl.classList.contains('visible');
+    stickyCta.style.bottom = lifted ? cookieBannerEl.offsetHeight + 'px' : '0px';
+  }
+  window.dismissCookieBanner = function(choice) {
+    cookieBannerEl.classList.remove('visible');
+    localStorage.setItem('cookies', choice);
+    syncStickyCtaOffset();
+  };
   if (!localStorage.getItem('cookies')) {
     setTimeout(function() {
-      document.getElementById('cookieBanner').classList.add('visible');
+      cookieBannerEl.classList.add('visible');
+      syncStickyCtaOffset();
     }, 2000);
   }
+  window.addEventListener('resize', syncStickyCtaOffset, { passive: true });
 
   // ── Scroll-triggered animations ──
   var fadeEls = document.querySelectorAll('.fade-up');
