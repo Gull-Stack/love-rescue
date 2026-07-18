@@ -18,6 +18,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HistoryIcon from '@mui/icons-material/History';
+import MicIcon from '@mui/icons-material/Mic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { realTalkApi } from '../../services/api';
@@ -226,6 +227,9 @@ const CardShell = ({ children, gradient, showBack, currentStep, goBack, navigate
         <ProgressDots currentStep={currentStep} />
       </Box>
 
+      <IconButton aria-label="Live Session — in-session listener" onClick={() => navigate('/real-talk/live')} sx={{ color: '#fff' }}>
+        <MicIcon />
+      </IconButton>
       <IconButton aria-label="View history" onClick={() => navigate('/real-talk/history')} sx={{ color: '#fff' }}>
         <HistoryIcon />
       </IconButton>

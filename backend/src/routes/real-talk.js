@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const { detectCrisisAndNotify } = require('../utils/therapistAlerts');
+const { containsAbuseKeywords, analyzeUtterance, CONVERSATION_PATTERNS } = require('../utils/conversationAnalysis');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -15,12 +16,6 @@ const COLLABORATIVE_CLOSERS = [
   'Would you be willing to try?',
 ];
 
-// Abuse keywords trigger safety response instead of gentle startup
-const ABUSE_KEYWORDS = [
-  'hit', 'punch', 'slap', 'choke', 'force', 'threaten',
-  'assault', 'rape', 'abuse', 'strangle', 'shove', 'kick',
-];
-
 // Attack-like language patterns (character attacks vs behavior descriptions)
 const ATTACK_PATTERNS = [
   /\byou always\b/i,
@@ -29,14 +24,6 @@ const ATTACK_PATTERNS = [
   /\byou don'?t care\b/i,
   /\byou'?re the (?:worst|problem)\b/i,
 ];
-
-function containsAbuseKeywords(text) {
-  const lower = text.toLowerCase();
-  return ABUSE_KEYWORDS.some(keyword => {
-    const regex = new RegExp(`\\b${keyword}(?:s|ed|ing|d)?\\b`, 'i');
-    return regex.test(lower);
-  });
-}
 
 function detectAttackLanguage(text) {
   const warnings = [];
@@ -175,6 +162,157 @@ router.get('/', authenticate, async (req, res, next) => {
         limit: parseInt(limit),
         offset: parseInt(offset),
         hasMore: parseInt(offset) + realTalks.length < total,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─── Live Session: in-session listener for fallacies & manipulation ─────────
+// The client records speech in-browser (Web Speech API — audio never reaches
+// the server), sends each finalized utterance here as text, and renders the
+// returned flags in real time. NOTE: these routes are registered BEFORE
+// GET /:id so "live" is never captured as a Real Talk id.
+
+/**
+ * GET /api/real-talk/live/patterns
+ * The pattern library (metadata only) so the client can render a legend.
+ */
+router.get('/live/patterns', authenticate, (req, res) => {
+  res.json({
+    patterns: CONVERSATION_PATTERNS.map(({ id, category, label, explanation, reframe }) => ({
+      id, category, label, explanation, reframe,
+    })),
+  });
+});
+
+/**
+ * POST /api/real-talk/live/analyze
+ * Analyze one utterance. Returns flags; abuse language returns the same
+ * safety-response shape the rest of Real Talk uses instead of coaching.
+ */
+router.post('/live/analyze', authenticate, async (req, res, next) => {
+  try {
+    const { text } = req.body;
+    if (!text || !String(text).trim()) {
+      return res.status(400).json({ error: 'Text is required' });
+    }
+    const utterance = String(text).slice(0, 2000);
+
+    if (containsAbuseKeywords(utterance)) {
+      // Fire-and-forget crisis pathway (may alert a consented therapist).
+      detectCrisisAndNotify(req.user.id, utterance, {
+        prisma: req.prisma,
+        source: 'live_session',
+      });
+      return res.status(200).json({
+        flags: [],
+        safety: true,
+        message: 'It sounds like this conversation may involve abuse or violence. Your safety matters most.',
+        hotline: '1-800-799-7233',
+        textLine: 'Text START to 88788',
+        url: 'https://www.thehotline.org',
+      });
+    }
+
+    const flags = analyzeUtterance(utterance);
+
+    // Crisis language (self-harm etc.) can appear without abuse keywords.
+    const crisis = detectCrisisAndNotify(req.user.id, utterance, {
+      prisma: req.prisma,
+      source: 'live_session',
+    });
+
+    const body = { flags };
+    if (crisis) {
+      const primary = crisis.resources[0] || {};
+      const secondary = crisis.resources[1] || {};
+      body.safety = true;
+      body.message = crisis.message;
+      body.hotline = primary.contact || 'Call or text 988';
+      body.textLine = secondary.contact || 'Text HOME to 741741';
+      body.url = primary.url || 'https://988lifeline.org';
+    }
+    res.json(body);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/real-talk/live/sessions
+ * Save a finished session summary. Privacy-first: counts + flagged excerpts
+ * only (capped), never the full transcript.
+ */
+router.post('/live/sessions', authenticate, async (req, res, next) => {
+  try {
+    const { startedAt, endedAt, utteranceCount, flagCounts, flaggedExcerpts } = req.body;
+
+    const started = startedAt ? new Date(startedAt) : null;
+    if (!started || Number.isNaN(started.getTime())) {
+      return res.status(400).json({ error: 'startedAt is required' });
+    }
+    const ended = endedAt ? new Date(endedAt) : new Date();
+
+    const counts = {};
+    const validIds = new Set(CONVERSATION_PATTERNS.map((p) => p.id));
+    if (flagCounts && typeof flagCounts === 'object' && !Array.isArray(flagCounts)) {
+      for (const [key, val] of Object.entries(flagCounts)) {
+        if (validIds.has(key) && Number.isInteger(val) && val > 0) counts[key] = Math.min(val, 999);
+      }
+    }
+
+    const excerpts = (Array.isArray(flaggedExcerpts) ? flaggedExcerpts : [])
+      .slice(0, 50)
+      .map((e) => ({
+        text: String(e?.text || '').slice(0, 300),
+        flagIds: (Array.isArray(e?.flagIds) ? e.flagIds : []).filter((id) => validIds.has(id)).slice(0, 10),
+      }))
+      .filter((e) => e.text && e.flagIds.length > 0);
+
+    const session = await req.prisma.liveTalkSession.create({
+      data: {
+        userId: req.user.id,
+        startedAt: started,
+        endedAt: ended,
+        utteranceCount: Math.max(0, Math.min(parseInt(utteranceCount, 10) || 0, 100000)),
+        flagCounts: counts,
+        flaggedExcerpts: excerpts,
+      },
+    });
+
+    logger.info('Live Talk session saved', { userId: req.user.id, sessionId: session.id });
+    res.status(201).json({ session });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/real-talk/live/sessions
+ * List the user's saved live sessions (newest first).
+ */
+router.get('/live/sessions', authenticate, async (req, res, next) => {
+  try {
+    const { limit = 20, offset = 0 } = req.query;
+    const where = { userId: req.user.id, deletedAt: null };
+    const [sessions, total] = await Promise.all([
+      req.prisma.liveTalkSession.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: Math.min(parseInt(limit), 50),
+        skip: parseInt(offset),
+      }),
+      req.prisma.liveTalkSession.count({ where }),
+    ]);
+    res.json({
+      sessions,
+      pagination: {
+        total,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: parseInt(offset) + sessions.length < total,
       },
     });
   } catch (error) {

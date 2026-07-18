@@ -36,6 +36,7 @@ const ScheduleMeeting = React.lazy(() => import('./pages/Meetings/ScheduleMeetin
 const Gratitude = React.lazy(() => import('./pages/Gratitude/Gratitude'));
 const RealTalk = React.lazy(() => import('./pages/RealTalk/RealTalk'));
 const RealTalkHistory = React.lazy(() => import('./pages/RealTalk/RealTalkHistory'));
+const RealTalkLiveSession = React.lazy(() => import('./pages/RealTalk/LiveSession'));
 
 // Billing (lazy loaded)
 const Subscribe = React.lazy(() => import('./pages/Subscribe/Subscribe'));
@@ -227,6 +228,7 @@ function App() {
           <Route path="gratitude" element={<Gratitude />} />
           <Route path="real-talk" element={<RealTalk />} />
           <Route path="real-talk/history" element={<RealTalkHistory />} />
+          <Route path="real-talk/live" element={<RealTalkLiveSession />} />
           {/* Paywall — the funnel target when a gated call returns 402
               SUBSCRIPTION_REQUIRED (see the axios interceptor in services/api.js)
               and when a user taps upgrade prompts. The page itself is not gated. */}

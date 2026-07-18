@@ -398,6 +398,11 @@ export const realTalkApi = {
   rateEffectiveness: (id, effectiveness, notes) =>
     api.patch(`/real-talk/${id}/effectiveness`, { effectiveness, notes }),
   delete: (id) => api.delete(`/real-talk/${id}`),
+  // Live Session — in-session listener for fallacies & manipulation
+  livePatterns: () => api.get('/real-talk/live/patterns'),
+  liveAnalyze: (text) => api.post('/real-talk/live/analyze', { text }),
+  liveSaveSession: (data) => api.post('/real-talk/live/sessions', data),
+  liveSessions: (params) => api.get('/real-talk/live/sessions', { params }),
 };
 
 export const courseApi = {
