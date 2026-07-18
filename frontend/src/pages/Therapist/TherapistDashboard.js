@@ -258,16 +258,60 @@ const TherapistDashboard = () => {
 
       {clients.length === 0 ? (
         <Card sx={{ mb: 3 }}>
-          <CardContent sx={{ textAlign: 'center', py: 5 }}>
-            <PeopleIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1.5 }} />
-            <Typography variant="h6" gutterBottom>No clients yet</Typography>
+          <CardContent sx={{ py: 4, px: { xs: 2.5, sm: 4 } }}>
+            <Typography variant="h6" gutterBottom>Set up your practice</Typography>
             <Typography color="text.secondary" sx={{ mb: 3 }}>
-              Invite clients to connect with you on Love Rescue. They'll control what data they share.
+              Three steps to your first data-informed session. Clients always control
+              what they share with you.
             </Typography>
+            {[
+              {
+                n: 1,
+                title: 'Invite your first client',
+                desc: 'Send a secure invite link — it takes under a minute.',
+                active: true,
+              },
+              {
+                n: 2,
+                title: 'They accept and choose what to share',
+                desc: 'Your client consents to sharing assessments, mood logs, or both.',
+                active: false,
+              },
+              {
+                n: 3,
+                title: 'Open Session Prep before your next meeting',
+                desc: 'Get an auto-generated brief: engagement, mood trends, and crisis flags.',
+                active: false,
+              },
+            ].map((step) => (
+              <Box key={step.n} sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'flex-start' }}>
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    fontWeight: 700,
+                    bgcolor: step.active ? 'primary.main' : 'action.hover',
+                    color: step.active ? 'primary.contrastText' : 'text.secondary',
+                  }}
+                >
+                  {step.n}
+                </Box>
+                <Box>
+                  <Typography fontWeight={step.active ? 700 : 600}>{step.title}</Typography>
+                  <Typography variant="body2" color="text.secondary">{step.desc}</Typography>
+                </Box>
+              </Box>
+            ))}
             <Button
               variant="contained"
               startIcon={<PersonAddIcon />}
               onClick={() => navigate('/therapist/clients')}
+              sx={{ mt: 1, minHeight: 44 }}
             >
               Invite Your First Client
             </Button>
