@@ -43,6 +43,37 @@ const asNumber = (score) => {
   return Number.isFinite(n) ? n : null;
 };
 
+/** Prisma JSON columns can arrive null or double-serialized — normalize hard. */
+const parseMaybeJson = (val) => {
+  if (typeof val !== 'string') return val;
+  try { return JSON.parse(val); } catch { return null; }
+};
+const asObject = (val) => {
+  const v = parseMaybeJson(val);
+  return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+};
+const asArray = (val) => {
+  const v = parseMaybeJson(val);
+  return Array.isArray(v) ? v : [];
+};
+
+/** One broken chart must not take down the whole prep page. */
+class ChartErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return <Typography color="text.secondary">Chart could not be displayed.</Typography>;
+    }
+    return this.props.children;
+  }
+}
+
 const StatTile = ({ icon, value, label, color = 'primary.main' }) => (
   <Card sx={{ height: '100%' }}>
     <CardContent sx={{ textAlign: 'center', py: 2 }}>
@@ -107,22 +138,30 @@ const SessionPrep = () => {
     );
   }
 
-  const {
-    client,
-    lastSessionDate,
-    activitiesCompleted = {},
-    assessmentChanges = {},
-    moodTrends = {},
-    crisisFlags = [],
-    generatedSummary,
-    expertInsights = [],
-    courseProgress,
-    pendingTasks = [],
-  } = report || {};
+  // Every field is assumed hostile: Prisma JSON columns on cached reports can
+  // be null or double-serialized strings, and a brand-new client has no data.
+  const raw = report || {};
+  const client = raw.client;
+  const lastSessionDate = raw.lastSessionDate;
+  const activitiesCompleted = asObject(raw.activitiesCompleted);
+  const assessmentChanges = asObject(raw.assessmentChanges);
+  const moodTrends = asObject(raw.moodTrends);
+  const crisisFlags = asArray(raw.crisisFlags);
+  const generatedSummary = typeof raw.generatedSummary === 'string' ? raw.generatedSummary : '';
+  const expertInsights = asArray(raw.expertInsights)
+    .map((item) => (typeof item === 'string' ? item : item?.text || item?.message || ''))
+    .filter(Boolean);
+  const courseProgress =
+    raw.courseProgress && typeof raw.courseProgress === 'object' ? raw.courseProgress : null;
+  const pendingTasks = asArray(raw.pendingTasks).filter(Boolean);
 
   const clientName = [client?.firstName, client?.lastName].filter(Boolean).join(' ') || 'Client';
-  const dailyMoods = moodTrends.dailyMoods || [];
-  const hasMoodComparison = (moodTrends.previousAvg || 0) > 0 && (moodTrends.currentAvg || 0) > 0;
+  const dailyMoods = asArray(moodTrends.dailyMoods).filter(
+    (m) => m && m.date != null && Number.isFinite(Number(m.mood))
+  );
+  const previousAvg = asNumber(moodTrends.previousAvg);
+  const currentAvg = asNumber(moodTrends.currentAvg);
+  const hasMoodComparison = (previousAvg || 0) > 0 && (currentAvg || 0) > 0;
 
   const scoreChanges = Object.entries(assessmentChanges).map(([type, change]) => {
     const current = asNumber(change?.current);
@@ -173,7 +212,7 @@ const SessionPrep = () => {
           <Typography variant="subtitle2" fontWeight={700}>Crisis Flags</Typography>
           {crisisFlags.map((f, i) => (
             <Typography key={i} variant="body2">
-              • {f.message} ({f.date ? new Date(f.date).toLocaleDateString() : 'date unknown'})
+              • {f?.message || 'Crisis alert'} ({f?.date ? new Date(f.date).toLocaleDateString() : 'date unknown'})
             </Typography>
           ))}
         </Alert>
@@ -271,13 +310,13 @@ const SessionPrep = () => {
                 <Typography color="text.secondary">No pending tasks — everything assigned has been completed.</Typography>
               ) : (
                 <List dense>
-                  {pendingTasks.map((t) => (
-                    <ListItem key={t.id}>
+                  {pendingTasks.map((t, i) => (
+                    <ListItem key={t.id || i}>
                       <ListItemIcon sx={{ minWidth: 36 }}>
                         <PendingActionsIcon sx={{ color: 'warning.main', fontSize: 20 }} />
                       </ListItemIcon>
                       <ListItemText
-                        primary={t.description}
+                        primary={t.description || 'Assigned task'}
                         secondary={[
                           t.priority ? `Priority: ${t.priority}` : null,
                           t.dueDate ? `Due ${new Date(t.dueDate).toLocaleDateString()}` : null,
@@ -324,7 +363,7 @@ const SessionPrep = () => {
             {hasMoodComparison && (
               <>
                 <Typography variant="body2" color="text.secondary">
-                  {moodTrends.previousAvg.toFixed(1)} → {moodTrends.currentAvg.toFixed(1)} avg
+                  {previousAvg.toFixed(1)} → {currentAvg.toFixed(1)} avg
                 </Typography>
                 {trendChip(moodTrends.trend)}
               </>
@@ -334,17 +373,19 @@ const SessionPrep = () => {
             <Typography color="text.secondary">No mood data available for this period.</Typography>
           ) : (
             <Box sx={{ height: 200 }}>
-              <Line
-                data={moodChartData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: { legend: { display: false } },
-                  scales: {
-                    y: { beginAtZero: true, max: 10 },
-                  },
-                }}
-              />
+              <ChartErrorBoundary>
+                <Line
+                  data={moodChartData}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                      y: { beginAtZero: true, max: 10 },
+                    },
+                  }}
+                />
+              </ChartErrorBoundary>
             </Box>
           )}
         </CardContent>

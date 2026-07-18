@@ -305,13 +305,15 @@ async function generateSessionPrepReport(prisma, therapistId, clientId, lastSess
   expertInsights.push(EXPERT_INSIGHTS.crisisContext(crisisFlags));
 
   // Attachment insight (if attachment assessment exists)
+  const safeParseScore = (val) => {
+    if (typeof val !== 'string') return val;
+    try { return JSON.parse(val); } catch { return null; }
+  };
   const attachmentAssessment = recentByType.attachment || prevByType.attachment;
   if (attachmentAssessment) {
-    const score = typeof attachmentAssessment.score === 'string'
-      ? JSON.parse(attachmentAssessment.score)
-      : attachmentAssessment.score;
+    const score = safeParseScore(attachmentAssessment.score);
     const style = score?.style || score?.attachmentStyle || score?.primary;
-    if (style) {
+    if (style && typeof style === 'string') {
       expertInsights.push(EXPERT_INSIGHTS.attachmentProgress(
         style.toLowerCase().replace(/[-\s]/g, '_'),
         {
@@ -328,8 +330,8 @@ async function generateSessionPrepReport(prisma, therapistId, clientId, lastSess
   const gottmanRecent = recentByType.gottman_checkup;
   const gottmanPrev = prevByType.gottman_checkup;
   if (gottmanRecent && gottmanPrev) {
-    const current = typeof gottmanRecent.score === 'string' ? JSON.parse(gottmanRecent.score) : gottmanRecent.score;
-    const previous = typeof gottmanPrev.score === 'string' ? JSON.parse(gottmanPrev.score) : gottmanPrev.score;
+    const current = safeParseScore(gottmanRecent.score);
+    const previous = safeParseScore(gottmanPrev.score);
     const horsemen = current?.horsemen || current?.fourHorsemen;
     const prevHorsemen = previous?.horsemen || previous?.fourHorsemen;
     if (horsemen && prevHorsemen) {
