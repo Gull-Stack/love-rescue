@@ -101,8 +101,10 @@ const CoupleView = () => {
   const nameA = partnerName(user1, 'Partner 1');
   const nameB = partnerName(user2, 'Partner 2');
 
-  // Radar chart can only plot numeric scores; structured results are listed in the table below.
-  const numericRows = comparison.filter(c => asNumber(c.user1) != null || asNumber(c.user2) != null);
+  // Radar chart can only plot numeric scores, and only for assessment types
+  // BOTH partners completed — plotting a 0 for a partner who never took an
+  // assessment would read as a (fabricated) low score.
+  const numericRows = comparison.filter(c => asNumber(c.user1) != null && asNumber(c.user2) != null);
   const radarLabels = numericRows.map(c => typeLabel(c.type));
   const radarA = { name: nameA, scores: numericRows.map(c => asNumber(c.user1) ?? 0) };
   const radarB = { name: nameB, scores: numericRows.map(c => asNumber(c.user2) ?? 0) };
@@ -144,11 +146,11 @@ const CoupleView = () => {
                         <Typography variant="body2" fontWeight={600}>{partner.user.email}</Typography>
                       </Box>
                     )}
-                    {comparisonAvailable && (
+                    {comparisonAvailable && comparison.length > 0 && (
                       <Box>
                         <Typography variant="caption" color="text.secondary">Assessments Completed</Typography>
                         <Typography variant="body2" fontWeight={600}>
-                          {comparison.filter(c => (idx === 0 ? c.user1 : c.user2) != null).length} of {comparison.length || 0}
+                          {comparison.filter(c => (idx === 0 ? c.user1 : c.user2) != null).length} of {comparison.length}
                         </Typography>
                       </Box>
                     )}
@@ -193,7 +195,10 @@ const CoupleView = () => {
                 />
               ) : (
                 <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-                  {comparisonMessage || 'The comparison chart will appear once both partners complete at least three scored assessments.'}
+                  {comparisonMessage ||
+                    (comparison.length > 0
+                      ? 'The comparison chart will appear once both partners complete at least three of the same scored assessments. Individual results appear in the table below as each partner finishes.'
+                      : 'Neither partner has completed an assessment yet. The comparison will appear once both partners complete the same assessments.')}
                 </Typography>
               )}
             </CardContent>
