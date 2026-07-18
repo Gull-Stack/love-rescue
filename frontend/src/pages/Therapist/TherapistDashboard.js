@@ -21,6 +21,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import EventIcon from '@mui/icons-material/Event';
 import therapistService from '../../services/therapistService';
+import { openBilling } from '../../utils/openBilling';
 import { ClientCard, AlertCard } from '../../components/therapist';
 
 const StatCard = ({ icon, label, value, color = 'primary.main' }) => (
@@ -115,15 +116,10 @@ const TherapistDashboard = () => {
 
   const { stats = {}, clients = [], alerts = [], outcomes = null } = dashboard || {};
 
-  const openBilling = async () => {
+  const handleOpenBilling = async () => {
     setBillingLoading(true);
-    try {
-      const res = await therapistService.getBillingSsoUrl();
-      window.location.href = res.data.url;
-    } catch (err) {
-      setError('Could not launch Medical Billing. Please try again.');
-      setBillingLoading(false);
-    }
+    const launched = await openBilling({ navigate, onError: setError });
+    if (!launched) setBillingLoading(false);
   };
 
   // Distinct couples derived from the roster (clients sharing a couple id).
@@ -166,7 +162,7 @@ const TherapistDashboard = () => {
           variant="contained"
           color="secondary"
           startIcon={billingLoading ? <CircularProgress size={16} color="inherit" /> : <LocalHospitalIcon />}
-          onClick={openBilling}
+          onClick={handleOpenBilling}
           disabled={billingLoading}
           sx={{ minHeight: 44 }}
         >
