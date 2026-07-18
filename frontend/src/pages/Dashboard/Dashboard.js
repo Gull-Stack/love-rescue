@@ -43,6 +43,7 @@ import ActionCard from '../../components/dashboard/ActionCard';
 import IdentityHint from '../../components/gamification/IdentityHint';
 import ExpertInsight from '../../components/gamification/ExpertInsight';
 import { assessmentLabel } from '../../utils/assessmentLabels';
+import { ASSESSMENT_CATALOG_TYPES, ASSESSMENT_CATALOG_COUNT } from '../../utils/assessmentCatalog';
 import { brandGradients } from '../../theme';
 
 // User progress states
@@ -234,14 +235,13 @@ const Dashboard = () => {
     );
   }
 
-  // Calculate derived state
-  const assessmentsDone = data.assessments?.completed?.length || 0;
-  // The API returns every valid assessment type split into completed +
-  // pending, so their sum IS the real catalog size (backend VALID_TYPES /
-  // the list in Assessments.js) — never hardcode it. Falls back to 10 when
-  // the assessments call failed and both arrays are empty.
-  const totalAssessments =
-    (assessmentsDone + (data.assessments?.pending?.length || 0)) || 10;
+  // Calculate derived state. Count only catalog assessments so progress
+  // denominators always match the visible catalog — the backend accepts
+  // extra legacy/unreleased types that never appear in the Assessments hub.
+  const assessmentsDone = (data.assessments?.completed || []).filter((a) =>
+    ASSESSMENT_CATALOG_TYPES.includes(a.type)
+  ).length;
+  const totalAssessments = ASSESSMENT_CATALOG_COUNT;
   const daysActive = getDaysActive(user?.createdAt);
   const strategyCycle = data.strategy?.cycle || 0;
 
