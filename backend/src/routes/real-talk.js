@@ -2,7 +2,7 @@ const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const { detectCrisisAndNotify } = require('../utils/therapistAlerts');
 const { containsAbuseKeywords, analyzeUtterance, CONVERSATION_PATTERNS } = require('../utils/conversationAnalysis');
-const { isSemanticEnabled, analyzeSemantics } = require('../utils/semanticAnalysis');
+const { isSemanticEnabled, resolveProvider, analyzeSemantics } = require('../utils/semanticAnalysis');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -236,7 +236,7 @@ router.post('/live/analyze', authenticate, async (req, res, next) => {
       source: 'live_session',
     });
 
-    const body = { flags, semantic: isSemanticEnabled() };
+    const body = { flags, semantic: isSemanticEnabled(), semanticProvider: resolveProvider() };
     if (crisis) {
       const primary = crisis.resources[0] || {};
       const secondary = crisis.resources[1] || {};
