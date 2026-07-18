@@ -54,9 +54,15 @@ const LiveSession = () => {
   const [summary, setSummary] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [speaker, setSpeaker] = useState('A');
+  const [semanticOn, setSemanticOn] = useState(false);
   const recognitionRef = useRef(null);
   const startedAtRef = useRef(null);
   const feedRef = useRef(null);
+  // analyze() runs from speech-recognition callbacks — read the live speaker
+  // through a ref so utterances are attributed to whoever is selected NOW.
+  const speakerRef = useRef('A');
+  speakerRef.current = speaker;
 
   useEffect(() => {
     document.title = 'Live Session | Love Rescue';
@@ -74,6 +80,7 @@ const LiveSession = () => {
   const analyze = useCallback(async (text) => {
     const trimmed = text.trim();
     if (!trimmed) return;
+    const who = speakerRef.current;
     setAnalyzing(true);
     try {
       const res = await realTalkApi.liveAnalyze(trimmed);
@@ -81,10 +88,11 @@ const LiveSession = () => {
       if (res.data.safety) {
         setSafety(res.data);
       }
-      setUtterances((prev) => [...prev, { text: trimmed, flags }]);
+      if (typeof res.data.semantic === 'boolean') setSemanticOn(res.data.semantic);
+      setUtterances((prev) => [...prev, { text: trimmed, flags, speaker: who }]);
     } catch (err) {
       // Never lose what was said — record it unflagged with an error marker.
-      setUtterances((prev) => [...prev, { text: trimmed, flags: [], error: true }]);
+      setUtterances((prev) => [...prev, { text: trimmed, flags: [], speaker: who, error: true }]);
     } finally {
       setAnalyzing(false);
     }
@@ -148,7 +156,7 @@ const LiveSession = () => {
         flagCounts[f.id] = (flagCounts[f.id] || 0) + 1;
       }
       if (u.flags.length > 0) {
-        flaggedExcerpts.push({ text: u.text, flagIds: u.flags.map((f) => f.id) });
+        flaggedExcerpts.push({ text: u.text, flagIds: u.flags.map((f) => f.id), speaker: u.speaker || null });
       }
     }
     const summaryData = {
@@ -237,12 +245,26 @@ const LiveSession = () => {
               </Alert>
             ) : (
               <>
+                {(() => {
+                  const bySpeaker = { A: 0, B: 0 };
+                  for (const u of utterances) {
+                    if (u.speaker && u.flags.length) bySpeaker[u.speaker] += u.flags.length;
+                  }
+                  return (bySpeaker.A > 0 || bySpeaker.B > 0) ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      Partner A: {bySpeaker.A} flag{bySpeaker.A === 1 ? '' : 's'} · Partner B: {bySpeaker.B} flag{bySpeaker.B === 1 ? '' : 's'} —
+                      patterns are habits both partners can name together, not a scoreboard.
+                    </Typography>
+                  ) : null;
+                })()}
                 <Typography color="text.secondary" sx={{ mb: 1.5 }}>
                   Patterns that showed up — each one is a habit, not a verdict:
                 </Typography>
                 {utterances.filter((u) => u.flags.length > 0).map((u, i) => (
                   <Box key={i} sx={{ mb: 1.5, p: 1.5, borderRadius: 2, bgcolor: 'action.hover' }}>
-                    <Typography variant="body2" sx={{ fontStyle: 'italic', mb: 0.5 }}>"{u.text}"</Typography>
+                    <Typography variant="body2" sx={{ fontStyle: 'italic', mb: 0.5 }}>
+                      {u.speaker ? `Partner ${u.speaker}: ` : ''}"{u.text}"
+                    </Typography>
                     {u.flags.map((f) => (
                       <Typography key={f.id} variant="caption" display="block" color="text.secondary">
                         <strong>{f.label}:</strong> {f.reframe}
@@ -275,10 +297,31 @@ const LiveSession = () => {
     <Box sx={{ p: 3, maxWidth: 720, mx: 'auto', display: 'flex', flexDirection: 'column', minHeight: '80vh' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, flexWrap: 'wrap' }}>
         <Typography variant="h5" fontWeight={700} sx={{ flex: 1 }}>Live Session</Typography>
+        {semanticOn && (
+          <Tooltip title="Deep analysis is on: an AI pass also catches sarcasm and implied patterns." arrow>
+            <Chip label="Deep analysis" size="small" color="secondary" variant="outlined" />
+          </Tooltip>
+        )}
         <Chip icon={<FlagIcon />} label={`${totalFlags} flag${totalFlags === 1 ? '' : 's'}`} size="small" color={totalFlags > 0 ? 'warning' : 'default'} />
         <Button variant="outlined" color="error" onClick={endSession} sx={{ minHeight: 44 }} disabled={utterances.length === 0 && !listening}>
           End Session
         </Button>
+      </Box>
+
+      {/* Who's speaking — attribution for the transcript and summary */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+        <Typography variant="caption" color="text.secondary">Speaking:</Typography>
+        {['A', 'B'].map((s) => (
+          <Chip
+            key={s}
+            label={`Partner ${s}`}
+            size="small"
+            color={speaker === s ? 'primary' : 'default'}
+            variant={speaker === s ? 'filled' : 'outlined'}
+            onClick={() => setSpeaker(s)}
+            sx={{ minHeight: 32 }}
+          />
+        ))}
       </Box>
 
       {safety && (
@@ -298,7 +341,22 @@ const LiveSession = () => {
         )}
         {utterances.map((u, i) => (
           <Box key={i} sx={{ mb: 1.5 }}>
-            <Typography variant="body1">{u.text}</Typography>
+            <Typography variant="body1">
+              {u.speaker && (
+                <Box
+                  component="span"
+                  sx={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 20, height: 20, mr: 1, borderRadius: '50%', fontSize: 12, fontWeight: 700,
+                    bgcolor: u.speaker === 'A' ? 'primary.main' : 'secondary.main',
+                    color: '#fff', verticalAlign: 'text-bottom',
+                  }}
+                >
+                  {u.speaker}
+                </Box>
+              )}
+              {u.text}
+            </Typography>
             {u.error && (
               <Typography variant="caption" color="text.secondary">Couldn't analyze this one.</Typography>
             )}

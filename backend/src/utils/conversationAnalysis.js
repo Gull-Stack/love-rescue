@@ -32,6 +32,11 @@ function containsAbuseKeywords(text) {
  *  - fallacy: reasoning errors that derail the argument itself
  *  - manipulation: tactics that pressure or destabilize the other person
  *  - horseman: Gottman's four horsemen (criticism, contempt, defensiveness, stonewalling)
+ *
+ * Each pattern may carry `suppress`: regexes tested against the WHOLE
+ * utterance that veto a match (e.g. a factual "that never happened before the
+ * renovation" is not reality-denial). A global reported-speech guard also
+ * vetoes any match that is quoting someone else ("the kids said you never…").
  */
 const CONVERSATION_PATTERNS = [
   // ── Fallacies ──────────────────────────────────────────────────────────
@@ -41,7 +46,18 @@ const CONVERSATION_PATTERNS = [
     label: 'Overgeneralization',
     explanation: '"Always" and "never" turn one behavior into a character verdict — and invite the other person to hunt for the one exception instead of hearing you.',
     reframe: 'Name the specific time it happened: "Last night when…"',
-    patterns: [/\byou (?:always|never)\b/i, /\bevery (?:single )?time\b/i, /\bnot (?:even )?once\b/i],
+    patterns: [
+      /\byou (?:always|never)\b/i,
+      /\bevery (?:single )?time\b/i,
+      /\bnot (?:even )?once\b/i,
+      /\bname (?:me )?one (?:single )?time\b/i,
+      /\bjust one time\. ?$/i,
+    ],
+    // Positive "always/never" is a compliment, not a verdict.
+    suppress: [
+      /\byou (?:always|never) [^.!?]{0,40}\b(?:know how|make me (?:laugh|smile|happy)|the best|amazing|love|great|cheer)\b/i,
+      /\bi never want\b/i,
+    ],
   },
   {
     id: 'ad_hominem',
@@ -50,7 +66,7 @@ const CONVERSATION_PATTERNS = [
     explanation: 'Attacking who they are instead of what happened moves the fight from the problem to the person.',
     reframe: 'Describe the behavior and its impact: "When X happened, I felt Y."',
     patterns: [
-      /\byou'?re (?:so |such an? )?(?:selfish|lazy|stupid|worthless|pathetic|terrible|horrible|useless|disgusting|crazy|a liar|an idiot)\b/i,
+      /\byou(?:'re| are) (?:so |such an? )?(?:selfish|lazy|stupid|worthless|pathetic|terrible|horrible|useless|disgusting|crazy|a liar|an idiot)\b/i,
       /\bjust like your (?:mother|father|mom|dad)\b/i,
     ],
   },
@@ -86,6 +102,18 @@ const CONVERSATION_PATTERNS = [
     reframe: 'Right-size it: "This moment is hard" is different from "everything is ruined."',
     patterns: [/\bthis (?:marriage|relationship) is (?:over|doomed|dead)\b/i, /\beverything is ruined\b/i, /\bwhat'?s the point of (?:us|this|anything)\b/i],
   },
+  {
+    id: 'appeal_to_crowd',
+    category: 'fallacy',
+    label: 'Appeal to the crowd',
+    explanation: '"Everyone agrees with me" recruits an invisible jury. Even if true, the disagreement is between the two of you — outside votes don\'t resolve it, they gang up.',
+    reframe: 'Speak for yourself: "I think…" carries more weight than a crowd that isn\'t in the room.',
+    patterns: [
+      /\beveryone (?:agrees|thinks|knows|says|can see)\b/i,
+      /\ball (?:my|our) friends (?:think|say|agree)\b/i,
+      /\banybody (?:can see|would agree)\b/i,
+    ],
+  },
 
   // ── Manipulation tactics ───────────────────────────────────────────────
   {
@@ -96,12 +124,19 @@ const CONVERSATION_PATTERNS = [
     reframe: 'You can disagree about facts without denying their experience: "I remember it differently — walk me through what you saw."',
     patterns: [
       /\bthat never happened\b/i,
-      /\byou'?re (?:just )?imagining (?:it|things)\b/i,
-      /\byou'?re (?:being )?(?:too |over)?sensitive\b/i,
-      /\byou'?re overreacting\b/i,
-      /\byou'?re (?:being )?(?:crazy|hysterical|paranoid|dramatic)\b/i,
+      /\byou(?:'re| are) (?:just )?imagining (?:it|things)\b/i,
+      /\byou(?:'re| are) (?:being )?(?:too |over)?sensitive\b/i,
+      /\byou(?:'re| are) overreacting\b/i,
+      /\byou(?:'re| are) (?:being )?(?:crazy|hysterical|paranoid|dramatic|ridiculous|absurd|irrational|impossible|insane)\b/i,
       /\bit(?:'s| is) all in your head\b/i,
+      /\byou(?:'re| are) misremembering\b/i,
+      /\byou remember (?:it|things) wrong\b/i,
+      /\bthat(?:'s| is) not (?:what|how) (?:it |that )?happened\b/i,
+      /\bi never said that\b/i,
     ],
+    // Factual/temporal "that never happened before X" is a claim about events,
+    // not about the other person's grip on reality.
+    suppress: [/\bthat never happened (?:before|until|since|when|back|prior|last)\b/i],
   },
   {
     id: 'guilt_tripping',
@@ -109,7 +144,17 @@ const CONVERSATION_PATTERNS = [
     label: 'Guilt-tripping',
     explanation: '"After everything I\'ve done for you" converts generosity into debt. Gifts with invoices attached breed resentment on both sides.',
     reframe: 'Ask for appreciation directly: "I\'m feeling unseen for what I contribute."',
-    patterns: [/\bafter (?:everything|all) i(?:'ve| have)? (?:done|sacrificed|given)\b/i, /\byou owe me\b/i, /\bi gave up .{3,40} for you\b/i],
+    patterns: [
+      /\bafter (?:everything|all) i(?:'ve| have)? (?:done|sacrificed|given)\b/i,
+      /\byou owe me\b/i,
+      /\bi gave up .{3,40} for you\b/i,
+      /\bi sacrificed .{3,50}\b(?:and this is|for (?:you|us|this))\b/i,
+      /\bthis is the thanks i get\b/i,
+      /\bnobody (?:ever )?appreciates\b/i,
+    ],
+    // Self-directed exhaustion ("after everything I've done today, I'm beat")
+    // is venting, not invoicing the partner.
+    suppress: [/\bafter (?:everything|all) i(?:'ve| have)? (?:done|sacrificed|given) (?:today|this (?:week|month|morning)|at work|lately)\b/i],
   },
   {
     id: 'blame_shifting',
@@ -125,7 +170,14 @@ const CONVERSATION_PATTERNS = [
     label: 'Victim-reversal (DARVO)',
     explanation: 'Deny, Attack, Reverse Victim and Offender: the person raising a hurt suddenly finds themselves accused. The original issue vanishes.',
     reframe: 'Both hurts can be heard — in turn: "Let\'s finish what you raised, then I want to share mine."',
-    patterns: [/\bi'?m the (?:real )?victim\b/i, /\bnow (?:i'?m|you(?:'ve| have) made me) the bad guy\b/i, /\bhow dare you accuse me\b/i],
+    patterns: [
+      /\bi'?m the (?:real )?victim\b/i,
+      /\bnow (?:i'?m|you(?:'ve| have) made me) the bad guy\b/i,
+      /\bhow dare you accuse me\b/i,
+      /\bi(?:'m| am) (?:always|just) the (?:bad guy|villain|problem)\b/i,
+      /\bi guess i(?:'m| am) (?:just )?the (?:bad guy|villain|problem)\b/i,
+      /\bthe villain in your story\b/i,
+    ],
   },
   {
     id: 'threat_ultimatum',
@@ -133,7 +185,28 @@ const CONVERSATION_PATTERNS = [
     label: 'Threat / ultimatum',
     explanation: 'Threatening the relationship ("or I\'m leaving") wins compliance through fear, not agreement — and each use devalues the threat and the trust.',
     reframe: 'State the stakes without the trigger: "This pattern is serious for me. I need us to work on it."',
-    patterns: [/\bor i'?m (?:leaving|gone|done|out)\b/i, /\bi(?:'ll| will) take the kids\b/i, /\byou(?:'ll| will) regret (?:this|it)\b/i, /\bi want a divorce\b/i],
+    patterns: [
+      /\bor i'?m (?:leaving|gone|done|out)\b/i,
+      /\bi(?:'ll| will) take the kids\b/i,
+      /\byou(?:'ll| will) regret (?:this|it)\b/i,
+      /\bi want a divorce\b/i,
+      /\bkeep (?:this|that|it) up and (?:see|watch|you'?ll)\b/i,
+      /\b(?:and |then )?see what happens\b/i,
+      /\byou(?:'ll| will) be sorry\b/i,
+      /\bdon'?t push me\b/i,
+    ],
+  },
+  {
+    id: 'triangulation',
+    category: 'manipulation',
+    label: 'Triangulation',
+    explanation: 'Recruiting a third person as evidence against your partner ("your sister was right about you") turns a two-person disagreement into an ambush.',
+    reframe: 'Keep it between you: "Here\'s what I\'m seeing…" — other people\'s verdicts don\'t belong in the room.',
+    patterns: [
+      /\b(?:was|is|were) right about you\b/i,
+      /\bwarned me about you\b/i,
+      /\beven (?:your|the) (?:mother|mom|dad|father|sister|brother|kids|family|friends) (?:thinks?|says?|agrees?|sees? it)\b/i,
+    ],
   },
 
   // ── Gottman horsemen ───────────────────────────────────────────────────
@@ -143,7 +216,17 @@ const CONVERSATION_PATTERNS = [
     label: 'Contempt',
     explanation: 'Mockery, sarcasm, and name-calling signal disgust — the single strongest predictor of relationship breakdown in Gottman\'s research.',
     reframe: 'Find the wish under the sneer and say that instead: "I want to be able to rely on you for…"',
-    patterns: [/\b(?:oh,? )?(?:great|nice|perfect),? (?:saint|mr|mrs|miss)\b/i, /\bwhatever you say\b/i, /\byou call (?:that|yourself)\b/i, /\bpathetic\b/i, /\bgrow up\b/i],
+    patterns: [
+      /\b(?:oh,? )?(?:great|nice|perfect),? (?:saint|mr|mrs|miss)\b/i,
+      /\bwhatever you say\b/i,
+      /\byou call (?:that|yourself)\b/i,
+      /\bpathetic\b/i,
+      /\bgrow up\b/i,
+      /\bmust be nice\b/i,
+      /\bwhatever helps you sleep\b/i,
+      /\bmust be (?:so )?(?:hard|exhausting) being (?:so )?perfect\b/i,
+      /\bwow,? [^.!?]{0,40}\bperfect\b/i,
+    ],
   },
   {
     id: 'defensiveness',
@@ -159,9 +242,25 @@ const CONVERSATION_PATTERNS = [
     label: 'Stonewalling',
     explanation: 'Shutting the conversation down ("I\'m done talking") usually means flooding — a nervous system past its limit. A break helps; a wall doesn\'t.',
     reframe: 'Take a structured break with a return time: "I\'m flooded. Give me 30 minutes and I\'ll come back to this."',
-    patterns: [/\bi'?m done talking\b/i, /\btalk to the (?:hand|wall)\b/i, /\bconversation(?:'s| is) over\b/i, /\bi (?:have|'?ve got) nothing (?:more |else )?to say\b/i],
+    patterns: [
+      /\bi'?m done talking\b/i,
+      /\btalk to the (?:hand|wall)\b/i,
+      /\bconversation(?:'s| is) over\b/i,
+      /\bi (?:have|'?ve got) nothing (?:more |else )?to say\b/i,
+    ],
+    // "Done talking to customer service" — the wall is aimed elsewhere.
+    suppress: [/\bdone talking (?:to|with) (?!you\b)/i],
   },
 ];
+
+// Reported speech: a match immediately downstream of "she said…", "the kids
+// told me…", "he texted…" is quoting someone else, not saying it.
+const REPORTED_SPEECH = /\b(?:said|says|saying|told (?:me|us|him|her|them)|texted|wrote|heard(?: that)?|claims?|claimed)\b[^.!?]{0,45}$/i;
+
+function isReportedSpeech(input, matchIndex) {
+  const before = input.slice(Math.max(0, matchIndex - 60), matchIndex);
+  return REPORTED_SPEECH.test(before);
+}
 
 /**
  * Analyze a single utterance.
@@ -174,9 +273,11 @@ function analyzeUtterance(text) {
   if (!input.trim()) return flags;
 
   for (const pattern of CONVERSATION_PATTERNS) {
+    if (pattern.suppress && pattern.suppress.some((s) => s.test(input))) continue;
     for (const regex of pattern.patterns) {
       const match = input.match(regex);
       if (match) {
+        if (isReportedSpeech(input, match.index)) break; // quoting, not saying
         flags.push({
           id: pattern.id,
           category: pattern.category,

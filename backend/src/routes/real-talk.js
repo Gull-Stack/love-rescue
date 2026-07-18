@@ -2,6 +2,7 @@ const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const { detectCrisisAndNotify } = require('../utils/therapistAlerts');
 const { containsAbuseKeywords, analyzeUtterance, CONVERSATION_PATTERNS } = require('../utils/conversationAnalysis');
+const { isSemanticEnabled, analyzeSemantics } = require('../utils/semanticAnalysis');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -218,13 +219,24 @@ router.post('/live/analyze', authenticate, async (req, res, next) => {
 
     const flags = analyzeUtterance(utterance);
 
+    // Semantic second pass (sarcasm, implication) — optional, fail-soft, and
+    // merged behind the instant deterministic flags. Skipped when a pattern
+    // already fired for the same id.
+    if (isSemanticEnabled()) {
+      const semanticFlags = await analyzeSemantics(utterance);
+      const already = new Set(flags.map((f) => f.id));
+      for (const f of semanticFlags) {
+        if (!already.has(f.id)) flags.push(f);
+      }
+    }
+
     // Crisis language (self-harm etc.) can appear without abuse keywords.
     const crisis = detectCrisisAndNotify(req.user.id, utterance, {
       prisma: req.prisma,
       source: 'live_session',
     });
 
-    const body = { flags };
+    const body = { flags, semantic: isSemanticEnabled() };
     if (crisis) {
       const primary = crisis.resources[0] || {};
       const secondary = crisis.resources[1] || {};
@@ -268,6 +280,7 @@ router.post('/live/sessions', authenticate, async (req, res, next) => {
       .map((e) => ({
         text: String(e?.text || '').slice(0, 300),
         flagIds: (Array.isArray(e?.flagIds) ? e.flagIds : []).filter((id) => validIds.has(id)).slice(0, 10),
+        speaker: e?.speaker === 'A' || e?.speaker === 'B' ? e.speaker : null,
       }))
       .filter((e) => e.text && e.flagIds.length > 0);
 
