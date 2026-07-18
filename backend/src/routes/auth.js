@@ -364,6 +364,7 @@ router.post('/login', async (req, res, next) => {
         firstName: user.firstName,
         lastName: user.lastName,
         gender: user.gender,
+        role: user.role,
         subscriptionStatus: user.subscriptionStatus
       },
       token: accessToken,
@@ -462,6 +463,7 @@ router.post('/google', async (req, res, next) => {
         firstName: user.firstName,
         lastName: user.lastName,
         gender: user.gender,
+        role: user.role,
         subscriptionStatus: user.subscriptionStatus
       },
       token: accessToken,
@@ -686,6 +688,7 @@ router.post('/webauthn/login/verify', async (req, res, next) => {
         firstName: user.firstName,
         lastName: user.lastName,
         gender: user.gender,
+        role: user.role,
         subscriptionStatus: user.subscriptionStatus
       },
       token: accessToken,
@@ -757,6 +760,7 @@ router.post('/refresh', async (req, res, next) => {
         firstName: user.firstName,
         lastName: user.lastName,
         gender: user.gender,
+        role: user.role,
         subscriptionStatus: user.subscriptionStatus
       }
     });
