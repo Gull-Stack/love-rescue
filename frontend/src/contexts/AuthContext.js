@@ -86,6 +86,20 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, checkBiometricStatus]);
 
+  // Persist the role so surfaces that render outside this provider (e.g. the
+  // ErrorBoundary crash screen) can route recovery to the right home.
+  useEffect(() => {
+    try {
+      if (user?.role) {
+        localStorage.setItem('lr_user_role', user.role);
+      } else if (user === null) {
+        localStorage.removeItem('lr_user_role');
+      }
+    } catch {
+      // Storage not available — crash recovery falls back to path detection.
+    }
+  }, [user]);
+
   const fetchUser = async () => {
     try {
       const response = await api.get('/auth/me');

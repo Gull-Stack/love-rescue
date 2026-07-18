@@ -57,7 +57,18 @@ class ErrorBoundary extends React.Component {
   };
 
   handleGoHome = () => {
-    window.location.href = '/dashboard';
+    // Therapists must not be dumped onto the couple dashboard. Role comes from
+    // the copy AuthContext persists; the path prefix is the fallback when
+    // storage is unavailable or was cleared.
+    let role = null;
+    try {
+      role = localStorage.getItem('lr_user_role');
+    } catch {
+      // ignore — fall back to path detection
+    }
+    const isTherapist =
+      role === 'therapist' || window.location.pathname.startsWith('/therapist');
+    window.location.href = isTherapist ? '/therapist' : '/dashboard';
   };
 
   render() {
