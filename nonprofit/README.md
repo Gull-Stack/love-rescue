@@ -23,8 +23,11 @@ sourced from IRS.gov, Grants.gov, SAM.gov, ACF/HHS, and SAMHSA.
 - [x] Form 1023-EZ answers pre-drafted
 - [x] Federal grant landscape researched (ACF HMRF/READY4Life, SAMHSA, HRSA, ED)
 - [x] SAM.gov / Grants.gov registration pipeline documented
-- [ ] **State of incorporation chosen** — requires founder decision
-- [ ] **Board of directors named (3+ recommended)** — requires founder decision
+- [x] **State of incorporation chosen: Montana** (see `06-MONTANA-FILING-GUIDE.md` — $10 fee, online-only, no charitable registration required)
+- [x] **Structure decided:** fresh nonprofit corporation (no pre-existing LLC → no successor issues; 1023-EZ confirmed by <$50k/yr projection)
+- [x] **Board of directors:** founder confirms 3+ members lined up (names still needed for the filing)
+- [x] **Browser automation verified** against Pay.gov, Grants.gov, SAM.gov (`tools/`)
+- [x] **Live grant scan** via Grants.gov API — ACF SRAE/PREP/PREIS close 08/17–18/2026 (`04-FEDERAL-GRANTS.md`)
 - [ ] **Articles filed with the state** — requires officer signature + state fee
 - [ ] **EIN obtained** — requires responsible party's SSN, cannot be delegated
 - [ ] **Form 1023-EZ filed on Pay.gov** — requires officer attestation under penalty of perjury + $275 fee

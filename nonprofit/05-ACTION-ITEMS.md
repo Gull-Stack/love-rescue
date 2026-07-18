@@ -4,18 +4,18 @@ Everything researchable and draftable has been done. The remaining steps are leg
 must be performed by a human officer: they involve signatures under penalty of perjury, your
 SSN, and payments. Each is prepared so it should take minutes.
 
-## 1. Two decisions (reply in chat and drafting can be finalized)
+## 1. Decisions — ✅ DONE (July 18, 2026)
 
-- **State of incorporation** — normally your home state.
-- **Board members** — 3+ names; majority unrelated to each other/you is strongly recommended.
-- (Also confirm: fresh nonprofit affiliate — recommended — vs. converting the existing
-  Love Rescue business. See `01-501c3-ROADMAP.md` Step 1.)
+Montana · fresh nonprofit corporation (no prior LLC exists) · 3+ board members lined up ·
+under-$50k projection → Form 1023-EZ. One input still needed: **the board members' names,
+titles, and addresses** (used in the articles, bylaws, and 1023-EZ).
 
-## 2. File Articles of Incorporation (~15 min online, ~$25–$125)
+## 2. File Articles of Incorporation (~15 min online, $10)
 
-Your Secretary of State's website → nonprofit corporation filing → paste the purpose,
+Follow `06-MONTANA-FILING-GUIDE.md`: create an account at biz.sosmt.gov → Register A
+Business → Domestic Nonprofit Corporation (Public Benefit) → paste the purpose,
 prohibited-activities, and dissolution clauses from `02-ORGANIZING-DOCUMENTS-DRAFTS.md`
-verbatim. Ideally have a nonprofit attorney glance at it first.
+verbatim into the provisions field. Ideally have a nonprofit attorney glance at it first.
 
 ## 3. Hold the first board meeting (~30 min)
 
