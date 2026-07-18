@@ -61,16 +61,16 @@ const ACCENT_GRADIENT_HOVER = 'linear-gradient(135deg, #B86A22 0%, #E08A3C 100%)
 const programs = [
   {
     title: 'Relationship Assessments',
-    subtitle: '4 Scientific Assessments',
-    description: 'Discover your attachment style, personality dynamics, wellness behaviors, and closeness patterns through research-backed questionnaires.',
+    subtitle: '10 Research-Backed Assessments',
+    description: 'Discover your attachment style, personality dynamics, love language, core needs, and more through research-backed questionnaires. Your personalized plan unlocks after your first three.',
     icon: <AssignmentIcon sx={{ fontSize: 40 }} />,
     color: '#E08A3C',
     tag: 'Foundation',
   },
   {
     title: 'Daily Insights',
-    subtitle: '14-Week Guided Course',
-    description: 'Receive personalized daily insights based on your unique assessment profile. 98 days of science-backed relationship wisdom delivered to you.',
+    subtitle: '16-Week Journey',
+    description: 'Receive personalized daily insights based on your unique assessment profile. 16 weeks of science-backed relationship wisdom delivered to you.',
     icon: <LightbulbIcon sx={{ fontSize: 40 }} />,
     color: '#F0A55C',
     tag: 'Daily Growth',
@@ -113,7 +113,7 @@ const steps = [
   {
     number: '01',
     title: 'Take Your Assessments',
-    description: 'Complete four research-backed assessments to reveal your attachment style, personality dynamics, wellness behaviors, and closeness patterns.',
+    description: 'Complete ten research-backed assessments to reveal your attachment style, personality dynamics, love language, and core needs. Your personalized plan unlocks after your first three.',
   },
   {
     number: '02',
@@ -128,7 +128,7 @@ const steps = [
   {
     number: '04',
     title: 'See Real Progress',
-    description: 'Weekly and monthly reports show your trajectory. Relationship science meets daily practice — watch your connection strengthen over 14 weeks and beyond.',
+    description: 'Weekly and monthly reports show your trajectory. Relationship science meets daily practice — watch your connection strengthen over 16 weeks and beyond.',
   },
 ];
 
@@ -166,7 +166,7 @@ const testimonials = [
 const stats = [
   { value: '94%', label: 'of couples report improved communication within 4 weeks' },
   { value: '5:1', label: 'average positivity ratio achieved by active users' },
-  { value: '14', label: 'weeks of structured, science-backed content' },
+  { value: '16', label: 'weeks of structured, science-backed content' },
   { value: '10K+', label: 'couples building stronger relationships' },
 ];
 
@@ -1090,10 +1090,10 @@ const Landing = () => {
   // GET /api/payments/plans). These must match the Stripe dashboard prices:
   // Premium $49/mo, Annual $490/yr.
   const PRICING_FEATURES = [
-    'Scientific Assessments',
+    '10 Research-Backed Assessments',
     'Matchup Compatibility Analysis',
     'Smart Strategy Plans',
-    'Guided Video Course (98 days)',
+    '16-Week Journey',
     'Daily Personalized Insights',
     'Weekly & Monthly Progress Reports',
     'Guided Real Talk Conversations',
