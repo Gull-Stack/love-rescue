@@ -41,9 +41,16 @@ import VideocamIcon from '@mui/icons-material/Videocam';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import PeopleIcon from '@mui/icons-material/People';
+import EventIcon from '@mui/icons-material/Event';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 import { useAuth } from '../../contexts/AuthContext';
 import XPBar from '../gamification/XPBar';
 import useSwipeNavigation from '../../hooks/useSwipeNavigation';
+import { openBilling } from '../../utils/openBilling';
 
 // Platform admin emails (sync with backend)
 const PLATFORM_ADMIN_EMAILS = [
@@ -76,6 +83,39 @@ function getUserState(user) {
   if (assessments < 3) return STATE.DISCOVERING;
   return STATE.BUILDING;
 }
+
+// Therapists get their own chrome: every destination is practice work, and
+// nothing routes back into the couple product by accident.
+const THERAPIST_BOTTOM_NAV = [
+  { label: 'Home', path: '/therapist', icon: <DashboardIcon /> },
+  { label: 'Clients', path: '/therapist/clients', icon: <PeopleIcon /> },
+  { label: 'Calendar', path: '/therapist/appointments', icon: <EventIcon /> },
+  { label: 'Alerts', path: '/therapist/alerts', icon: <NotificationsActiveIcon /> },
+];
+
+const THERAPIST_DRAWER_SECTIONS = [
+  {
+    header: 'PRACTICE',
+    items: [
+      { label: 'Dashboard', path: '/therapist', icon: <DashboardIcon /> },
+      { label: 'Clients', path: '/therapist/clients', icon: <PeopleIcon /> },
+      { label: 'Appointments', path: '/therapist/appointments', icon: <EventIcon /> },
+      { label: 'Alerts', path: '/therapist/alerts', icon: <NotificationsActiveIcon /> },
+    ],
+  },
+  {
+    header: 'BILLING',
+    items: [
+      { label: 'Medical Billing', path: '/__billing__', icon: <LocalHospitalIcon /> },
+    ],
+  },
+  {
+    header: 'YOU',
+    items: [
+      { label: 'Settings', path: '/settings', icon: <SettingsIcon /> },
+    ],
+  },
+];
 
 function getBottomNavItems(userState, hasPartner) {
   switch (userState) {
@@ -198,13 +238,24 @@ const Layout = () => {
   // Therapist-side detection — drives distinct chrome
   const isTherapistMode = location.pathname.startsWith('/therapist');
 
-  // Dynamic state
+  // Dynamic state — therapists get practice navigation, clients get theirs.
   const userState = getUserState(user);
   const hasPartner = relationship?.hasPartner || false;
-  const bottomNavItems = getBottomNavItems(userState, hasPartner);
-  const drawerSections = getDrawerSections(isPlatformAdmin, userState);
+  const bottomNavItems = isTherapistMode
+    ? THERAPIST_BOTTOM_NAV
+    : getBottomNavItems(userState, hasPartner);
+  const drawerSections = isTherapistMode
+    ? THERAPIST_DRAWER_SECTIONS
+    : getDrawerSections(isPlatformAdmin, userState);
+
+  const [billingError, setBillingError] = useState('');
 
   const handleNavigation = (path) => {
+    if (path === '/__billing__') {
+      setDrawerOpen(false);
+      openBilling({ navigate, onError: setBillingError });
+      return;
+    }
     navigate(path);
     setDrawerOpen(false);
   };
@@ -214,12 +265,25 @@ const Layout = () => {
     navigate('/login');
   };
 
+  // Longest-prefix match so "/therapist" doesn't stay highlighted on
+  // "/therapist/clients" — the most specific destination wins.
   const getCurrentNavIndex = () => {
-    const index = bottomNavItems.findIndex(
-      (item) => item.path && location.pathname.startsWith(item.path)
-    );
-    return index >= 0 ? index : -1;
+    let best = -1;
+    let bestLen = 0;
+    bottomNavItems.forEach((item, i) => {
+      if (item.path && location.pathname.startsWith(item.path) && item.path.length > bestLen) {
+        best = i;
+        bestLen = item.path.length;
+      }
+    });
+    return best;
   };
+
+  const allDrawerPaths = drawerSections.flatMap((s) => s.items.map((it) => it.path));
+  const selectedDrawerPath = allDrawerPaths.reduce((best, p) => {
+    if (p && location.pathname.startsWith(p) && (!best || p.length > best.length)) return p;
+    return best;
+  }, null);
 
   const userInitials = user
     ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || user.email[0]}`.toUpperCase()
@@ -354,7 +418,7 @@ const Layout = () => {
               {section.items.map((item) => (
                 <ListItem key={item.path} disablePadding>
                   <ListItemButton
-                    selected={location.pathname.startsWith(item.path)}
+                    selected={item.path === selectedDrawerPath}
                     onClick={() => handleNavigation(item.path)}
                     sx={{
                       mx: 1,
@@ -415,6 +479,15 @@ const Layout = () => {
           <Outlet />
         </motion.div>
       </Box>
+
+      <Snackbar
+        open={Boolean(billingError)}
+        autoHideDuration={5000}
+        onClose={() => setBillingError('')}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="error" onClose={() => setBillingError('')}>{billingError}</Alert>
+      </Snackbar>
 
       {/* Bottom Navigation (mobile only) */}
       {isMobile && (

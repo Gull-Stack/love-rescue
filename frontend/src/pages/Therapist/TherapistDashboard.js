@@ -155,8 +155,8 @@ const TherapistDashboard = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', rowGap: 1 }}>
         <Typography variant="h3">Therapist Dashboard</Typography>
         <Button
           variant="contained"
@@ -215,10 +215,10 @@ const TherapistDashboard = () => {
         );
       })()}
 
-      {/* Client Roster */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      {/* Client Roster — actions wrap below the heading on narrow screens */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', rowGap: 1 }}>
         <Typography variant="h5">Clients</Typography>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
           <Button
             variant="outlined"
             size="small"
