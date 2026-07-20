@@ -108,6 +108,9 @@ describe('Auth Routes', () => {
         create: jest.fn(),
         findFirst: jest.fn(),
         update: jest.fn()
+      },
+      consentLog: {
+        create: jest.fn()
       }
     };
 
@@ -450,7 +453,17 @@ describe('Auth Routes', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             user2Id: 'user-2',
-            inviteCode: null
+            inviteCode: null,
+            // Joining establishes partner-to-partner data sharing
+            sharedConsent: true
+          })
+        })
+      );
+      expect(mockPrisma.consentLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            consentType: 'partner_sharing',
+            granted: true
           })
         })
       );

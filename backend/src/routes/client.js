@@ -75,20 +75,24 @@ async function revokeTherapistAccess(prisma, clientId, therapistId) {
     data: { consentStatus: 'REVOKED', consentRevokedAt: now, inviteCode: null },
   });
 
-  // 2. Legacy surface: the client's relationships. Clear THIS user's consent
-  //    flag (requireBothConsent then denies) and drop sharedConsent, then revoke
-  //    the therapist's active assignments on those relationships (so
+  // 2. Legacy surface: the client's relationships. Clear THIS user's therapist
+  //    consent flag (requireBothConsent then denies), then revoke the
+  //    therapist's active assignments on those relationships (so
   //    requireTherapistAssignment denies too).
   const relationships = await prisma.relationship.findMany({
     where: { OR: [{ user1Id: clientId }, { user2Id: clientId }] },
     select: { id: true, user1Id: true },
   });
 
+  // Clear only this user's THERAPIST consent flag. sharedConsent is the
+  // partner-to-partner sharing gate (set when the couple links) — revoking a
+  // therapist must not break the couple's own features (assessment compare,
+  // partner reports).
   await Promise.all(relationships.map((rel) => prisma.relationship.update({
     where: { id: rel.id },
     data: rel.user1Id === clientId
-      ? { user1TherapistConsent: false, sharedConsent: false }
-      : { user2TherapistConsent: false, sharedConsent: false },
+      ? { user1TherapistConsent: false }
+      : { user2TherapistConsent: false },
   })));
 
   if (relationships.length > 0) {
