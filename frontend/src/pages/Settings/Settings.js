@@ -114,7 +114,10 @@ const Settings = () => {
       ]);
 
       setCalendarStatus(calRes.data);
-      setTherapistConsent(consentRes.data.consent);
+      // The toggle reflects THIS user's therapist consent (myConsent), not the
+      // combined both-partners state (`consent`) — otherwise a user who has
+      // consented sees their toggle "off" until their partner also consents.
+      setTherapistConsent(consentRes.data.myConsent ?? consentRes.data.consent);
       setSubscription(subRes.data);
       if (ringsRes.data) {
         const rings = ringsRes.data;

@@ -157,6 +157,7 @@ model User {
   appleExpiresAt     DateTime?          @map("apple_expires_at") // Apple auto-renewable subscription expiry from the validated receipt
   appleOriginalTransactionId String?    @unique @map("apple_original_transaction_id") @db.VarChar(255) // replay guard: one Apple purchase entitles at most one account
   subscriptionCurrentPeriodEnd DateTime? @map("subscription_current_period_end") // current billing period end (Stripe)
+  lastActiveAt       DateTime?          @map("last_active_at") // touched by /auth/me; drives admin DAU/WAU/MAU + churn views
   metadata           Json?              @db.JsonB
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
@@ -186,6 +187,7 @@ model User {
   @@index([email])
   @@index([subscriptionStatus])
   @@index([role])
+  @@index([lastActiveAt])
 }
 
 // Therapist profiles (separate from User for security isolation)

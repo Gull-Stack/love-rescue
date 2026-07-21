@@ -873,11 +873,26 @@ router.post('/join/:code', authenticate, async (req, res, next) => {
       }
     });
 
+    // Joining is a mutual opt-in (one partner invited, the other accepted), so
+    // it establishes partner-to-partner data sharing (sharedConsent) — the gate
+    // for assessment comparison and partner reports. Therapist access remains a
+    // separate, explicit consent (user1/user2TherapistConsent).
     await req.prisma.relationship.update({
       where: { id: relationship.id },
       data: {
         user2Id: req.user.id,
-        inviteCode: null // Clear code after use
+        inviteCode: null, // Clear code after use
+        sharedConsent: true
+      }
+    });
+
+    await req.prisma.consentLog.create({
+      data: {
+        userId: req.user.id,
+        relationshipId: relationship.id,
+        consentType: 'partner_sharing',
+        granted: true,
+        ipAddress: req.ip
       }
     });
 

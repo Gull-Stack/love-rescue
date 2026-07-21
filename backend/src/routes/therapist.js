@@ -645,18 +645,16 @@ router.post('/consent', authenticate, async (req, res, next) => {
       ? { user1TherapistConsent: consent === true }
       : { user2TherapistConsent: consent === true };
 
-    // Also update legacy sharedConsent for backward compat
     const updatedRel = await req.prisma.relationship.update({
       where: { id: relationship.id },
       data: updateData
     });
 
-    // Update sharedConsent based on both individual consents
+    // sharedConsent (partner-to-partner data sharing, set when the couple
+    // links) is deliberately NOT touched here — therapist consent and partner
+    // sharing are independent consents. Conflating them locked couples out of
+    // assessment comparison unless they also had a therapist.
     const bothConsented = updatedRel.user1TherapistConsent && updatedRel.user2TherapistConsent;
-    await req.prisma.relationship.update({
-      where: { id: relationship.id },
-      data: { sharedConsent: bothConsented }
-    });
 
     // Log consent change
     await req.prisma.consentLog.create({
@@ -716,7 +714,9 @@ router.get('/consent', authenticate, async (req, res, next) => {
     const isUser1 = relationship.user1Id === req.user.id;
 
     res.json({
-      consent: relationship.sharedConsent,
+      // Legacy field: reflects therapist consent (both partners), NOT the
+      // partner-sharing flag — kept for clients that read `consent` here.
+      consent: relationship.user1TherapistConsent && relationship.user2TherapistConsent,
       myConsent: isUser1 ? relationship.user1TherapistConsent : relationship.user2TherapistConsent,
       partnerConsent: isUser1 ? relationship.user2TherapistConsent : relationship.user1TherapistConsent,
       bothConsented: relationship.user1TherapistConsent && relationship.user2TherapistConsent

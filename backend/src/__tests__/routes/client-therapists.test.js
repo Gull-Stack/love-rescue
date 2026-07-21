@@ -562,9 +562,11 @@ describe('Revoke closes the legacy grant surface', () => {
       .set('Authorization', `Bearer ${clientToken}`);
     expect(revoke.status).toBe(200);
 
-    // The legacy surfaces were closed by the revoke helper
+    // The legacy surfaces were closed by the revoke helper. sharedConsent
+    // (partner-to-partner sharing) is NOT touched: revoking a therapist must
+    // not break the couple's own features.
     expect(relationship.user1TherapistConsent).toBe(false);
-    expect(relationship.sharedConsent).toBe(false);
+    expect(relationship.sharedConsent).toBe(true);
     expect(assignment.status).toBe('revoked');
     expect(links[0].consentStatus).toBe('REVOKED');
 

@@ -146,7 +146,10 @@ router.post('/create-checkout', authenticate, async (req, res, next) => {
 
     if (!priceId) {
       logger.error('Checkout requested but price id not configured', { tier });
-      return res.status(500).json({ error: 'Billing is not configured', code: 'PRICE_NOT_CONFIGURED' });
+      // 503, not 500: a missing price id is a config gap, not a server crash —
+      // clients should show "billing unavailable", and 5xx alerting shouldn't
+      // treat it as an application error.
+      return res.status(503).json({ error: 'Billing is not configured', code: 'PRICE_NOT_CONFIGURED' });
     }
 
     const user = await req.prisma.user.findUnique({
