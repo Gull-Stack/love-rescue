@@ -1,21 +1,26 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+// API base resolution, in priority order:
+//   1. Native shells (Capacitor: capacitor:// or ionic:// origin) need an
+//      absolute URL — REACT_APP_API_URL baked at build time.
+//   2. Web on a real domain ALWAYS uses same-origin '/api', which vercel.json
+//      rewrites to the live backend. This is deliberate: the rewrite lives in
+//      the repo and deploys with the code, so a stale REACT_APP_API_URL in the
+//      hosting env can never point production browsers at a dead backend
+//      (which is exactly what happened when the API moved Railway projects).
+//   3. Local dev falls back to the env var or localhost:3001.
+const envUrl = process.env.REACT_APP_API_URL;
+const isBrowser = typeof window !== 'undefined';
+const isNativeShell = isBrowser && /^(capacitor|ionic):/.test(window.location.protocol);
+const isLocalHost = isBrowser && /^(localhost|127\.0\.0\.1)/.test(window.location.hostname);
 
-// Guard: never let a production build silently talk to localhost. If the env
-// var was missing at build time, the app would point every real user at their
-// own machine and every request would fail with no obvious cause.
-if (
-  typeof window !== 'undefined' &&
-  !/^(localhost|127\.0\.0\.1)/.test(window.location.hostname) &&
-  /localhost|127\.0\.0\.1/.test(API_URL)
-) {
-  // eslint-disable-next-line no-console
-  console.error(
-    `[config] REACT_APP_API_URL is unset/localhost ("${API_URL}") but the app ` +
-      `is running on "${window.location.hostname}". API calls will fail. ` +
-      `Set REACT_APP_API_URL at build time.`
-  );
+let API_URL;
+if (isNativeShell || (isBrowser && isLocalHost && window.Capacitor)) {
+  API_URL = envUrl || 'https://backend-production-76f0e.up.railway.app/api';
+} else if (isBrowser && !isLocalHost) {
+  API_URL = '/api';
+} else {
+  API_URL = envUrl || 'http://localhost:3001/api';
 }
 
 const api = axios.create({
