@@ -167,7 +167,6 @@
     }
   ],
   "github": {
-    "enabled": true,
-    "autoAlias": false
+    "enabled": true
   }
 }
