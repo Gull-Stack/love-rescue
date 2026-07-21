@@ -8,6 +8,14 @@ const { resolveEntitlement, trialDaysRemaining } = require('../lib/entitlement')
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+// True for any error thrown by the Stripe SDK (StripeAuthenticationError,
+// StripePermissionError, StripeConnectionError, ...). Used to translate
+// upstream billing failures into 502 BILLING_UPSTREAM_ERROR instead of
+// leaking Stripe's own status codes (a Stripe 401 is not OUR auth failure).
+function isStripeError(err) {
+  return !!err && (typeof err.type === 'string' && err.type.startsWith('Stripe'));
+}
+
 // The two purchasable tiers. Both grant premium-level entitlement; the webhook
 // maps tier 'premium'|'annual' → subscriptionStatus 'premium'. Dollar amounts
 // live in Stripe (fetched via prices.retrieve); env display vars + the coded
@@ -213,6 +221,16 @@ router.post('/create-checkout', authenticate, async (req, res, next) => {
     res.json({ url: session.url, sessionId: session.id });
   } catch (error) {
     logger.error('create-checkout error', { error: error.message });
+    // Upstream Stripe failures (invalid/revoked API key, Stripe outage) must
+    // NOT pass through as our status codes — a Stripe 401 would otherwise look
+    // like a session-auth failure and send the client into a token-refresh
+    // cycle. Surface them as 502 with a stable code the UI can message.
+    if (isStripeError(error)) {
+      return res.status(502).json({
+        error: 'Billing is temporarily unavailable. Please try again later.',
+        code: 'BILLING_UPSTREAM_ERROR'
+      });
+    }
     next(error);
   }
 });
@@ -560,6 +578,12 @@ router.post('/cancel', authenticate, async (req, res, next) => {
     });
   } catch (error) {
     logger.error('cancel subscription error', { error: error.message });
+    if (isStripeError(error)) {
+      return res.status(502).json({
+        error: 'Billing is temporarily unavailable. Please try again later.',
+        code: 'BILLING_UPSTREAM_ERROR'
+      });
+    }
     next(error);
   }
 });
@@ -587,8 +611,58 @@ router.post('/portal', authenticate, async (req, res, next) => {
     res.json({ url: session.url });
   } catch (error) {
     logger.error('billing portal error', { error: error.message });
+    if (isStripeError(error)) {
+      return res.status(502).json({
+        error: 'Billing is temporarily unavailable. Please try again later.',
+        code: 'BILLING_UPSTREAM_ERROR'
+      });
+    }
     next(error);
   }
+});
+
+/**
+ * GET /api/payments/health
+ * Operator probe: is billing actually able to take money right now?
+ * Booleans only — never key material. The live Stripe check is cached for
+ * 60s so the endpoint can't be used to hammer Stripe.
+ */
+let stripeProbeCache = { at: 0, ok: null, authFailed: null };
+router.get('/health', async (req, res) => {
+  const keyConfigured = !!process.env.STRIPE_SECRET_KEY;
+  const priceConfigured = !!process.env.STRIPE_PREMIUM_PRICE_ID;
+
+  let stripeReachable = false;
+  let stripeAuthFailed = null;
+  if (keyConfigured && priceConfigured) {
+    const now = Date.now();
+    if (now - stripeProbeCache.at < 60000 && stripeProbeCache.ok !== null) {
+      stripeReachable = stripeProbeCache.ok;
+      stripeAuthFailed = stripeProbeCache.authFailed;
+    } else {
+      try {
+        await stripe.prices.retrieve(process.env.STRIPE_PREMIUM_PRICE_ID);
+        stripeReachable = true;
+        stripeAuthFailed = false;
+      } catch (err) {
+        stripeReachable = false;
+        stripeAuthFailed = err.statusCode === 401;
+        logger.error('Stripe health probe failed', { error: err.message, statusCode: err.statusCode });
+      }
+      stripeProbeCache = { at: now, ok: stripeReachable, authFailed: stripeAuthFailed };
+    }
+  }
+
+  const healthy = keyConfigured && priceConfigured && stripeReachable;
+  res.status(healthy ? 200 : 503).json({
+    billing: healthy ? 'healthy' : 'unavailable',
+    keyConfigured,
+    priceConfigured,
+    stripeReachable,
+    // true = Stripe rejected the configured secret key (replace it);
+    // false = key OK but Stripe unreachable; null = not probed
+    stripeAuthFailed
+  });
 });
 
 module.exports = router;
