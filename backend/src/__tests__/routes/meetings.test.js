@@ -374,6 +374,31 @@ describe('Meetings Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.meetings).toEqual([]);
     });
+
+    // QA remediation: /upcoming is a read the Dashboard fires on every mount.
+    // It must be 200 for free/expired users — a subscription gate here hard-
+    // locked them out of their home screen. FAILS if the gate returns.
+    test('free/expired-trial user gets 200, never 402', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        ...TEST_USER_PREMIUM,
+        subscriptionStatus: 'free',
+        trialEndsAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      });
+      mockPrisma.relationship.findFirst.mockResolvedValue(TEST_RELATIONSHIP);
+      mockPrisma.meeting.findMany.mockResolvedValue([]);
+
+      const res = await request(app)
+        .get('/api/meetings/upcoming')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.meetings).toEqual([]);
+    });
+
+    test('unauthenticated → 401', async () => {
+      const res = await request(app).get('/api/meetings/upcoming');
+      expect(res.status).toBe(401);
+    });
   });
 
   // -------------------------------------------------------------------------
