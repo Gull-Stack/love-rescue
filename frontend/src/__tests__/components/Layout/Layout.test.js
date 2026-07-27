@@ -53,7 +53,8 @@ describe('Layout', () => {
 
   test('desktop drawer shows the grouped navigation sections', () => {
     // Established users get the full menu (BLANK users get a trimmed one).
-    localStorage.setItem('lr_user_state', 'PRACTICING');
+    // Journey state is served on /auth/me and exposed via useAuth.
+    auth.journey = { state: 'PRACTICING' };
     renderWithProviders(<Layout />, { initialEntries: ['/dashboard'] });
 
     // Section headers
@@ -63,8 +64,8 @@ describe('Layout', () => {
     expect(screen.getByText('YOU')).toBeInTheDocument();
 
     // Key destinations
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('16-Week Journey')).toBeInTheDocument();
+    expect(screen.getByText('Today')).toBeInTheDocument();
+    expect(screen.getByText('Journey')).toBeInTheDocument();
     expect(screen.getByText('Strategies')).toBeInTheDocument();
     expect(screen.getByText('Check-in')).toBeInTheDocument();
     expect(screen.getByText('Real Talk')).toBeInTheDocument();
@@ -77,10 +78,10 @@ describe('Layout', () => {
   });
 
   test('brand-new (BLANK) users get a trimmed menu without premature destinations', () => {
-    localStorage.setItem('lr_user_state', 'BLANK');
+    auth.journey = { state: 'BLANK' };
     renderWithProviders(<Layout />, { initialEntries: ['/dashboard'] });
 
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Today')).toBeInTheDocument();
     expect(screen.queryByText('Matchup')).not.toBeInTheDocument();
     expect(screen.queryByText('Reports')).not.toBeInTheDocument();
     expect(screen.queryByText('Meetings')).not.toBeInTheDocument();

@@ -26,12 +26,10 @@ import {
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import ExploreIcon from '@mui/icons-material/Explore';
 import SchoolIcon from '@mui/icons-material/School';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -51,73 +49,23 @@ const PLATFORM_ADMIN_EMAILS = [
   'bryce@gullstack.com',
 ];
 
-// User progress states — must match Dashboard.js
-const STATE = {
-  BLANK: 'BLANK',
-  DISCOVERING: 'DISCOVERING',
-  BUILDING: 'BUILDING',
-  PRACTICING: 'PRACTICING',
-  TRANSFORMED: 'TRANSFORMED',
-};
+// Four permanent tabs. The bar used to change membership four times over a
+// user's lifecycle, which made muscle memory impossible and left most pages
+// with no highlighted tab. These never change; each tab owns a family of
+// routes (see TAB_ROUTE_FAMILIES) so "you are here" always lights up.
+const BOTTOM_NAV_ITEMS = [
+  { label: 'Today', path: '/dashboard', icon: <DashboardIcon /> },
+  { label: 'Journey', path: '/course', icon: <SchoolIcon /> },
+  { label: 'Us', path: '/matchup', icon: <FavoriteIcon /> },
+  { label: 'You', path: '/settings', icon: <SettingsIcon /> },
+];
 
-function getUserState(user) {
-  // Read cached state from Dashboard
-  try {
-    const cached = localStorage.getItem('lr_user_state');
-    if (cached && Object.values(STATE).includes(cached)) {
-      return cached;
-    }
-  } catch {
-    // Storage not available
-  }
-  // Fallback: derive from user object if possible
-  const assessments = user?.assessmentsCompleted || 0;
-  if (assessments === 0) return STATE.BLANK;
-  if (assessments < 3) return STATE.DISCOVERING;
-  return STATE.BUILDING;
-}
-
-function getBottomNavItems(userState, hasPartner) {
-  switch (userState) {
-    case STATE.BLANK:
-      return [
-        { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
-        { label: 'Settings', path: '/settings', icon: <SettingsIcon /> },
-      ];
-    case STATE.DISCOVERING:
-      return [
-        { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
-        { label: 'Discover', path: '/assessments', icon: <ExploreIcon /> },
-        { label: 'Settings', path: '/settings', icon: <SettingsIcon /> },
-      ];
-    case STATE.BUILDING:
-      return [
-        { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
-        { label: 'Check-in', path: '/daily', icon: <EditNoteIcon /> },
-        { label: 'Real Talk', path: '/real-talk', icon: <ChatBubbleOutlineIcon /> },
-        { label: 'More', path: null, icon: <MoreHorizIcon /> },
-      ];
-    case STATE.PRACTICING:
-    case STATE.TRANSFORMED:
-    default:
-      if (hasPartner) {
-        return [
-          { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
-          { label: 'Journey', path: '/course', icon: <SchoolIcon /> },
-          { label: 'Check-in', path: '/daily', icon: <EditNoteIcon /> },
-          { label: 'Matchup', path: '/matchup', icon: <FavoriteIcon /> },
-          { label: 'More', path: null, icon: <MoreHorizIcon /> },
-        ];
-      }
-      return [
-        { label: 'Home', path: '/dashboard', icon: <DashboardIcon /> },
-        { label: 'Journey', path: '/course', icon: <SchoolIcon /> },
-        { label: 'Check-in', path: '/daily', icon: <EditNoteIcon /> },
-        { label: 'Gratitude', path: '/gratitude', icon: <VolunteerActivismIcon /> },
-        { label: 'More', path: null, icon: <MoreHorizIcon /> },
-      ];
-  }
-}
+const TAB_ROUTE_FAMILIES = [
+  ['/dashboard', '/daily'],
+  ['/course', '/assessments', '/strategies', '/skills', '/reports', '/weekly-review', '/transformation'],
+  ['/matchup', '/gratitude', '/real-talk', '/meetings'],
+  ['/settings', '/subscribe'],
+];
 
 // Side drawer grouped items
 function getDrawerSections(isPlatformAdmin, userState) {
@@ -129,8 +77,8 @@ function getDrawerSections(isPlatformAdmin, userState) {
     {
       header: 'GROW',
       items: [
-        { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
-        { label: '16-Week Journey', path: '/course', icon: <SchoolIcon /> },
+        { label: 'Today', path: '/dashboard', icon: <DashboardIcon /> },
+        { label: 'Journey', path: '/course', icon: <SchoolIcon /> },
         { label: 'Strategies', path: '/strategies', icon: <TipsAndUpdatesIcon /> },
         { label: 'Skill Tree', path: '/skills', icon: <AccountTreeIcon /> },
       ],
@@ -183,7 +131,7 @@ const Layout = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, relationship, logout } = useAuth();
+  const { user, journey, logout } = useAuth();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -198,10 +146,10 @@ const Layout = () => {
   // Therapist-side detection — drives distinct chrome
   const isTherapistMode = location.pathname.startsWith('/therapist');
 
-  // Dynamic state
-  const userState = getUserState(user);
-  const hasPartner = relationship?.hasPartner || false;
-  const bottomNavItems = getBottomNavItems(userState, hasPartner);
+  // Journey state is server-owned (computed on /auth/me) — the old
+  // localStorage relay from the Dashboard left this permanently stale.
+  const userState = journey?.state || 'BLANK';
+  const bottomNavItems = BOTTOM_NAV_ITEMS;
   const drawerSections = getDrawerSections(isPlatformAdmin, userState);
 
   const handleNavigation = (path) => {
@@ -215,8 +163,8 @@ const Layout = () => {
   };
 
   const getCurrentNavIndex = () => {
-    const index = bottomNavItems.findIndex(
-      (item) => item.path && location.pathname.startsWith(item.path)
+    const index = TAB_ROUTE_FAMILIES.findIndex((family) =>
+      family.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))
     );
     return index >= 0 ? index : -1;
   };

@@ -131,8 +131,28 @@ function getAction({
   };
 }
 
+// Map the server's next-action keys onto the card's visual treatments.
+const SERVER_ACTION_GRADIENTS = {
+  first_assessment: GRADIENTS.assessment,
+  more_assessments: GRADIENTS.assessment,
+  daily_checkin: GRADIENTS.daily,
+  get_plan: GRADIENTS.strategy,
+  gratitude: GRADIENTS.gratitude,
+  explore: GRADIENTS.done,
+};
+
+const SERVER_ACTION_CTAS = {
+  first_assessment: 'Start',
+  more_assessments: 'Continue',
+  daily_checkin: 'Check In',
+  get_plan: 'See My Plan',
+  gratitude: 'Gratitude',
+  explore: 'Open Journey',
+};
+
 const ActionCard = ({
   user,
+  nextAction = null,
   assessmentsDone = 0,
   totalAssessments = 10,
   hasLoggedToday = false,
@@ -145,16 +165,28 @@ const ActionCard = ({
 }) => {
   const navigate = useNavigate();
 
-  const action = getAction({
-    assessmentsDone,
-    totalAssessments,
-    hasLoggedToday,
-    hasGratitudeToday,
-    hasTriedRealTalk,
-    strategy,
-    loveNote,
-    partnerName,
-  });
+  // The server's journey.nextAction (from /auth/me) is the single canonical
+  // ladder — ProgressJourney renders the same one, so the two cards can never
+  // disagree. The local ladder is only a fallback while /auth/me is stale.
+  const action = nextAction
+    ? {
+        gradient: SERVER_ACTION_GRADIENTS[nextAction.key] || GRADIENTS.assessment,
+        message: nextAction.label,
+        subtitle: nextAction.description || null,
+        cta: SERVER_ACTION_CTAS[nextAction.key] || 'Continue',
+        path: nextAction.path,
+        isDone: false,
+      }
+    : getAction({
+        assessmentsDone,
+        totalAssessments,
+        hasLoggedToday,
+        hasGratitudeToday,
+        hasTriedRealTalk,
+        strategy,
+        loveNote,
+        partnerName,
+      });
 
   return (
     <Box

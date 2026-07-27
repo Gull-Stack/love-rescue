@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import { useAuth } from '../../contexts/AuthContext';
+import { trackEvent } from '../../utils/analytics';
 
 const JoinRelationship = () => {
   const { code } = useParams();
@@ -29,6 +30,7 @@ const JoinRelationship = () => {
 
     try {
       await joinRelationship(code);
+      trackEvent('invite_joined');
       setSuccess(true);
       setTimeout(() => navigate('/assessments'), 2000);
     } catch (err) {

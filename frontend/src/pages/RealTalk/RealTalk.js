@@ -370,6 +370,13 @@ const NeedStep = (props) => {
         handleStepAction={handleStepAction}
       />
       {loading && <CircularProgress sx={{ color: '#fff', mt: 2 }} size={32} />}
+      {/* A failed generation leaves the user on this step — the error must
+          show HERE, not on the result step they never reached. */}
+      {props.error && !loading && (
+        <Typography variant="body2" sx={{ color: '#FFD9CF', mt: 2, textAlign: 'center', maxWidth: 360 }}>
+          {props.error} — try again in a moment.
+        </Typography>
+      )}
     </CardShell>
   );
 };
@@ -378,7 +385,7 @@ const ResultStep = (props) => {
   const {
     result, copied, handleCopy, expertQuote,
     effectivenessRated, handleEffectiveness,
-    error, onRetry, onReset,
+    error, onRetry, onReset, onGoHome,
   } = props;
   return (
     <CardShell {...props} gradient={STEP_GRADIENTS[3]} showBack>
@@ -504,13 +511,25 @@ const ResultStep = (props) => {
             </Box>
           )}
 
-          {/* Start new */}
-          <Button
-            onClick={onReset}
-            sx={{ color: '#fff', mt: 3, textTransform: 'none' }}
-          >
-            Start a new Real Talk
-          </Button>
+          {/* Close the loop */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 3, width: '100%', maxWidth: 320, mx: 'auto' }}>
+            <Button
+              variant="contained"
+              onClick={onGoHome}
+              sx={{
+                minHeight: 44, bgcolor: '#fff', color: '#0F1722', fontWeight: 'bold',
+                textTransform: 'none', '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+              }}
+            >
+              Done — back to Today
+            </Button>
+            <Button
+              onClick={onReset}
+              sx={{ color: '#fff', textTransform: 'none', minHeight: 44 }}
+            >
+              Start a new Real Talk
+            </Button>
+          </Box>
         </>
       )}
 
@@ -749,6 +768,7 @@ const RealTalk = () => {
     error,
     onRetry: handleRetry,
     onReset: handleReset,
+    onGoHome: () => navigate('/dashboard'),
   };
 
   return (

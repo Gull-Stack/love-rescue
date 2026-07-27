@@ -71,6 +71,7 @@ function getNextStep({ assessmentsDone, assessmentsToUnlock, hasLoggedToday, str
 
 const ProgressJourney = ({
   userState,
+  nextAction = null,
   assessmentsDone = 0,
   assessmentsToUnlock = 3,
   hasLoggedToday = false,
@@ -79,7 +80,11 @@ const ProgressJourney = ({
 }) => {
   const navigate = useNavigate();
   const current = STATE_TO_INDEX[userState] ?? 0;
-  const next = getNextStep({ assessmentsDone, assessmentsToUnlock, hasLoggedToday, strategy, hasGratitudeToday });
+  // Prefer the server's canonical ladder (shared with ActionCard) so the two
+  // "what's next" surfaces can never point different directions.
+  const next = nextAction
+    ? { label: nextAction.label, cta: 'Continue', route: nextAction.path }
+    : getNextStep({ assessmentsDone, assessmentsToUnlock, hasLoggedToday, strategy, hasGratitudeToday });
 
   return (
     <Card sx={{ mb: 2, borderRadius: 4, border: '1px solid', borderColor: 'divider' }}>

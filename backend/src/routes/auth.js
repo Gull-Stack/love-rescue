@@ -12,6 +12,7 @@ const {
 const { OAuth2Client } = require('google-auth-library');
 const { authenticate } = require('../middleware/auth');
 const { resolveEntitlement } = require('../lib/entitlement');
+const { computeJourney } = require('../lib/journey');
 
 // New OAuth accounts start on the same free trial as email signups.
 const trialStart = () => {
@@ -973,8 +974,10 @@ router.get('/me', authenticate, async (req, res, next) => {
     // paid/premium plan, or partner coverage). Never force-premium — the
     // client's feature gating reads this.
     const entitlement = await resolveEntitlement(req.prisma, user);
+    const journey = await computeJourney(req.prisma, user, relationship);
     const { subscriptionSource: _src, appleExpiresAt: _exp, ...safeUser } = user;
     res.json({
+      journey,
       user: {
         ...safeUser,
         subscriptionStatus: entitlement.status,

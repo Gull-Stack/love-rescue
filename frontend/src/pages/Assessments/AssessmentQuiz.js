@@ -966,10 +966,18 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
           Share
         </Button>
         <Button
+          variant="outlined"
+          size="large"
+          onClick={() => navigate('/assessments')}
+          sx={{ borderRadius: 2, px: 4 }}
+        >
+          Take Another
+        </Button>
+        <Button
           variant="contained"
           size="large"
           startIcon={<ArrowForwardIcon />}
-          onClick={() => navigate('/assessments')}
+          onClick={() => navigate('/dashboard')}
           sx={{
             borderRadius: 2,
             px: 4,
@@ -977,7 +985,7 @@ const ResultDisplay = ({ type, result, meta, navigate }) => {
             fontWeight: 'bold',
           }}
         >
-          Take Another Assessment
+          Continue Your Journey
         </Button>
       </Box>
     </Box>

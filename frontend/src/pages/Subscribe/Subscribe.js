@@ -18,6 +18,7 @@ import { paymentsApi } from '../../services/api';
 import iapService from '../../services/iapService';
 import { useAppleIAP, useStripeCheckout } from '../../utils/platform';
 import { clearSubscriptionCache } from '../../components/common/PremiumGate';
+import { trackEvent } from '../../utils/analytics';
 import { isPremiumUser } from '../../utils/featureGating';
 
 // Highlights shown under every plan. Not prices — those come from the API.
@@ -57,6 +58,7 @@ const Subscribe = () => {
 
   useEffect(() => {
     document.title = 'Plans | Love Rescue';
+    trackEvent('paywall_viewed', { from: new URLSearchParams(window.location.search).get('from') || 'direct' });
   }, []);
 
   useEffect(() => {
@@ -165,6 +167,7 @@ const Subscribe = () => {
   }, [onApple]);
 
   const handleWebCheckout = async (tier) => {
+    trackEvent('checkout_started', { tier, platform: 'web' });
     setPurchasing(tier);
     setNotice(null);
     try {

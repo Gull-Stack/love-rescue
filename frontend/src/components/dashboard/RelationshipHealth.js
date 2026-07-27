@@ -57,7 +57,11 @@ const RelationshipHealth = ({ assessments, progressRings, onViewDetails, onStart
   const pillarPercents = PILLARS.map((p) => progressRings?.[p.key]?.percent).filter(
     (n) => typeof n === 'number'
   );
-  const pillarAvg = pillarPercents.length
+  // All-zero pillars means "no activity yet", not "your relationship scores
+  // 0/100" — a brand-new user must never be greeted with a red zero. Treat it
+  // as no-data and show the warm start card instead.
+  const hasPillarSignal = pillarPercents.some((n) => n > 0);
+  const pillarAvg = pillarPercents.length && hasPillarSignal
     ? Math.round(pillarPercents.reduce((a, b) => a + b, 0) / pillarPercents.length)
     : null;
 

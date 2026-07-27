@@ -201,6 +201,8 @@ describe('Dashboard', () => {
     await waitFor(() => {
       expect(screen.getByText('Your progress')).toBeInTheDocument();
     });
-    expect(localStorage.getItem('lr_user_state')).toBe('DISCOVERING');
+    // Journey state is server-owned now — the Dashboard must NOT relay it
+    // through localStorage (that relay left the nav permanently stale).
+    expect(localStorage.getItem('lr_user_state')).toBeNull();
   });
 });

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-// Core swipeable destinations. Keep this in sync with the primary bottom-nav
-// tabs in Layout.js so swiping never jumps to a page that isn't in the nav.
-const TAB_ROUTES = ['/dashboard', '/daily', '/real-talk', '/matchup', '/settings'];
+// Core swipeable destinations — exactly the four permanent bottom-nav tabs
+// in Layout.js (Today / Journey / Us / You). Swiping left/right moves between
+// tabs and never lands on a page that isn't in the bar.
+const TAB_ROUTES = ['/dashboard', '/course', '/matchup', '/settings'];
 const SWIPE_THRESHOLD = 50;
 const VELOCITY_THRESHOLD = 0.3;
 const EDGE_EXCLUSION = 20; // px from left edge to avoid browser back gesture
@@ -12,7 +13,7 @@ const EDGE_EXCLUSION = 20; // px from left edge to avoid browser back gesture
 // /daily and /real-talk stay in TAB_ROUTES (nav order) but are disabled here:
 // their card flows use in-page horizontal swipes that must not trigger tab
 // navigation mid-flow.
-const DISABLED_PATTERNS = ['/assessments/', '/meetings/', '/signup', '/login', '/join', '/daily', '/real-talk'];
+const DISABLED_PATTERNS = ['/assessments/', '/meetings/', '/signup', '/login', '/join'];
 
 export default function useSwipeNavigation() {
   const navigate = useNavigate();

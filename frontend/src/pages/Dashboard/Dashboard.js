@@ -31,6 +31,7 @@ import {
   realTalkApi,
 } from '../../services/api';
 import DailyInsight from '../../components/common/DailyInsight';
+import TrialCountdown from '../../components/common/TrialCountdown';
 import {
   StreakHero,
   QuickLogFAB,
@@ -73,7 +74,7 @@ function getDaysActive(createdAt) {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, relationship, invitePartner } = useAuth();
+  const { user, relationship, journey, invitePartner } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({
     prompt: null,
@@ -241,19 +242,15 @@ const Dashboard = () => {
   const daysActive = getDaysActive(user?.createdAt);
   const strategyCycle = data.strategy?.cycle || 0;
 
-  const userState = getUserState({
+  // Server-owned journey state wins (computed on /auth/me — the same source
+  // the nav reads); the local derivation is only a fallback for the moments
+  // between an action and the next /auth/me refresh.
+  const userState = journey?.state || getUserState({
     assessmentsDone,
     daysActive,
     streak: data.streak,
     strategyCycle,
   });
-
-  // Persist state for Layout's dynamic nav
-  try {
-    localStorage.setItem('lr_user_state', userState);
-  } catch {
-    // Storage not available
-  }
 
   const showHeader = userState === STATE.PRACTICING || userState === STATE.TRANSFORMED;
   const showProgressRings = userState === STATE.BUILDING || userState === STATE.PRACTICING || userState === STATE.TRANSFORMED;
@@ -273,6 +270,9 @@ const Dashboard = () => {
         overflowX: 'hidden',
       }}
     >
+      {/* Trial ending soon? A warm heads-up beats a surprise lockout. */}
+      {user?.isTrial && <TrialCountdown daysLeft={user?.trialDaysRemaining} />}
+
       {/* Relationship health — THE hero. "Where things stand," front and center for everyone. */}
       <RelationshipHealth
         assessments={data.assessments}
@@ -283,6 +283,7 @@ const Dashboard = () => {
 
       {/* Where am I + what's next — the wayfinding/continue anchor. */}
       <ProgressJourney
+        nextAction={journey?.nextAction}
         userState={userState}
         assessmentsDone={assessmentsDone}
         assessmentsToUnlock={3}
@@ -367,6 +368,7 @@ const Dashboard = () => {
       {/* ActionCard — THE hero card. Always present. */}
       <Box sx={{ mb: 2 }}>
         <ActionCard
+          nextAction={journey?.nextAction}
           user={user}
           assessmentsDone={assessmentsDone}
           totalAssessments={totalAssessments}

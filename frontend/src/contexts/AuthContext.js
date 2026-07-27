@@ -25,6 +25,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [relationship, setRelationship] = useState(null);
+  const [journey, setJourney] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
@@ -91,6 +92,7 @@ export const AuthProvider = ({ children }) => {
       const response = await api.get('/auth/me');
       setUser(response.data.user);
       setRelationship(response.data.relationship);
+      setJourney(response.data.journey || null);
 
       // Refresh the native push device token after successful auth — but only
       // if the user already granted push permission. First-time opt-in is an
@@ -265,6 +267,7 @@ export const AuthProvider = ({ children }) => {
     clearSubscriptionCache();
     setUser(null);
     setRelationship(null);
+    setJourney(null);
     setBiometricEnabled(false);
     // Don't clear biometricEmail - we need it for biometric login
   };
@@ -294,6 +297,7 @@ export const AuthProvider = ({ children }) => {
   const invitePartner = async (partnerEmail) => {
     try {
       const response = await api.post('/auth/invite-partner', { partnerEmail });
+      trackEvent('invite_sent', { has_email: !!partnerEmail });
       return response.data;
     } catch (err) {
       throw err;
@@ -313,6 +317,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     relationship,
+    journey,
     loading,
     error,
     login,

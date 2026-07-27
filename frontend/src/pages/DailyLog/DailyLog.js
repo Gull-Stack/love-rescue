@@ -30,6 +30,8 @@ import EmotionChips from '../../components/gamification/EmotionChips';
 import StreakFlames from '../../components/gamification/StreakFlames';
 import SaveCheckmark from '../../components/gamification/SaveCheckmark';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { trackEvent } from '../../utils/analytics';
 
 const TOTAL_CARDS = 7;
 
@@ -421,8 +423,28 @@ const DoneCard = (props) => {
               Day {streakData.currentStreak} 🔥
             </Typography>
             <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-              See you tomorrow.
+              Saved. One honest minute, banked.
             </Typography>
+
+            {/* Close the loop — never dead-end the highest-frequency screen. */}
+            <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', gap: 1.5, width: '100%', maxWidth: 320, mx: 'auto' }}>
+              <Button
+                variant="contained"
+                onClick={props.onGoGratitude}
+                sx={{
+                  minHeight: 44, bgcolor: '#fff', color: '#0F1722', fontWeight: 'bold',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+                }}
+              >
+                Notice one good thing →
+              </Button>
+              <Button
+                onClick={props.onGoHome}
+                sx={{ minHeight: 44, color: 'rgba(255,255,255,0.85)' }}
+              >
+                Back to Today
+              </Button>
+            </Box>
 
             {pushSupported && !pushSubscribed && streakData.currentStreak <= 2 && reminderOptIn !== 'on' && (
               <Box sx={{ mt: 4, maxWidth: 320 }}>
@@ -607,6 +629,7 @@ const cards = [MoodCard, ConnectionCard, InteractionsCard, GratitudeCard, Emotio
 
 const DailyLog = () => {
   const { user, relationship } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [hasLoggedToday, setHasLoggedToday] = useState(false);
   const [currentCard, setCurrentCard] = useState(0);
@@ -759,6 +782,7 @@ const DailyLog = () => {
 
     try {
       const res = await logsApi.submitDaily({ ...formData, emotions: selectedEmotions });
+      trackEvent('daily_log_completed');
 
       // Backend crisis detection on the journal text — when it fires we show
       // supportive resources instead of confetti (celebrating over a crisis
@@ -933,6 +957,8 @@ const DailyLog = () => {
     reminderOptIn,
     handleEnableReminders,
     onRetry: handleRetry,
+    onGoGratitude: () => navigate('/gratitude'),
+    onGoHome: () => navigate('/dashboard'),
   };
 
   return (
