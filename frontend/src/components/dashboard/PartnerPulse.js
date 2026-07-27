@@ -10,7 +10,7 @@ import {
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import { gratitudeApi } from '../../services/api';
+import { partnerActivityApi } from '../../services/api';
 
 const pulse = keyframes`
   0% { box-shadow: 0 0 0 0 rgba(14, 159, 142, 0.4); }
@@ -36,6 +36,7 @@ const PartnerPulse = ({
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   // Get initials from name
   const getInitials = (name) => {
@@ -65,14 +66,22 @@ const PartnerPulse = ({
     
     setSending(true);
     try {
-      // This could be a push notification or in-app message
-      // For now, we'll use the gratitude API as a placeholder
-      // In a real app, you'd have a dedicated nudge/encouragement endpoint
+      const res = await partnerActivityApi.nudgePartner();
+      setSnackbarMessage(res.data?.message || `💕 Sent love to ${partnerName}!`);
       setSnackbarOpen(true);
       setSent(true);
       setTimeout(() => setSent(false), 60000); // Allow sending again after 1 min
     } catch (error) {
-      console.error('Failed to send nudge:', error);
+      // 429 = already nudged today; surface the server's gentler message
+      const msg = error.response?.data?.message;
+      if (error.response?.status === 429 && msg) {
+        setSnackbarMessage(msg);
+        setSnackbarOpen(true);
+        setSent(true);
+      } else {
+        setSnackbarMessage("Couldn't reach your partner right now — try again in a bit.");
+        setSnackbarOpen(true);
+      }
     } finally {
       setSending(false);
     }
@@ -207,7 +216,7 @@ const PartnerPulse = ({
         open={snackbarOpen}
         autoHideDuration={3000}
         onClose={() => setSnackbarOpen(false)}
-        message={`💕 Sent love to ${partnerName}!`}
+        message={snackbarMessage}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />
     </>

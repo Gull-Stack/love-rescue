@@ -944,10 +944,30 @@ router.get('/me', authenticate, async (req, res, next) => {
         status: 'active'
       },
       include: {
-        user1: { select: { id: true, firstName: true, lastName: true } },
-        user2: { select: { id: true, firstName: true, lastName: true } }
+        user1: { select: { id: true, firstName: true, lastName: true, lastActiveAt: true } },
+        user2: { select: { id: true, firstName: true, lastName: true, lastActiveAt: true } }
       }
     });
+
+    // Partner presence: did they check in today, and when were they last seen?
+    // The dashboard's PartnerPulse renders these; without them every partner
+    // shows as permanently inactive.
+    let partnerLoggedToday = false;
+    let partnerLastActive = null;
+    if (relationship && relationship.user2Id) {
+      const partnerRecord = relationship.user1Id === req.user.id ? relationship.user2 : relationship.user1;
+      partnerLastActive = partnerRecord.lastActiveAt || null;
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      let partnerLog = null;
+      try {
+        partnerLog = await req.prisma.dailyLog.findFirst({
+          where: { userId: partnerRecord.id, createdAt: { gte: todayStart } },
+          select: { id: true }
+        });
+      } catch (_e) { partnerLog = null; }
+      partnerLoggedToday = !!partnerLog;
+    }
 
     // Report the user's REAL entitlement (couple-aware: an active trial, a
     // paid/premium plan, or partner coverage). Never force-premium — the
@@ -968,7 +988,14 @@ router.get('/me', authenticate, async (req, res, next) => {
         id: relationship.id,
         hasPartner: !!relationship.user2Id,
         inviteCode: relationship.inviteCode,
-        partner: relationship.user1Id === req.user.id ? relationship.user2 : relationship.user1
+        partner: (() => {
+          const p = relationship.user1Id === req.user.id ? relationship.user2 : relationship.user1;
+          if (!p) return p;
+          const { lastActiveAt: _la, ...publicPartner } = p;
+          return publicPartner;
+        })(),
+        partnerLoggedToday,
+        partnerLastActive
       } : null
     });
   } catch (error) {

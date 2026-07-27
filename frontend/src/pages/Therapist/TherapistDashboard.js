@@ -40,6 +40,7 @@ const TherapistDashboard = () => {
   const [viewMode, setViewMode] = useState('card');
   const [dashboard, setDashboard] = useState(null);
   const [billingLoading, setBillingLoading] = useState(false);
+  const [billingConfirmOpen, setBillingConfirmOpen] = useState(false);
   const [pairOpen, setPairOpen] = useState(false);
   const [pairA, setPairA] = useState('');
   const [pairB, setPairB] = useState('');
@@ -103,7 +104,9 @@ const TherapistDashboard = () => {
     );
   }
 
-  if (error) {
+  // Full-page error only when the dashboard itself failed to load. Errors that
+  // occur after load (e.g. billing SSO) render inline in the main view below.
+  if (error && !dashboard) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error" action={<Button onClick={fetchData}>Retry</Button>}>
@@ -116,6 +119,7 @@ const TherapistDashboard = () => {
   const { stats = {}, clients = [], alerts = [], outcomes = null } = dashboard || {};
 
   const openBilling = async () => {
+    setBillingConfirmOpen(false);
     setBillingLoading(true);
     try {
       const res = await therapistService.getBillingSsoUrl();
@@ -166,13 +170,19 @@ const TherapistDashboard = () => {
           variant="contained"
           color="secondary"
           startIcon={billingLoading ? <CircularProgress size={16} color="inherit" /> : <LocalHospitalIcon />}
-          onClick={openBilling}
+          onClick={() => setBillingConfirmOpen(true)}
           disabled={billingLoading}
           sx={{ minHeight: 44 }}
         >
           Medical Billing
         </Button>
       </Box>
+
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
       {/* Quick Stats */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -347,6 +357,22 @@ const TherapistDashboard = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Billing redirect confirmation */}
+      <Dialog open={billingConfirmOpen} onClose={() => setBillingConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Open billing portal?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            You're leaving Love Rescue to open your billing portal.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBillingConfirmOpen(false)} sx={{ minHeight: 44 }}>Cancel</Button>
+          <Button variant="contained" onClick={openBilling} sx={{ minHeight: 44 }}>
+            Continue
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Caseload Outcomes */}
       {outcomes?.summary && (outcomes.summary.totalClients || 0) > 0 && (
         <Box sx={{ mb: 3 }}>
@@ -434,7 +460,7 @@ const TherapistDashboard = () => {
       {alerts.length === 0 ? (
         <Card>
           <CardContent sx={{ textAlign: 'center', py: 4 }}>
-            <Typography color="text.secondary">No unread alerts 🎉</Typography>
+            <Typography color="text.secondary">No unread alerts.</Typography>
           </CardContent>
         </Card>
       ) : (

@@ -120,11 +120,16 @@ api.interceptors.response.use(
       (paywallCode === 'SUBSCRIPTION_REQUIRED' || paywallCode === 'PREMIUM_REQUIRED')
     ) {
       error.isSubscriptionRequired = true;
-      if (
-        typeof window !== 'undefined' &&
-        window.location.pathname !== '/subscribe'
-      ) {
-        window.location.href = '/subscribe';
+      // Soft paywall: announce the gate and let the app show an in-app prompt.
+      // Never hard-navigate — a full-page redirect destroys in-progress state
+      // (e.g. 40 answered quiz questions) and, because background dashboard
+      // calls can 402, used to lock free users out of their home screen.
+      if (typeof window !== 'undefined' && window.location.pathname !== '/subscribe') {
+        window.dispatchEvent(
+          new CustomEvent('lr:subscription-required', {
+            detail: { code: paywallCode, from: window.location.pathname },
+          })
+        );
       }
       return Promise.reject(error);
     }
@@ -393,6 +398,11 @@ export const transformationApi = {
 // Progress Rings API (3-ring Apple Watch style)
 export const progressRingsApi = {
   get: () => api.get('/progress-rings'),
+};
+
+export const partnerActivityApi = {
+  getPartnerStatus: () => api.get('/partner-activity/partner-status'),
+  nudgePartner: () => api.post('/partner-activity/nudge-partner'),
 };
 
 // Real Talk API

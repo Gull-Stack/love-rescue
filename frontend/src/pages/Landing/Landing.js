@@ -39,13 +39,6 @@ import SecurityIcon from '@mui/icons-material/Security';
 import GroupsIcon from '@mui/icons-material/Groups';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import FacebookIcon from '@mui/icons-material/Facebook';
-import InstagramIcon from '@mui/icons-material/Instagram';
-import YouTubeIcon from '@mui/icons-material/YouTube';
-import LinkedInIcon from '@mui/icons-material/LinkedIn';
-import XIcon from '@mui/icons-material/X';
-import MusicNoteIcon from '@mui/icons-material/MusicNote';
-import PodcastsIcon from '@mui/icons-material/Podcasts';
 import MicIcon from '@mui/icons-material/Mic';
 
 // ─── CONSTANTS ───────────────────────────────────────────────
@@ -61,7 +54,7 @@ const ACCENT_GRADIENT_HOVER = 'linear-gradient(135deg, #B86A22 0%, #E08A3C 100%)
 const programs = [
   {
     title: 'Relationship Assessments',
-    subtitle: '4 Scientific Assessments',
+    subtitle: '10 Scientific Assessments',
     description: 'Discover your attachment style, personality dynamics, wellness behaviors, and closeness patterns through research-backed questionnaires.',
     icon: <AssignmentIcon sx={{ fontSize: 40 }} />,
     color: '#E08A3C',
@@ -69,8 +62,8 @@ const programs = [
   },
   {
     title: 'Daily Insights',
-    subtitle: '14-Week Guided Course',
-    description: 'Receive personalized daily insights based on your unique assessment profile. 98 days of science-backed relationship wisdom delivered to you.',
+    subtitle: '16-Week Guided Course',
+    description: 'Receive personalized daily insights based on your unique assessment profile. 16 weeks of science-backed relationship wisdom delivered to you.',
     icon: <LightbulbIcon sx={{ fontSize: 40 }} />,
     color: '#F0A55C',
     tag: 'Daily Growth',
@@ -113,7 +106,7 @@ const steps = [
   {
     number: '01',
     title: 'Take Your Assessments',
-    description: 'Complete four research-backed assessments to reveal your attachment style, personality dynamics, wellness behaviors, and closeness patterns.',
+    description: 'Complete ten research-backed assessments to reveal your attachment style, personality dynamics, wellness behaviors, and closeness patterns.',
   },
   {
     number: '02',
@@ -128,7 +121,7 @@ const steps = [
   {
     number: '04',
     title: 'See Real Progress',
-    description: 'Weekly and monthly reports show your trajectory. Relationship science meets daily practice — watch your connection strengthen over 14 weeks and beyond.',
+    description: 'Weekly and monthly reports show your trajectory. Relationship science meets daily practice — watch your connection strengthen over 16 weeks and beyond.',
   },
 ];
 
@@ -166,7 +159,7 @@ const testimonials = [
 const stats = [
   { value: '94%', label: 'of couples report improved communication within 4 weeks' },
   { value: '5:1', label: 'average positivity ratio achieved by active users' },
-  { value: '14', label: 'weeks of structured, science-backed content' },
+  { value: '16', label: 'weeks of structured, science-backed content' },
   { value: '10K+', label: 'couples building stronger relationships' },
 ];
 
@@ -175,7 +168,6 @@ const navLinks = [
   { label: 'How It Works', href: '#how-it-works' },
   { label: 'Results', href: '#results' },
   { label: 'Pricing', href: '#pricing' },
-  { label: 'Blog', href: '#blog' },
 ];
 
 // ─── LANDING PAGE ────────────────────────────────────────────
@@ -461,7 +453,6 @@ const Landing = () => {
             mx: 'auto',
           }}
         >
-          Welcome Back{' '}
           <Box
             component="span"
             sx={{
@@ -1093,7 +1084,7 @@ const Landing = () => {
     'Scientific Assessments',
     'Matchup Compatibility Analysis',
     'Smart Strategy Plans',
-    'Guided Video Course (98 days)',
+    'Guided Video Course (16 weeks)',
     'Daily Personalized Insights',
     'Weekly & Monthly Progress Reports',
     'Guided Real Talk Conversations',
@@ -1195,7 +1186,7 @@ const Landing = () => {
         <Typography
           sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem', textAlign: 'center', mt: 2 }}
         >
-          14-day free trial · No card required to start · Cancel anytime
+          14-day free trial included · Cancel anytime
         </Typography>
       </CardContent>
     </Card>
@@ -1254,7 +1245,7 @@ const Landing = () => {
               fontWeight: 300,
             }}
           >
-            Start with a 14-day free trial — no credit card required. One subscription
+            Every plan starts with a 14-day free trial included. One subscription
             covers both partners. Cancel anytime.
           </Typography>
         </Box>
@@ -1265,7 +1256,7 @@ const Landing = () => {
               tier: 'PREMIUM — MONTHLY',
               price: '$49',
               per: '/month',
-              note: '14-day free trial — no card required to start',
+              note: '14-day free trial included',
               badge: 'MOST FLEXIBLE',
               features: PRICING_FEATURES,
               cta: 'Start 14-Day Free Trial',
@@ -1364,7 +1355,7 @@ const Landing = () => {
           Start Your 14-Day Free Trial
         </Button>
         <Typography sx={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.85rem', mt: 2 }}>
-          14-day free trial. No card required to start. Cancel anytime.
+          14-day free trial included. Cancel anytime.
         </Typography>
       </Container>
     </Box>
@@ -1384,7 +1375,7 @@ const Landing = () => {
       <Container maxWidth="lg">
         <Grid container spacing={4}>
           {/* Brand column */}
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={6}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <FavoriteIcon sx={{ color: ACCENT_AMBER, fontSize: 28 }} />
               <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '1.2rem' }}>
@@ -1403,116 +1394,60 @@ const Landing = () => {
               Science-backed relationship tools designed to help couples build lasting
               connection through daily practice, expert insights, and guided support.
             </Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              {[
-                { icon: <FacebookIcon />, label: 'Facebook' },
-                { icon: <InstagramIcon />, label: 'Instagram' },
-                { icon: <YouTubeIcon />, label: 'YouTube' },
-                { icon: <LinkedInIcon />, label: 'LinkedIn' },
-                { icon: <XIcon />, label: 'X' },
-                { icon: <MusicNoteIcon />, label: 'TikTok' },
-                { icon: <PodcastsIcon />, label: 'Spotify' },
-              ].map((social) => (
-                <IconButton
-                  key={social.label}
-                  aria-label={social.label}
-                  sx={{
-                    color: 'rgba(255,255,255,0.82)',
-                    '&:hover': { color: ACCENT_AMBER, bgcolor: 'rgba(224,138,60,0.10)' },
-                  }}
-                >
-                  {social.icon}
-                </IconButton>
-              ))}
-            </Box>
-          </Grid>
-
-          {/* Platform links */}
-          <Grid item xs={6} sm={3} md={2}>
-            <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: '0.85rem', mb: 2, letterSpacing: '0.05em' }}>
-              PLATFORM
-            </Typography>
-            {['Assessments', 'Daily Insights', 'Daily Videos', 'Matchup', 'Strategies', 'Meetings', 'Blog', 'Podcast'].map(
-              (link) => (
-                <Typography
-                  key={link}
-                  sx={{
-                    color: 'rgba(255,255,255,0.82)',
-                    fontSize: '0.85rem',
-                    mb: 1,
-                    cursor: 'pointer',
-                    transition: 'color 0.2s',
-                    '&:hover': { color: '#fff' },
-                  }}
-                >
-                  {link}
-                </Typography>
-              )
-            )}
-          </Grid>
-
-          {/* Company links */}
-          <Grid item xs={6} sm={3} md={2}>
-            <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: '0.85rem', mb: 2, letterSpacing: '0.05em' }}>
-              COMPANY
-            </Typography>
-            {['About Us', 'Our Research', 'Blog', 'Careers', 'Press'].map((link) => (
-              <Typography
-                key={link}
-                sx={{
-                  color: 'rgba(255,255,255,0.82)',
-                  fontSize: '0.85rem',
-                  mb: 1,
-                  cursor: 'pointer',
-                  transition: 'color 0.2s',
-                  '&:hover': { color: '#fff' },
-                }}
-              >
-                {link}
-              </Typography>
-            ))}
           </Grid>
 
           {/* Support links */}
-          <Grid item xs={6} sm={3} md={2}>
+          <Grid item xs={6} sm={3} md={3}>
             <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: '0.85rem', mb: 2, letterSpacing: '0.05em' }}>
               SUPPORT
             </Typography>
-            {['Help Center', 'Contact Us', 'FAQs', 'Community'].map((link) => (
+            {[
+              { label: 'Help Center', href: 'mailto:support@loverescue.app' },
+              { label: 'Contact Us', href: 'mailto:support@loverescue.app' },
+            ].map((link) => (
               <Typography
-                key={link}
+                key={link.label}
+                component="a"
+                href={link.href}
                 sx={{
+                  display: 'block',
                   color: 'rgba(255,255,255,0.82)',
                   fontSize: '0.85rem',
                   mb: 1,
-                  cursor: 'pointer',
+                  textDecoration: 'none',
                   transition: 'color 0.2s',
                   '&:hover': { color: '#fff' },
                 }}
               >
-                {link}
+                {link.label}
               </Typography>
             ))}
           </Grid>
 
           {/* Legal links */}
-          <Grid item xs={6} sm={3} md={2}>
+          <Grid item xs={6} sm={3} md={3}>
             <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: '0.85rem', mb: 2, letterSpacing: '0.05em' }}>
               LEGAL
             </Typography>
-            {['Privacy Policy', 'Terms of Service', 'HIPAA Notice', 'Cookie Policy'].map((link) => (
+            {[
+              { label: 'Privacy Policy', href: '/privacy' },
+              { label: 'Terms of Service', href: '/terms' },
+            ].map((link) => (
               <Typography
-                key={link}
+                key={link.label}
+                component="a"
+                href={link.href}
                 sx={{
+                  display: 'block',
                   color: 'rgba(255,255,255,0.82)',
                   fontSize: '0.85rem',
                   mb: 1,
-                  cursor: 'pointer',
+                  textDecoration: 'none',
                   transition: 'color 0.2s',
                   '&:hover': { color: '#fff' },
                 }}
               >
-                {link}
+                {link.label}
               </Typography>
             ))}
           </Grid>

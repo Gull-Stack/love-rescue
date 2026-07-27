@@ -1,6 +1,8 @@
 /**
- * PremiumGate — renders children only when the user (or their partner) is
- * entitled; otherwise shows an upgrade prompt that routes to /subscribe.
+ * PremiumGate — soft paywall. Renders children in full when the user (or their
+ * partner) is entitled; otherwise renders the children as a blurred, inert
+ * preview with a warm upgrade prompt overlaid. The preview is deliberate: the
+ * feature stays visible ("here's what's waiting for you") without being usable.
  *
  * There is no global subscription context in the app, so the gate fetches the
  * subscription once and caches it at module scope (shared across every gate
@@ -13,6 +15,10 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { useNavigate } from 'react-router-dom';
 import { paymentsApi } from '../../services/api';
 import { isPremiumUser } from '../../utils/featureGating';
+
+// Brand amber (see theme notes: slate #0F1722 / teal / amber #E08A3C).
+const AMBER = '#E08A3C';
+const AMBER_DARK = '#C9772F';
 
 // Module-level cache so N gates on a screen don't each hit the network.
 let cachedSubscription = null;
@@ -47,40 +53,75 @@ async function loadSubscription() {
   return inflight;
 }
 
-const UpgradePrompt = ({ title, description }) => {
+const UpgradePrompt = ({ title, description, from }) => {
   const navigate = useNavigate();
+  const target = `/subscribe?from=${encodeURIComponent(from || 'premium')}`;
   return (
     <Box
       sx={{
         textAlign: 'center',
-        py: 6,
-        px: 3,
-        maxWidth: 460,
+        px: { xs: 3, sm: 4 },
+        py: 4,
+        maxWidth: 420,
+        width: '100%',
         mx: 'auto',
+        borderRadius: 3,
+        bgcolor: 'background.paper',
+        border: '1px solid',
+        borderColor: 'divider',
+        boxShadow: '0 12px 32px rgba(15, 23, 34, 0.18)',
       }}
     >
-      <LockOutlinedIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1.5 }} />
+      <Box
+        sx={{
+          width: 56,
+          height: 56,
+          mx: 'auto',
+          mb: 2,
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: 'rgba(224, 138, 60, 0.14)',
+        }}
+      >
+        <LockOutlinedIcon sx={{ fontSize: 28, color: AMBER }} />
+      </Box>
       <Typography variant="h6" fontWeight="bold" gutterBottom>
-        {title || 'Unlock this with Premium'}
+        {title || 'This one’s for members'}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         {description ||
-          'This is a premium feature. Start your free trial or subscribe to get full access for you and your partner.'}
+          'Unlock the full toolkit — every assessment, your couple matchup, and weekly strategies. One plan covers both you and your partner.'}
       </Typography>
-      <Button variant="contained" size="large" onClick={() => navigate('/subscribe')}>
-        See Plans
+      <Button
+        variant="contained"
+        size="large"
+        onClick={() => navigate(target)}
+        sx={{
+          px: 4,
+          bgcolor: AMBER,
+          '&:hover': { bgcolor: AMBER_DARK },
+        }}
+      >
+        See plans
       </Button>
     </Box>
   );
 };
 
 /**
- * @param {node}    children     content shown when entitled
- * @param {node}    [fallback]   custom locked-state UI (overrides UpgradePrompt)
- * @param {string}  [title]      upgrade prompt title
- * @param {string}  [description]upgrade prompt body
+ * @param {node}   children      content shown when entitled (previewed blurred
+ *                               behind the prompt when not)
+ * @param {node}   [fallback]    custom locked-state UI (overrides the built-in
+ *                               prompt + preview treatment entirely)
+ * @param {string} [title]       upgrade prompt title
+ * @param {string} [description] upgrade prompt body — make it plan-appropriate
+ *                               for the gated feature
+ * @param {string} [from]        attribution slug appended to the plans link,
+ *                               e.g. "matchup" → /subscribe?from=matchup
  */
-const PremiumGate = ({ children, fallback, title, description }) => {
+const PremiumGate = ({ children, fallback, title, description, from }) => {
   const [status, setStatus] = useState({ loading: true, entitled: false });
 
   useEffect(() => {
@@ -111,7 +152,46 @@ const PremiumGate = ({ children, fallback, title, description }) => {
   }
 
   if (fallback) return fallback;
-  return <UpgradePrompt title={title} description={description} />;
+
+  // No children to preview — just the prompt, comfortably spaced.
+  if (!children) {
+    return (
+      <Box sx={{ py: 6, px: 2 }}>
+        <UpgradePrompt title={title} description={description} from={from} />
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ position: 'relative', overflow: 'hidden', minHeight: 340 }}>
+      {/* Inert, blurred preview of the gated content. aria-hidden keeps the
+          unusable preview out of the accessibility tree. */}
+      <Box
+        aria-hidden
+        sx={{
+          filter: 'blur(6px)',
+          opacity: 0.5,
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+      >
+        {children}
+      </Box>
+      <Box
+        sx={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: 2,
+        }}
+      >
+        <UpgradePrompt title={title} description={description} from={from} />
+      </Box>
+    </Box>
+  );
 };
 
 export default PremiumGate;

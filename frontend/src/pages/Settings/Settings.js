@@ -992,8 +992,12 @@ const Settings = () => {
           </Typography>
           <Typography paragraph variant="body2">
             <strong>4. Access and Features</strong><br />
-            LoveRescue is provided free of charge. All features are available to all users
-            at no cost. There are no subscriptions, paywalls, or in-app purchases.
+            LoveRescue offers a free tier with core daily tools, plus paid subscription
+            plans (billed through Stripe on the web or through the App Store on iOS)
+            that unlock premium features such as guided assessments, personalized
+            strategies, and facilitated meetings. New accounts include a free trial.
+            You can cancel a subscription at any time from Settings; access continues
+            through the end of the paid period.
           </Typography>
           <Typography paragraph variant="body2">
             <strong>5. User Responsibilities</strong><br />

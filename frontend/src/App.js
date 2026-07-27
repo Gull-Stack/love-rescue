@@ -7,6 +7,7 @@ import { initCapacitor } from './utils/capacitor-init';
 // Layout (static - needed immediately)
 import Layout from './components/Layout/Layout';
 import Disclaimer from './components/common/Disclaimer';
+import SubscriptionPrompt from './components/common/SubscriptionPrompt';
 import LoadingScreen from './components/common/LoadingScreen';
 
 // Landing page (lazy loaded)
@@ -123,6 +124,7 @@ const TherapistRoute = ({ children }) => {
 
 function App() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     // Native shell setup: status bar, splash screen, app lifecycle, and deep
@@ -136,7 +138,10 @@ function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <Disclaimer />
+      {/* Legal disclaimer belongs inside the product, not in front of the
+          marketing page — only show it once the visitor has an account. */}
+      {user && <Disclaimer />}
+      <SubscriptionPrompt />
       <React.Suspense
         fallback={
           <LoadingScreen />

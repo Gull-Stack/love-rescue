@@ -68,6 +68,8 @@ const renderPage = () => renderWithProviders(<AssessmentQuiz />);
 describe('AssessmentQuiz', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // The quiz autosaves in-progress attempts; isolate tests from each other.
+    sessionStorage.clear();
     useAuth.mockReturnValue(createAuthValue());
     assessmentsApi.getQuestions.mockResolvedValue(mockQuestions);
     assessmentsApi.submit.mockResolvedValue(mockSubmitResult);

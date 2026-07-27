@@ -406,6 +406,7 @@ model DailyLog {
   bidsTurned       Int?     @map("bids_turned")
   closenessScore   Int?     @map("closeness_score") @db.SmallInt
   mood             Int?     @db.SmallInt // 1-10 scale
+  emotions         Json?    @db.JsonB // array of emotion labels from the check-in emotions card
   isPrivate        Boolean  @default(false) @map("is_private")
   therapistVisible Boolean  @default(true) @map("therapist_visible")
   createdAt        DateTime @default(now()) @map("created_at")

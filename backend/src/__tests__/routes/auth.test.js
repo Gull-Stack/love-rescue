@@ -111,6 +111,9 @@ describe('Auth Routes', () => {
       },
       consentLog: {
         create: jest.fn()
+      },
+      dailyLog: {
+        findFirst: jest.fn().mockResolvedValue(null)
       }
     };
 
@@ -304,6 +307,7 @@ describe('Auth Routes', () => {
         user2: { id: 'user-2', firstName: 'Jane', lastName: 'Doe' }
       };
       mockPrisma.relationship.findFirst.mockResolvedValue(relationshipWithUsers);
+      mockPrisma.dailyLog.findFirst.mockResolvedValue({ id: 'log-1' }); // partner logged today
 
       const res = await request(app)
         .get('/api/auth/me')
@@ -314,6 +318,7 @@ describe('Auth Routes', () => {
       expect(res.body.user.email).toBe('test@example.com');
       expect(res.body.relationship).toBeDefined();
       expect(res.body.relationship.hasPartner).toBe(true);
+      expect(res.body.relationship.partnerLoggedToday).toBe(true);
     });
 
     it('should return 401 without a token', async () => {

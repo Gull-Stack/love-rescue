@@ -43,7 +43,11 @@ const Subscribe = () => {
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [error, setError] = useState('');
+  // { message, severity } — 'error' for real failures (checkout couldn't start,
+  // purchase failed), 'info' for benign notices (user cancelled, no charge).
+  const [notice, setNotice] = useState(null);
+  // tier -> localized StoreKit price string (native iOS only).
+  const [iapPrices, setIapPrices] = useState(null);
   const [purchasing, setPurchasing] = useState(null); // tier being purchased
   // null | 'activating' | 'active' | 'pending' — post-checkout activation state
   const [checkoutState, setCheckoutState] = useState(null);
@@ -69,7 +73,11 @@ const Subscribe = () => {
     }
 
     if (status === 'cancelled') {
-      setError('Checkout was cancelled — no charge was made.');
+      // Informational, not a failure — nothing went wrong and nothing was charged.
+      setNotice({
+        severity: 'info',
+        message: 'Checkout was cancelled — no charge was made.',
+      });
       return;
     }
 
@@ -131,9 +139,34 @@ const Subscribe = () => {
     load();
   }, [load]);
 
+  // On native iOS the charge goes through StoreKit, so show StoreKit's live
+  // localized prices rather than the Stripe USD display strings. If the store
+  // can't be reached we quietly fall back to the Stripe display prices.
+  useEffect(() => {
+    if (!onApple) return undefined;
+    let alive = true;
+    (async () => {
+      try {
+        await iapService.initialize();
+        const products = iapService.getProducts();
+        if (!alive) return;
+        const byTier = {};
+        for (const product of products) {
+          if (product.price) byTier[product.tier] = product.price;
+        }
+        if (Object.keys(byTier).length > 0) setIapPrices(byTier);
+      } catch {
+        /* StoreKit unavailable — keep the Stripe display prices */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [onApple]);
+
   const handleWebCheckout = async (tier) => {
     setPurchasing(tier);
-    setError('');
+    setNotice(null);
     try {
       const res = await paymentsApi.createCheckout(tier);
       const url = res.data?.url;
@@ -141,26 +174,36 @@ const Subscribe = () => {
       // Full-page redirect to Stripe Checkout.
       window.location.href = url;
     } catch (err) {
-      setError(
-        err.response?.data?.error || 'Could not start checkout. Please try again.'
-      );
+      setNotice({
+        severity: 'error',
+        message:
+          err.response?.data?.error || 'Could not start checkout. Please try again.',
+      });
       setPurchasing(null);
     }
   };
 
   const handleApplePurchase = async (tier) => {
     setPurchasing(tier);
-    setError('');
+    setNotice(null);
     try {
       const receipt = await iapService.purchase(tier);
       await paymentsApi.verifyAppleReceipt(receipt);
       clearSubscriptionCache();
       await load(); // reflect the new entitlement
     } catch (err) {
-      const msg = err?.message || 'Purchase could not be completed.';
-      // A user-cancelled purchase isn't an error worth alarming over.
-      if (!/cancel/i.test(msg)) {
-        setError(msg);
+      // Only a genuine user-cancel (flagged by iapService when StoreKit reports
+      // PAYMENT_CANCELLED) is silent. Everything else — receipt verification
+      // failures, store errors whose message happens to mention "cancel", etc.
+      // — is a real failure the user needs to see.
+      const userCancelled =
+        err?.userCancelled === true || err?.code === 'USER_CANCELLED';
+      if (!userCancelled) {
+        setNotice({
+          severity: 'error',
+          message:
+            err?.message || 'Purchase could not be completed. Please try again.',
+        });
       }
     } finally {
       setPurchasing(null);
@@ -214,9 +257,13 @@ const Subscribe = () => {
         </Typography>
       </Box>
 
-      {error && (
-        <Alert severity="info" sx={{ mb: 3 }} onClose={() => setError('')}>
-          {error}
+      {notice && (
+        <Alert
+          severity={notice.severity}
+          sx={{ mb: 3 }}
+          onClose={() => setNotice(null)}
+        >
+          {notice.message}
         </Alert>
       )}
 
@@ -347,7 +394,9 @@ const Subscribe = () => {
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 0.5 }}>
                     <Typography variant="h4" fontWeight="bold">
-                      {plan.priceDisplay}
+                      {/* Native iOS: live localized StoreKit price (what Apple
+                          will actually charge); otherwise the Stripe display. */}
+                      {(onApple && iapPrices?.[plan.id]) || plan.priceDisplay}
                     </Typography>
                     {plan.interval && (
                       <Typography variant="body2" color="text.secondary">

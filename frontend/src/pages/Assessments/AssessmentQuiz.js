@@ -1003,7 +1003,6 @@ const AssessmentQuiz = () => {
 
   // Gamification state
   const [milestoneMsg, setMilestoneMsg] = useState(null);
-  const [speedToast, setSpeedToast] = useState('');
   const [showXpAnimation, setShowXpAnimation] = useState(false);
   const answerTimerRef = useRef(Date.now());
 
@@ -1027,12 +1026,35 @@ const AssessmentQuiz = () => {
 
   useEffect(() => {
     fetchQuestions();
-    setCurrentIndex(0);
-    setResponses({});
     setResult(null);
     setError('');
+    // Restore an in-progress attempt (autosaved per answer) so backgrounding
+    // the app, an accidental back, or a paywall interruption never throws away
+    // up to 40 answered questions.
+    let saved = null;
+    try {
+      saved = JSON.parse(sessionStorage.getItem(`lr_quiz_${type}`) || 'null');
+    } catch { saved = null; }
+    if (saved && saved.responses && Object.keys(saved.responses).length > 0) {
+      setResponses(saved.responses);
+      setCurrentIndex(saved.currentIndex || 0);
+    } else {
+      setCurrentIndex(0);
+      setResponses({});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
+
+  // Autosave the attempt on every change.
+  useEffect(() => {
+    if (Object.keys(responses).length === 0) return;
+    try {
+      sessionStorage.setItem(
+        `lr_quiz_${type}`,
+        JSON.stringify({ responses, currentIndex })
+      );
+    } catch { /* storage full/unavailable — non-fatal */ }
+  }, [responses, currentIndex, type]);
 
   const fetchQuestions = async () => {
     setLoading(true);
@@ -1050,13 +1072,7 @@ const AssessmentQuiz = () => {
     (value) => {
       const questionId = questions[currentIndex]?.id;
       hapticLight();
-      
-      // Speed bonus check
-      const elapsed = Date.now() - answerTimerRef.current;
-      if (elapsed < 3000) {
-        setSpeedToast('Answering with conviction! ⚡');
-      }
-      
+
       setResponses((prev) => ({
         ...prev,
         [questionId]: value,
@@ -1150,6 +1166,7 @@ const AssessmentQuiz = () => {
     try {
       const response = await assessmentsApi.submit(type, responses);
       setResult(response.data);
+      try { sessionStorage.removeItem(`lr_quiz_${type}`); } catch { /* non-fatal */ }
       trackEvent('assessment_completed', { assessment_type: type });
 
       // 🎉 Confetti explosion + haptic on completion
@@ -1329,15 +1346,6 @@ const AssessmentQuiz = () => {
           </Typography>
         </Box>
       </Slide>
-
-      {/* SPEED TOAST */}
-      <Snackbar
-        open={!!speedToast}
-        autoHideDuration={2000}
-        onClose={() => setSpeedToast('')}
-        message={speedToast}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      />
 
       {/* QUESTION SECTION - Compact, no wasted space */}
       <Box

@@ -2,19 +2,19 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Button, Checkbox, FormControlLabel,
-  ToggleButton, ToggleButtonGroup, Alert, Skeleton, Card, CardContent,
+  ToggleButton, ToggleButtonGroup, Alert, Skeleton, Card, CardContent, Snackbar,
 } from '@mui/material';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import therapistService from '../../services/therapistService';
 import { AlertCard } from '../../components/therapist';
+import { alertTypeLabel } from '../../components/therapist/AlertCard';
 
-// Values must match the backend AlertType enum (uppercase); labels are shown capitalized.
-const TYPES = [
-  { value: 'CRISIS', label: 'Crisis' },
-  { value: 'RISK', label: 'Risk' },
-  { value: 'MILESTONE', label: 'Milestone' },
-  { value: 'STAGNATION', label: 'Stagnation' },
-];
+// Values must match the backend AlertType enum (uppercase); display labels come
+// from the shared alertTypeLabel map (e.g. STAGNATION → "Losing momentum").
+const TYPES = ['CRISIS', 'RISK', 'MILESTONE', 'STAGNATION'].map((value) => ({
+  value,
+  label: alertTypeLabel(value),
+}));
 
 const AlertsPage = () => {
   const navigate = useNavigate();
@@ -24,6 +24,7 @@ const AlertsPage = () => {
   const [filterType, setFilterType] = useState(null);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [selected, setSelected] = useState(new Set());
+  const [updateFailed, setUpdateFailed] = useState(false);
 
   const fetchAlerts = useCallback(async () => {
     try {
@@ -48,22 +49,30 @@ const AlertsPage = () => {
   }, [fetchAlerts]);
 
   const handleMarkRead = async (id) => {
+    // Optimistic update — snapshot so we can revert if the request fails.
+    const snapshot = alerts;
+    setAlerts(prev => prev.map(a => a.id === id ? { ...a, readAt: new Date().toISOString() } : a));
     try {
       await therapistService.markAlertRead(id);
-      setAlerts(prev => prev.map(a => a.id === id ? { ...a, readAt: new Date().toISOString() } : a));
     } catch (err) {
-      console.error('Failed to mark alert as read:', err);
+      setAlerts(snapshot);
+      setUpdateFailed(true);
     }
   };
 
   const handleBulkMarkRead = async () => {
     if (selected.size === 0) return;
+    // Optimistic update — snapshot alerts and selection so we can revert on failure.
+    const alertsSnapshot = alerts;
+    const selectedSnapshot = selected;
+    setAlerts(prev => prev.map(a => selected.has(a.id) ? { ...a, readAt: new Date().toISOString() } : a));
+    setSelected(new Set());
     try {
-      await therapistService.markAlertsRead([...selected]);
-      setAlerts(prev => prev.map(a => selected.has(a.id) ? { ...a, readAt: new Date().toISOString() } : a));
-      setSelected(new Set());
+      await therapistService.markAlertsRead([...selectedSnapshot]);
     } catch (err) {
-      console.error('Failed to mark alerts as read:', err);
+      setAlerts(alertsSnapshot);
+      setSelected(selectedSnapshot);
+      setUpdateFailed(true);
     }
   };
 
@@ -119,7 +128,7 @@ const AlertsPage = () => {
         <Card>
           <CardContent sx={{ textAlign: 'center', py: 4 }}>
             <Typography color="text.secondary">
-              {filterType || unreadOnly ? 'No alerts match your filters.' : 'No alerts — all clear! 🎉'}
+              {filterType || unreadOnly ? 'No alerts match your filters.' : 'No alerts. Nothing needs your attention right now.'}
             </Typography>
           </CardContent>
         </Card>
@@ -149,6 +158,14 @@ const AlertsPage = () => {
           );
         })
       )}
+
+      <Snackbar
+        open={updateFailed}
+        autoHideDuration={5000}
+        onClose={() => setUpdateFailed(false)}
+        message="Couldn't update alert — try again."
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Box>
   );
 };

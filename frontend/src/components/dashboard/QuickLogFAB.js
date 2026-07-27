@@ -28,10 +28,11 @@ const QuickLogFAB = ({ onLogComplete, partnerName }) => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedMood, setSelectedMood] = useState(null);
 
+  // mood is on the same 1-10 scale as the full check-in
   const moods = [
-    { emoji: '😊', label: 'Good', value: 4 },
-    { emoji: '😐', label: 'Okay', value: 3 },
-    { emoji: '😔', label: 'Tough', value: 2 },
+    { emoji: '😊', label: 'Good', value: 8 },
+    { emoji: '😐', label: 'Okay', value: 5 },
+    { emoji: '😔', label: 'Tough', value: 3 },
   ];
 
   const handleMoodSelect = async (mood) => {
@@ -41,25 +42,21 @@ const QuickLogFAB = ({ onLogComplete, partnerName }) => {
     try {
       // Quick log with minimal data
       await logsApi.submitDaily({
-        positives: mood.value >= 3 ? 3 : 1,
-        negatives: mood.value >= 3 ? 0 : 2,
+        positiveCount: mood.value >= 5 ? 3 : 1,
+        negativeCount: mood.value >= 5 ? 0 : 2,
         mood: mood.value,
         quickLog: true,
       });
 
-      // Variable reward - sometimes extra celebration
-      const isBonus = Math.random() > 0.7;
-
-      // Confetti + haptic (bigger burst on a bonus)
       setShowConfetti(true);
-      celebrate({ big: isBonus });
+      celebrate({ big: false });
 
       setTimeout(() => {
         setShowConfetti(false);
         setOpen(false);
         setSelectedMood(null);
         if (onLogComplete) {
-          onLogComplete(isBonus);
+          onLogComplete();
         }
       }, 1500);
 

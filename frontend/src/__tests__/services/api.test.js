@@ -245,10 +245,12 @@ describe('api service', () => {
     });
 
     test.each(['SUBSCRIPTION_REQUIRED', 'PREMIUM_REQUIRED'])(
-      '402 %s routes to the paywall without clearing tokens',
+      '402 %s announces the soft paywall without redirecting or clearing tokens',
       async (code) => {
         localStorage.setItem('token', 'valid-token');
         localStorage.setItem('refreshToken', 'valid-refresh');
+        const gateListener = jest.fn();
+        window.addEventListener('lr:subscription-required', gateListener);
 
         const error = {
           config: { url: '/matchup/current', headers: {} },
@@ -260,15 +262,23 @@ describe('api service', () => {
         // Not an auth failure — the session stays intact.
         expect(getToken()).toBe('valid-token');
         expect(getRefreshToken()).toBe('valid-refresh');
-        // Flagged for callers (PremiumGate, page catches) and routed to plans.
+        // Flagged for callers (PremiumGate, page catches).
         expect(error.isSubscriptionRequired).toBe(true);
-        expect(window.location.href).toBe('/subscribe');
+        // Soft paywall: an event for the in-app prompt, never a hard redirect
+        // (a redirect here used to destroy in-progress state and lock free
+        // users out of the dashboard).
+        expect(window.location.href).toBe('http://localhost/dashboard');
+        expect(gateListener).toHaveBeenCalledTimes(1);
+        expect(gateListener.mock.calls[0][0].detail).toMatchObject({ code });
+        window.removeEventListener('lr:subscription-required', gateListener);
       }
     );
 
-    test('402 while already on /subscribe does not redirect-loop', async () => {
+    test('402 while already on /subscribe does not announce the paywall', async () => {
       window.location = { pathname: '/subscribe', href: 'http://localhost/subscribe' };
       localStorage.setItem('token', 'valid-token');
+      const gateListener = jest.fn();
+      window.addEventListener('lr:subscription-required', gateListener);
 
       const error = {
         config: { url: '/matchup/current', headers: {} },
@@ -277,7 +287,9 @@ describe('api service', () => {
 
       await expect(getResponseErrorHandler()(error)).rejects.toBe(error);
       expect(error.isSubscriptionRequired).toBe(true);
+      expect(gateListener).not.toHaveBeenCalled();
       expect(window.location.href).toBe('http://localhost/subscribe');
+      window.removeEventListener('lr:subscription-required', gateListener);
     });
 
     test('402 with an unknown code passes through without paywall redirect', async () => {

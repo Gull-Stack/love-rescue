@@ -196,9 +196,32 @@ function extractReceipt(receipt, transaction) {
 }
 
 /**
+ * Error representing the user deliberately dismissing the Apple payment sheet.
+ * Callers should branch on `err.userCancelled === true` (or `err.code ===
+ * 'USER_CANCELLED'`) — never on message text, which other failures can
+ * coincidentally resemble.
+ */
+function userCancelledError() {
+  const err = new Error('Purchase cancelled.');
+  err.userCancelled = true;
+  err.code = 'USER_CANCELLED';
+  return err;
+}
+
+/** True when a plugin error code means the user cancelled the payment sheet. */
+function isCancelledCode(code) {
+  return (
+    code != null &&
+    !!CdvPurchase?.ErrorCode &&
+    code === CdvPurchase.ErrorCode.PAYMENT_CANCELLED
+  );
+}
+
+/**
  * Purchase the subscription for a tier. Resolves with the base64 App Store
  * receipt (hand it to paymentsApi.verifyAppleReceipt). Rejects on
- * cancel/failure. Off-device this rejects immediately.
+ * cancel/failure — a user-cancel rejection carries `userCancelled: true`.
+ * Off-device this rejects immediately.
  */
 export async function purchase(tier) {
   if (!isAvailable()) {
@@ -252,17 +275,24 @@ export async function purchase(tier) {
       (result) => {
         // A returned IError means the order was rejected/cancelled up front.
         if (result && result.isError) {
-          const cancelled =
-            CdvPurchase?.ErrorCode &&
-            result.code === CdvPurchase.ErrorCode.PAYMENT_CANCELLED;
           done(
             reject,
-            new Error(cancelled ? 'Purchase cancelled.' : result.message || 'Purchase failed.')
+            isCancelledCode(result.code)
+              ? userCancelledError()
+              : new Error(result.message || 'Purchase failed.')
           );
         }
         // Otherwise wait for the approved() callback above.
       },
-      (err) => done(reject, err instanceof Error ? err : new Error('Purchase failed.'))
+      (err) =>
+        done(
+          reject,
+          isCancelledCode(err?.code)
+            ? userCancelledError()
+            : err instanceof Error
+              ? err
+              : new Error('Purchase failed.')
+        )
     );
   });
 }

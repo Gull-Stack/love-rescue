@@ -208,7 +208,7 @@ const ConnectionCard = (props) => {
         <Slider
           value={formData.closenessScore}
           onChange={(_, value) => setFormData((prev) => ({ ...prev, closenessScore: value }))}
-          min={0}
+          min={1}
           max={10}
           marks
           valueLabelDisplay="auto"

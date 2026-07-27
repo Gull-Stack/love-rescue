@@ -10,7 +10,7 @@ import {
   Button,
   IconButton,
   Tooltip,
-  Snackbar,
+
   Collapse,
   Skeleton,
 } from '@mui/material';
@@ -93,7 +93,6 @@ const Dashboard = () => {
   });
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
-  const [bonusCelebration, setBonusCelebration] = useState(false);
   const [loadError, setLoadError] = useState(false);
 
   const partnerName = relationship?.partner?.firstName || null;
@@ -215,11 +214,8 @@ const Dashboard = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleQuickLogComplete = (isBonus) => {
+  const handleQuickLogComplete = () => {
     fetchDashboardData();
-    if (isBonus) {
-      setBonusCelebration(true);
-    }
   };
 
   if (loading) {
@@ -611,14 +607,6 @@ const Dashboard = () => {
         />
       )}
 
-      {/* Bonus celebration snackbar */}
-      <Snackbar
-        open={bonusCelebration}
-        autoHideDuration={4000}
-        onClose={() => setBonusCelebration(false)}
-        message="🎊 BONUS! You're on a roll! Keep it up!"
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      />
     </Box>
   );
 };

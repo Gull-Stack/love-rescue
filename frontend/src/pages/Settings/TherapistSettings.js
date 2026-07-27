@@ -20,9 +20,7 @@ import {
   Chip,
   Pagination,
   Skeleton,
-  Tooltip,
 } from '@mui/material';
-import DownloadIcon from '@mui/icons-material/Download';
 import HistoryIcon from '@mui/icons-material/History';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import PsychologyIcon from '@mui/icons-material/Psychology';
@@ -63,6 +61,8 @@ const TherapistSettings = () => {
       const response = await api.get('/therapist/notification-preferences');
       setNotifPrefs(response.data);
     } catch {
+      // Keep the section usable with sensible defaults, but surface the failure.
+      setError('Could not load your saved notification preferences — showing defaults.');
       setNotifPrefs({
         crisisAlerts: { push: true, email: true, sms: false },
         sessionPrep: { push: true, email: false, sms: false },
@@ -78,7 +78,11 @@ const TherapistSettings = () => {
     setLoading((prev) => ({ ...prev, audit: true }));
     try {
       const response = await api.get('/therapist/audit-log', { params: { page, limit: 10 } });
-      setAuditLog(response.data);
+      // API returns { logs, total, page } — normalize to the shape this component renders.
+      setAuditLog({
+        entries: response.data.logs || response.data.entries || [],
+        total: response.data.total || 0,
+      });
     } catch {
       setError('Failed to load audit log');
     } finally {
@@ -364,28 +368,6 @@ const TherapistSettings = () => {
               No audit entries yet. Access log will appear here as you view client data.
             </Typography>
           ) : null}
-        </CardContent>
-      </Card>
-
-      {/* Export Data */}
-      <Card>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            <DownloadIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
-            Export Data
-          </Typography>
-          <Typography color="text.secondary" variant="body2" paragraph>
-            Export client data for supervision or insurance documentation.
-          </Typography>
-          <Tooltip title="Export is coming soon — we're building PDF and CSV formats now.">
-            {/* span wrapper so the tooltip works on a disabled button */}
-            <Box component="span" display="inline-block">
-              <Button variant="outlined" startIcon={<DownloadIcon />} disabled>
-                Export Data
-              </Button>
-            </Box>
-          </Tooltip>
-          <Chip label="Coming soon" size="small" variant="outlined" sx={{ ml: 1.5, verticalAlign: 'middle' }} />
         </CardContent>
       </Card>
     </Box>

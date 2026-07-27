@@ -429,7 +429,7 @@ const Login = () => {
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               Are you a therapist?{' '}
-              <Link component={RouterLink} to="/therapist/onboarding" color="primary">
+              <Link component={RouterLink} to="/signup?intent=therapist" color="primary">
                 Set up your practice
               </Link>
             </Typography>

@@ -14,6 +14,21 @@ const typeIcons = {
   stagnation: <TrendingDownIcon fontSize="small" />,
 };
 
+// User-facing labels for API alert types. Keep API values unchanged —
+// this is display-only ("STAGNATION" reads better as "Losing momentum").
+const typeLabels = {
+  crisis: 'Crisis',
+  risk: 'Risk',
+  milestone: 'Milestone',
+  stagnation: 'Losing momentum',
+};
+
+/** Display label for an API alert type (accepts any case). */
+export const alertTypeLabel = (type) => {
+  const key = String(type || '').toLowerCase();
+  return typeLabels[key] || (key ? key.charAt(0).toUpperCase() + key.slice(1) : 'Alert');
+};
+
 /**
  * Renders a therapist alert. The API returns uppercase enum values
  * (alertType: CRISIS/RISK/MILESTONE/STAGNATION, severity: LOW/MEDIUM/HIGH/CRITICAL),
@@ -61,7 +76,7 @@ const AlertCard = ({ alert, onClick, compact = false }) => {
               {clientName}
             </Typography>
             <Chip
-              label={type || 'alert'}
+              label={alertTypeLabel(type)}
               size="small"
               sx={{
                 bgcolor: colors.border,
@@ -69,10 +84,14 @@ const AlertCard = ({ alert, onClick, compact = false }) => {
                 fontWeight: 600,
                 fontSize: '0.7rem',
                 height: 22,
-                textTransform: 'capitalize',
               }}
             />
           </Box>
+          {compact && alert.message && (
+            <Typography variant="body2" color="text.secondary" noWrap sx={{ mt: 0.5 }}>
+              {alert.message}
+            </Typography>
+          )}
           {!compact && (
             <>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>

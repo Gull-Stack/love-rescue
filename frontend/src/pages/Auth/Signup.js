@@ -22,7 +22,12 @@ const Signup = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const joinCode = searchParams.get('join');
-  const redirectTo = joinCode ? `/join/${joinCode}` : '/dashboard';
+  const therapistIntent = searchParams.get('intent') === 'therapist';
+  const redirectTo = joinCode
+    ? `/join/${joinCode}`
+    : therapistIntent
+      ? '/therapist/onboarding'
+      : '/dashboard';
   const { signup, googleLogin, appleLogin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({

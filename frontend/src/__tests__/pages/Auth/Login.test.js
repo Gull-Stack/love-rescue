@@ -75,7 +75,7 @@ describe('Login', () => {
     );
     expect(screen.getByRole('link', { name: /set up your practice/i })).toHaveAttribute(
       'href',
-      '/therapist/onboarding'
+      '/signup?intent=therapist'
     );
   });
 

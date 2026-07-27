@@ -215,7 +215,10 @@ router.post('/schedule', authenticate, requirePremium, async (req, res, next) =>
  * GET /api/meetings/upcoming
  * Get upcoming meetings for user's relationship
  */
-router.get('/upcoming', authenticate, requireSubscription, async (req, res, next) => {
+// NOTE: deliberately NOT gated by requireSubscription — the dashboard calls
+// this on every mount, and a paywall on a read of your own meetings hard-locks
+// free users out of their home screen (creation/booking stays gated below).
+router.get('/upcoming', authenticate, async (req, res, next) => {
   try {
     const relationship = await findUserRelationship(req.prisma, req.user.id);
     if (!relationship) {

@@ -26,6 +26,7 @@ router.post('/daily', authenticate, async (req, res, next) => {
       bidsTurned,
       closenessScore,
       mood,
+      emotions,
       isPrivate,
       therapistVisible
     } = req.body;
@@ -42,6 +43,9 @@ router.post('/daily', authenticate, async (req, res, next) => {
     }
     if (mood !== undefined && (typeof mood !== 'number' || mood < 1 || mood > 10)) {
       return res.status(400).json({ error: 'mood must be between 1 and 10' });
+    }
+    if (emotions !== undefined && (!Array.isArray(emotions) || emotions.length > 20 || emotions.some(e => typeof e !== 'string' || e.length > 40))) {
+      return res.status(400).json({ error: 'emotions must be an array of up to 20 short labels' });
     }
 
     let logDate;
@@ -73,6 +77,7 @@ router.post('/daily', authenticate, async (req, res, next) => {
         bidsTurned,
         closenessScore,
         mood,
+        emotions,
         isPrivate: isPrivate || false,
         therapistVisible: therapistVisible !== false
       },
@@ -86,6 +91,7 @@ router.post('/daily', authenticate, async (req, res, next) => {
         bidsTurned,
         closenessScore,
         mood,
+        emotions,
         isPrivate: isPrivate || false,
         therapistVisible: therapistVisible !== false
       }

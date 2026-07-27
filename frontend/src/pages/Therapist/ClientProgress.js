@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Card, CardContent, Grid, Button, Chip,
-  Alert, Skeleton, IconButton,
+  Alert, Skeleton, IconButton, Tooltip,
 } from '@mui/material';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -31,6 +31,9 @@ const moodIcon = (val) => {
   if (val >= 4) return <SentimentNeutralIcon sx={{ color: 'warning.main' }} />;
   return <SentimentDissatisfiedIcon sx={{ color: 'error.main' }} />;
 };
+
+// Display labels for the API's PermissionLevel enum (BASIC/STANDARD/FULL).
+const PERMISSION_LABELS = { BASIC: 'Basic', STANDARD: 'Standard', FULL: 'Full' };
 
 /** Humanize an assessment type key like "gottman_checkup" → "Gottman Checkup". */
 const typeLabel = (type) =>
@@ -142,9 +145,20 @@ const ClientProgress = () => {
         </IconButton>
         <Box sx={{ flex: 1 }}>
           <Typography variant="h4" fontWeight={600}>{client?.name}</Typography>
-          {client?.coupleStatus && (
-            <Chip label={client.coupleStatus} size="small" color="primary" variant="outlined" sx={{ mt: 0.5 }} />
-          )}
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 0.5 }}>
+            {client?.permissionLevel && (
+              <Tooltip title="Controls what data this client shares with you.">
+                <Chip
+                  label={`Sharing: ${PERMISSION_LABELS[client.permissionLevel] || client.permissionLevel}`}
+                  size="small"
+                  variant="outlined"
+                />
+              </Tooltip>
+            )}
+            {client?.coupleStatus && (
+              <Chip label={client.coupleStatus} size="small" color="primary" variant="outlined" />
+            )}
+          </Box>
         </Box>
       </Box>
 
