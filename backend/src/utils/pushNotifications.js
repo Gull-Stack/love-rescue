@@ -273,8 +273,8 @@ async function notifyPartner(userId, type, message) {
   }
 
   return await sendToUser(partnerId, {
-    title: '🔄 Partner Sync Complete',
-    body: 'Both instances operational.',
+    title: '💛 Your partner showed up today',
+    body: message || 'They just checked in. Little moments add up.',
     tag: `partner-${type}`,
     data: { url: '/dashboard', type: `partner-${type}` }
   });

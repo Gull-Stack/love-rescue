@@ -412,6 +412,7 @@ export const realTalkApi = {
   get: (id) => api.get(`/real-talk/${id}`),
   rateEffectiveness: (id, effectiveness, notes) =>
     api.patch(`/real-talk/${id}/effectiveness`, { effectiveness, notes }),
+  share: (id) => api.post(`/real-talk/${id}/share`),
   delete: (id) => api.delete(`/real-talk/${id}`),
 };
 

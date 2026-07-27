@@ -207,6 +207,68 @@ router.get('/:id', authenticate, async (req, res, next) => {
 });
 
 /**
+ * POST /api/real-talk/:id/share
+ * Deliver the gentle startup to the partner inside the app (notification +
+ * push). Real Talk used to end at copy-to-clipboard — the partner never saw
+ * the product's most differentiated output.
+ */
+router.post('/:id/share', authenticate, async (req, res, next) => {
+  try {
+    const realTalk = await req.prisma.realTalk.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!realTalk || realTalk.deletedAt) {
+      return res.status(404).json({ error: 'Real Talk not found' });
+    }
+    if (realTalk.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Not your Real Talk' });
+    }
+
+    const relationship = await req.prisma.relationship.findFirst({
+      where: {
+        OR: [{ user1Id: req.user.id }, { user2Id: req.user.id }],
+        status: 'active',
+      },
+    });
+    const partnerId =
+      relationship &&
+      (relationship.user1Id === req.user.id ? relationship.user2Id : relationship.user1Id);
+
+    if (!partnerId) {
+      return res.status(400).json({ error: 'No partner linked', code: 'NO_PARTNER' });
+    }
+
+    const senderName = req.user.firstName || 'Your partner';
+    await req.prisma.notification.create({
+      data: {
+        userId: partnerId,
+        type: 'REAL_TALK_SHARED',
+        title: `💬 ${senderName} wants to talk`,
+        body: realTalk.generatedStartup,
+        read: false,
+      },
+    }).catch(() => {});
+
+    // Push is best-effort — the in-app notification is the record.
+    try {
+      const { sendToUser } = require('../utils/pushNotifications');
+      await sendToUser(partnerId, {
+        title: `💬 ${senderName} wants to talk`,
+        body: realTalk.generatedStartup.slice(0, 160),
+        tag: `real-talk-${realTalk.id}`,
+        data: { url: '/real-talk', type: 'real_talk_shared' },
+      });
+    } catch (_e) { /* push infra unavailable — fine */ }
+
+    logger.info('Real Talk shared with partner', { userId: req.user.id, realTalkId: realTalk.id });
+    res.json({ success: true, message: 'Delivered. Sometimes the hardest part is just starting.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * PATCH /api/real-talk/:id/effectiveness
  * Rate effectiveness of a Real Talk
  */

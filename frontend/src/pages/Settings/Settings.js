@@ -23,6 +23,7 @@ import {
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import ShareIcon from '@mui/icons-material/Share';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useAuth } from '../../contexts/AuthContext';
@@ -52,6 +53,7 @@ const Settings = () => {
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [systemStatus, setSystemStatus] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
+  const [disconnectDialog, setDisconnectDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [passwordDialog, setPasswordDialog] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
@@ -158,6 +160,9 @@ const Settings = () => {
       const response = await invitePartner(partnerEmail || undefined);
       setInviteLink(response.inviteLink);
       setSuccess('Invite link generated! Share it with your partner.');
+      // Persist the pending-invite state via /auth/me (relationship.inviteCode)
+      // so it survives reloads instead of living only in local state.
+      refreshUser();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to generate invite link');
     } finally {
@@ -165,10 +170,54 @@ const Settings = () => {
     }
   };
 
+  // The link shown in the Partner card: a freshly generated link wins, otherwise
+  // fall back to the pending invite persisted on the relationship (/auth/me) so
+  // the invite survives page reloads.
+  const pendingInviteLink =
+    relationship && !relationship.hasPartner && relationship.inviteCode
+      ? `https://loverescue.app/join/${relationship.inviteCode}`
+      : '';
+  const activeInviteLink = inviteLink || pendingInviteLink;
+
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(inviteLink);
+    navigator.clipboard?.writeText(activeInviteLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShareInvite = async () => {
+    const shareText = `Join me on Love Rescue so we can work on us together — ${activeInviteLink}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Join me on Love Rescue',
+          text: shareText,
+          url: activeInviteLink,
+        });
+        return;
+      } catch (err) {
+        // User dismissed the share sheet — nothing to do.
+        if (err?.name === 'AbortError') return;
+        // Share failed for another reason — fall through to clipboard copy.
+      }
+    }
+    handleCopyLink();
+  };
+
+  const handleDisconnectPartner = async () => {
+    setLoading({ ...loading, disconnect: true });
+    setError('');
+    try {
+      await api.post('/auth/revoke-partner');
+      setDisconnectDialog(false);
+      setSuccess('Partner connection ended. You can invite a new partner anytime.');
+      refreshUser();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not end the partner connection. Please try again.');
+      setDisconnectDialog(false);
+    } finally {
+      setLoading({ ...loading, disconnect: false });
+    }
   };
 
   const handleConnectCalendar = async () => {
@@ -620,42 +669,75 @@ const Settings = () => {
             Partner
           </Typography>
           {relationship?.hasPartner ? (
-            <Box display="flex" alignItems="center" gap={2}>
-              <Chip label="Partner Connected" color="success" />
-              <Typography>
-                {relationship.partner?.firstName || 'Your partner'} has joined
-              </Typography>
+            <Box>
+              <Box display="flex" alignItems="center" gap={2}>
+                <Chip label="Partner Connected" color="success" />
+                <Typography>
+                  {relationship.partner?.firstName || 'Your partner'} has joined
+                </Typography>
+              </Box>
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => setDisconnectDialog(true)}
+                sx={{
+                  mt: 1.5,
+                  minHeight: 44,
+                  color: 'text.secondary',
+                  textTransform: 'none',
+                }}
+              >
+                Disconnect partner…
+              </Button>
             </Box>
           ) : (
             <>
               <Typography color="text.secondary" paragraph>
                 Invite your partner to unlock full features
               </Typography>
-              {inviteLink ? (
+              {activeInviteLink ? (
                 <Box>
-                  <Typography variant="body2" sx={{ mb: 1 }} fontWeight="bold">
-                    Share this link with your partner:
+                  <Typography variant="body2" sx={{ mb: 0.5 }} fontWeight="bold">
+                    {inviteLink ? 'Your invite link is ready!' : 'Invite pending'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                    Waiting for your partner to join. Share this link with them
+                    again anytime.
                   </Typography>
                   <Box display="flex" alignItems="center" gap={1} mb={2}>
                     <TextField
-                      value={inviteLink}
+                      value={activeInviteLink}
                       size="small"
                       fullWidth
                       InputProps={{ readOnly: true }}
                     />
                     <Tooltip title={copied ? 'Copied!' : 'Copy'}>
-                      <IconButton aria-label="Copy invite link" onClick={handleCopyLink}>
+                      <IconButton
+                        aria-label="Copy invite link"
+                        onClick={handleCopyLink}
+                        sx={{ minHeight: 44, minWidth: 44 }}
+                      >
                         <ContentCopyIcon />
                       </IconButton>
                     </Tooltip>
                   </Box>
-                  <Button
-                    variant="text"
-                    size="small"
-                    onClick={() => setInviteLink('')}
-                  >
-                    Generate New Link
-                  </Button>
+                  <Box display="flex" gap={1} flexWrap="wrap">
+                    <Button
+                      variant="contained"
+                      startIcon={<ShareIcon />}
+                      onClick={handleShareInvite}
+                      sx={{ minHeight: 44 }}
+                    >
+                      Share invite
+                    </Button>
+                    <Button
+                      variant="text"
+                      onClick={handleCopyLink}
+                      sx={{ minHeight: 44 }}
+                    >
+                      {copied ? 'Copied!' : 'Copy link'}
+                    </Button>
+                  </Box>
                 </Box>
               ) : (
                 <Box>
@@ -676,6 +758,7 @@ const Settings = () => {
                     startIcon={<PersonAddIcon />}
                     onClick={handleInvite}
                     disabled={loading.invite}
+                    sx={{ minHeight: 44 }}
                   >
                     {loading.invite ? <CircularProgress size={20} /> : 'Generate Invite Link'}
                   </Button>
@@ -846,6 +929,45 @@ const Settings = () => {
             disabled={!passwordForm.current || !passwordForm.next || !passwordForm.confirm || loading.password}
           >
             {loading.password ? <CircularProgress size={20} /> : 'Update Password'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Disconnect Partner Confirmation Dialog */}
+      <Dialog
+        open={disconnectDialog}
+        onClose={() => setDisconnectDialog(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>End partner connection?</DialogTitle>
+        <DialogContent>
+          <Typography paragraph>
+            If you disconnect, the data you've built together will be safely
+            archived. You'll each keep your own personal check-ins and history.
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            And if you change your minds, you can always reconnect later with a
+            new invite.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={handleDisconnectPartner}
+            disabled={loading.disconnect}
+            sx={{ minHeight: 44 }}
+          >
+            {loading.disconnect ? <CircularProgress size={20} /> : 'Disconnect'}
+          </Button>
+          <Button
+            variant="contained"
+            autoFocus
+            onClick={() => setDisconnectDialog(false)}
+            sx={{ minHeight: 44 }}
+          >
+            Stay connected
           </Button>
         </DialogActions>
       </Dialog>

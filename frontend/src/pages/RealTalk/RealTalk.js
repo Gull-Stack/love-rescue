@@ -18,9 +18,11 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HistoryIcon from '@mui/icons-material/History';
+import SendIcon from '@mui/icons-material/Send';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { realTalkApi } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import { brandGradients } from '../../theme';
 
 const TOTAL_STEPS = 4;
@@ -386,6 +388,7 @@ const ResultStep = (props) => {
     result, copied, handleCopy, expertQuote,
     effectivenessRated, handleEffectiveness,
     error, onRetry, onReset, onGoHome,
+    partnerName, sharing, shared, handleShare,
   } = props;
   return (
     <CardShell {...props} gradient={STEP_GRADIENTS[3]} showBack>
@@ -414,25 +417,59 @@ const ResultStep = (props) => {
             </Typography>
           </Box>
 
-          {/* Copy button */}
-          <Button
-            variant="contained"
-            startIcon={copied ? <CheckCircleIcon /> : <ContentCopyIcon />}
-            onClick={handleCopy}
-            sx={{
-              bgcolor: '#fff',
-              color: '#333',
-              fontWeight: 'bold',
-              borderRadius: 3,
-              textTransform: 'none',
-              px: 4,
-              py: 1.5,
-              mb: 3,
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
-            }}
-          >
-            {copied ? 'Copied!' : 'Copy to Clipboard'}
-          </Button>
+          {/* Deliver it — in-app to the partner when there is one; copy as
+              the fallback. The sentence only matters if it reaches them. */}
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', justifyContent: 'center', mb: 3 }}>
+            {partnerName && (
+              <Button
+                variant="contained"
+                startIcon={shared ? <CheckCircleIcon /> : <SendIcon />}
+                onClick={handleShare}
+                disabled={sharing || shared}
+                sx={{
+                  bgcolor: '#fff',
+                  color: '#0F1722',
+                  fontWeight: 'bold',
+                  borderRadius: 3,
+                  textTransform: 'none',
+                  px: 4,
+                  py: 1.5,
+                  minHeight: 44,
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+                }}
+              >
+                {shared ? 'Sent 💛' : sharing ? 'Sending…' : `Send to ${partnerName}`}
+              </Button>
+            )}
+            <Button
+              variant={partnerName ? 'outlined' : 'contained'}
+              startIcon={copied ? <CheckCircleIcon /> : <ContentCopyIcon />}
+              onClick={handleCopy}
+              sx={partnerName ? {
+                color: '#fff',
+                borderColor: 'rgba(255,255,255,0.6)',
+                fontWeight: 'bold',
+                borderRadius: 3,
+                textTransform: 'none',
+                px: 3,
+                py: 1.5,
+                minHeight: 44,
+                '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.08)' },
+              } : {
+                bgcolor: '#fff',
+                color: '#0F1722',
+                fontWeight: 'bold',
+                borderRadius: 3,
+                textTransform: 'none',
+                px: 4,
+                py: 1.5,
+                minHeight: 44,
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+              }}
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </Button>
+          </Box>
 
           {/* Why this works */}
           <Box sx={{ maxWidth: 400, width: '100%', mb: 3 }}>
@@ -556,6 +593,8 @@ const steps = [IssueStep, FeelingStep, NeedStep, ResultStep];
 
 const RealTalk = () => {
   const navigate = useNavigate();
+  const { relationship } = useAuth();
+  const partnerName = relationship?.hasPartner ? (relationship?.partner?.firstName || 'your partner') : null;
   useEffect(() => { document.title = 'Real Talk | Love Rescue'; }, []);
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -670,6 +709,21 @@ const RealTalk = () => {
     }
   }, [currentStep, goNext, handleSubmit]);
 
+  const [sharing, setSharing] = useState(false);
+  const [shared, setShared] = useState(false);
+  const handleShare = useCallback(async () => {
+    if (!result?.realTalk?.id || sharing || shared) return;
+    setSharing(true);
+    try {
+      await realTalkApi.share(result.realTalk.id);
+      setShared(true);
+    } catch (err) {
+      setError(err.response?.data?.error || "Couldn't send it right now — you can still copy it.");
+    } finally {
+      setSharing(false);
+    }
+  }, [result, sharing, shared]);
+
   const handleCopy = useCallback(() => {
     if (result?.realTalk?.generatedStartup) {
       navigator.clipboard.writeText(result.realTalk.generatedStartup);
@@ -703,6 +757,8 @@ const RealTalk = () => {
   };
 
   const handleReset = () => {
+    setShared(false);
+    setSharing(false);
     setCurrentStep(0);
     setIssue('');
     setSelectedEmotions([]);
@@ -769,6 +825,10 @@ const RealTalk = () => {
     onRetry: handleRetry,
     onReset: handleReset,
     onGoHome: () => navigate('/dashboard'),
+    partnerName,
+    sharing,
+    shared,
+    handleShare,
   };
 
   return (

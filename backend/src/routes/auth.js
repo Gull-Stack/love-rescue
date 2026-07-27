@@ -846,6 +846,36 @@ router.post('/invite-partner', authenticate, async (req, res, next) => {
  * POST /api/auth/join/:code
  * Join relationship with invite code
  */
+/**
+ * GET /api/auth/join/:code/preview
+ * Public preview of a partner invite: who's asking, and is the code usable.
+ * The invited partner is being asked to permanently link accounts and share
+ * data — they deserve to see a name, not "a relationship". The code itself is
+ * the secret; only the inviter's first name is revealed.
+ */
+router.get('/join/:code/preview', async (req, res, next) => {
+  try {
+    const { code } = req.params;
+    const relationship = await req.prisma.relationship.findUnique({
+      where: { inviteCode: code.toUpperCase() },
+      include: { user1: { select: { firstName: true } } }
+    });
+
+    if (!relationship) {
+      return res.status(404).json({ valid: false, reason: 'INVALID_CODE' });
+    }
+    if (relationship.user2Id) {
+      return res.status(400).json({ valid: false, reason: 'ALREADY_USED' });
+    }
+    res.json({
+      valid: true,
+      inviterFirstName: relationship.user1?.firstName || null
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post('/join/:code', authenticate, async (req, res, next) => {
   try {
     const { code } = req.params;

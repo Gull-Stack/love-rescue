@@ -41,6 +41,7 @@ import {
   ProgressJourney,
 } from '../../components/dashboard';
 import ActionCard from '../../components/dashboard/ActionCard';
+import InvitePartnerCard from '../../components/dashboard/InvitePartnerCard';
 import IdentityHint from '../../components/gamification/IdentityHint';
 import ExpertInsight from '../../components/gamification/ExpertInsight';
 import { assessmentLabel } from '../../utils/assessmentLabels';
@@ -364,6 +365,10 @@ const Dashboard = () => {
           </Box>
         </Alert>
       </Collapse>
+
+      {/* Solo user? The invite lives on the home screen, not buried in
+          Settings. Share-sheet first; the pending code survives reloads. */}
+      {!relationship?.hasPartner && <InvitePartnerCard />}
 
       {/* ActionCard — THE hero card. Always present. */}
       <Box sx={{ mb: 2 }}>

@@ -111,6 +111,8 @@ describe('Settings', () => {
   });
 
   test('invite partner flow generates and displays a link', async () => {
+    // No pending invite on the relationship yet — the generate form shows.
+    auth.relationship = { id: 'rel-1', hasPartner: false, inviteCode: null, partner: null };
     auth.invitePartner.mockResolvedValueOnce({
       inviteLink: 'http://localhost:3000/join/ABC123',
       inviteCode: 'ABC123',
@@ -138,6 +140,38 @@ describe('Settings', () => {
       expect(screen.getByText('Partner Connected')).toBeInTheDocument();
     });
     expect(screen.queryByRole('button', { name: /generate invite link/i })).not.toBeInTheDocument();
+  });
+
+  test('a pending invite on the relationship survives reload via relationship.inviteCode', async () => {
+    // Default auth: hasPartner false + inviteCode TESTCODE (from /auth/me) —
+    // the persistent pending state renders, not the generate form.
+    renderPage();
+
+    expect(
+      await screen.findByDisplayValue('https://loverescue.app/join/TESTCODE')
+    ).toBeInTheDocument();
+    expect(screen.getByText(/waiting for your partner to join/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /share invite/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /generate invite link/i })).not.toBeInTheDocument();
+  });
+
+  test('disconnect partner confirms via dialog, revokes, and refreshes user', async () => {
+    const partnerAuth = createPartnerAuth();
+    useAuth.mockReturnValue(partnerAuth);
+    api.post.mockResolvedValue({ data: {} });
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: /disconnect partner/i }));
+
+    // Cancel is the primary "Stay connected" action; confirm is "Disconnect".
+    expect(await screen.findByRole('button', { name: /stay connected/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^disconnect$/i }));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith('/auth/revoke-partner');
+    });
+    expect(await screen.findByText(/partner connection ended/i)).toBeInTheDocument();
+    expect(partnerAuth.refreshUser).toHaveBeenCalled();
   });
 
   test('Google Calendar section offers connect when disconnected', async () => {
