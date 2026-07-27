@@ -57,9 +57,12 @@ router.get('/weekly', authenticate, async (req, res, next) => {
       });
     }
 
-    // Calculate statistics
-    const totalPositives = logs.reduce((sum, l) => sum + l.positiveCount, 0);
-    const totalNegatives = logs.reduce((sum, l) => sum + l.negativeCount, 0);
+    // Calculate statistics. Ratio math runs only over full check-ins —
+    // mood-only quick logs (quickLogOnly) carry no interaction data and must
+    // not enter Gottman-ratio inputs.
+    const ratioLogs = logs.filter(l => !l.quickLogOnly);
+    const totalPositives = ratioLogs.reduce((sum, l) => sum + l.positiveCount, 0);
+    const totalNegatives = ratioLogs.reduce((sum, l) => sum + l.negativeCount, 0);
     const avgRatio = totalNegatives > 0
       ? Math.round((totalPositives / totalNegatives) * 100) / 100
       : totalPositives > 0 ? 999 : 0;
@@ -96,8 +99,9 @@ router.get('/weekly', authenticate, async (req, res, next) => {
       improvements.push('Focus on building emotional closeness');
     }
 
-    // Generate recommendations
-    const recommendations = generateRecommendations(logs, strategy);
+    // Generate recommendations (ratio-based — quick logs excluded; its
+    // consistency branch uses total logged days passed separately)
+    const recommendations = generateRecommendations(ratioLogs, strategy, logs.length);
 
     res.json({
       report: {
@@ -121,11 +125,14 @@ router.get('/weekly', authenticate, async (req, res, next) => {
         } : null,
         dailyBreakdown: logs.map(l => ({
           date: l.date,
-          positiveCount: l.positiveCount,
-          negativeCount: l.negativeCount,
-          ratio: l.ratio,
+          // Quick-only days expose mood/closeness but no interaction data —
+          // null (not 0) so charts skip the day instead of plotting a fake 0.
+          positiveCount: l.quickLogOnly ? null : l.positiveCount,
+          negativeCount: l.quickLogOnly ? null : l.negativeCount,
+          ratio: l.quickLogOnly ? null : l.ratio,
           closenessScore: l.closenessScore,
-          mood: l.mood
+          mood: l.mood,
+          quickLogOnly: !!l.quickLogOnly
         }))
       }
     });
@@ -166,8 +173,10 @@ router.get('/monthly', authenticate, async (req, res, next) => {
     for (const log of logs) {
       currentWeek.push(log);
       if (currentWeek.length === 7 || log === logs[logs.length - 1]) {
-        const weekPositives = currentWeek.reduce((s, l) => s + l.positiveCount, 0);
-        const weekNegatives = currentWeek.reduce((s, l) => s + l.negativeCount, 0);
+        // Ratio math over full check-ins only; quick logs still count as days.
+        const weekRatioLogs = currentWeek.filter(l => !l.quickLogOnly);
+        const weekPositives = weekRatioLogs.reduce((s, l) => s + l.positiveCount, 0);
+        const weekNegatives = weekRatioLogs.reduce((s, l) => s + l.negativeCount, 0);
 
         weeklyData.push({
           week: weekNumber,
@@ -182,9 +191,10 @@ router.get('/monthly', authenticate, async (req, res, next) => {
       }
     }
 
-    // Monthly totals
-    const totalPositives = logs.reduce((sum, l) => sum + l.positiveCount, 0);
-    const totalNegatives = logs.reduce((sum, l) => sum + l.negativeCount, 0);
+    // Monthly totals — full check-ins only (quick logs carry no counts)
+    const monthRatioLogs = logs.filter(l => !l.quickLogOnly);
+    const totalPositives = monthRatioLogs.reduce((sum, l) => sum + l.positiveCount, 0);
+    const totalNegatives = monthRatioLogs.reduce((sum, l) => sum + l.negativeCount, 0);
 
     res.json({
       report: {
@@ -395,10 +405,13 @@ router.get('/couple-dashboard', authenticate, async (req, res, next) => {
 });
 
 // Helper function to generate recommendations
-function generateRecommendations(logs, strategy) {
+function generateRecommendations(logs, strategy, totalDaysLogged) {
   const recommendations = [];
 
-  if (logs.length < 3) {
+  // `logs` are full check-ins only (quick logs excluded upstream); the
+  // consistency nudge should count every logged day, quick ones included.
+  const daysLogged = totalDaysLogged !== undefined ? totalDaysLogged : logs.length;
+  if (daysLogged < 3) {
     recommendations.push({
       priority: 'high',
       text: 'Try to log your interactions daily for better insights'

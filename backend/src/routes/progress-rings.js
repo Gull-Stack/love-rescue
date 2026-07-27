@@ -60,9 +60,14 @@ router.get('/', authenticate, async (req, res) => {
     // Mirroring uses: days with a journal entry (reflects introspection, max 7)
     // I-feel statements: days where mood is logged (self-awareness, max 7)
     // Gentle startups: days with positiveCount >= 3 (constructive interactions, max 7)
+    // Interaction-count predicates run over full check-ins only — mood-only
+    // quick logs (quickLogOnly) carry no counts and must not feed them.
+    // iFeelDays deliberately includes quick logs: a quick mood IS a real
+    // self-awareness signal.
+    const ratioLogs = dailyLogs.filter(l => !l.quickLogOnly);
     const mirroringDays = dailyLogs.filter(l => l.journalEntry && l.journalEntry.trim().length > 0).length;
     const iFeelDays = dailyLogs.filter(l => l.mood != null).length;
-    const gentleStartupDays = dailyLogs.filter(l => l.positiveCount >= 3).length;
+    const gentleStartupDays = ratioLogs.filter(l => l.positiveCount >= 3).length;
     const communicationEarned = mirroringDays + iFeelDays + gentleStartupDays;
     const communicationTotal = 21;
 
@@ -70,9 +75,9 @@ router.get('/', authenticate, async (req, res) => {
     // Pauses: days where ratio > 1 despite having negativeCount > 0 (managed conflict, max 7)
     // Repairs: days with positiveCount > negativeCount && negativeCount > 0 (repair attempts, max 7)
     // Flooding recognition: days where mood was logged AND negativeCount > 0 (awareness during conflict, max 7)
-    const pauseDays = dailyLogs.filter(l => l.negativeCount > 0 && l.ratio && l.ratio > 1).length;
-    const repairDays = dailyLogs.filter(l => l.negativeCount > 0 && l.positiveCount > l.negativeCount).length;
-    const floodingRecognitionDays = dailyLogs.filter(l => l.negativeCount > 0 && l.mood != null).length;
+    const pauseDays = ratioLogs.filter(l => l.negativeCount > 0 && l.ratio && l.ratio > 1).length;
+    const repairDays = ratioLogs.filter(l => l.negativeCount > 0 && l.positiveCount > l.negativeCount).length;
+    const floodingRecognitionDays = ratioLogs.filter(l => l.negativeCount > 0 && l.mood != null).length;
     const conflictEarned = pauseDays + repairDays + floodingRecognitionDays;
     const conflictTotal = 21;
 

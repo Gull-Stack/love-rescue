@@ -140,14 +140,16 @@ router.get('/', authenticate, async (req, res, next) => {
         req.prisma.assessment.count({ where: { userId } }),
       ]);
 
-    // Calculate stats
+    // Calculate stats. Ratio inputs come from full check-ins only —
+    // mood-only quick logs (quickLogOnly) carry no interaction data.
     const streakDays = streakData.currentStreak;
     const daysLogged = dailyLogs.length;
-    const totalPositives = dailyLogs.reduce(
+    const ratioLogs = dailyLogs.filter((l) => !l.quickLogOnly);
+    const totalPositives = ratioLogs.reduce(
       (sum, l) => sum + (l.positiveCount || 0),
       0
     );
-    const totalNegatives = dailyLogs.reduce(
+    const totalNegatives = ratioLogs.reduce(
       (sum, l) => sum + (l.negativeCount || 0),
       0
     );
@@ -222,11 +224,11 @@ router.get('/', authenticate, async (req, res, next) => {
       techniquesUsed.add('Positive Ratio');
     if (daysLogged >= 5) techniquesUsed.add('Daily Logging');
 
-    // Conflicts and resolution
-    const conflictDays = dailyLogs.filter(
+    // Conflicts and resolution — count-based, so full check-ins only
+    const conflictDays = ratioLogs.filter(
       (l) => l.negativeCount > 0
     ).length;
-    const resolvedConflicts = dailyLogs.filter(
+    const resolvedConflicts = ratioLogs.filter(
       (l) =>
         l.negativeCount > 0 &&
         l.positiveCount > 0 &&

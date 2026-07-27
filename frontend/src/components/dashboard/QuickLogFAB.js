@@ -40,10 +40,10 @@ const QuickLogFAB = ({ onLogComplete, partnerName }) => {
     setSubmitting(true);
 
     try {
-      // Quick log with minimal data
+      // Mood-only quick log. Never send interaction counts from here — the
+      // user didn't report any, and invented counts would poison the
+      // Gottman-ratio metrics (reports, weekly summary, progress rings).
       await logsApi.submitDaily({
-        positiveCount: mood.value >= 5 ? 3 : 1,
-        negativeCount: mood.value >= 5 ? 0 : 2,
         mood: mood.value,
         quickLog: true,
       });

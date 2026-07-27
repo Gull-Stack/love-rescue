@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const { calculateRatio } = require('../utils/scoring');
+const { localDayStart } = require('../lib/dates');
 const { detectCrisisAndNotify } = require('../utils/therapistAlerts');
 const logger = require('../utils/logger');
 
@@ -28,7 +29,8 @@ router.post('/daily', authenticate, async (req, res, next) => {
       mood,
       emotions,
       isPrivate,
-      therapistVisible
+      therapistVisible,
+      quickLog
     } = req.body;
 
     // HIGH-08: Input validation
@@ -48,14 +50,33 @@ router.post('/daily', authenticate, async (req, res, next) => {
       return res.status(400).json({ error: 'emotions must be an array of up to 20 short labels' });
     }
 
-    let logDate;
-    if (date) {
-      // Parse date string as local timezone (new Date('YYYY-MM-DD') parses as UTC, causing mismatches)
-      const [year, month, day] = date.split('-').map(Number);
-      logDate = new Date(year, month - 1, day, 0, 0, 0, 0);
-    } else {
-      logDate = new Date();
-      logDate.setHours(0, 0, 0, 0);
+    const logDate = localDayStart(date);
+
+    // Mood-only quick log: records the mood and nothing else. It must never
+    // write interaction counts (that would fabricate Gottman-ratio inputs) and
+    // must never degrade an existing full check-in for the day.
+    if (quickLog === true) {
+      if (mood === undefined) {
+        return res.status(400).json({ error: 'mood is required for a quick log' });
+      }
+      const dailyLog = await req.prisma.dailyLog.upsert({
+        where: { userId_date: { userId: req.user.id, date: logDate } },
+        // Existing log (full or quick): only refresh the mood.
+        update: { mood },
+        // New quick-only day: counts stay 0, ratio stays null, and the row is
+        // flagged so ratio aggregations exclude it.
+        create: {
+          userId: req.user.id,
+          date: logDate,
+          mood,
+          quickLogOnly: true,
+          positiveCount: 0,
+          negativeCount: 0,
+          ratio: null
+        }
+      });
+      logger.info('Quick log saved', { userId: req.user.id, date: logDate });
+      return res.status(201).json({ message: 'Quick log saved', dailyLog });
     }
 
     // Calculate ratio
@@ -79,7 +100,8 @@ router.post('/daily', authenticate, async (req, res, next) => {
         mood,
         emotions,
         isPrivate: isPrivate || false,
-        therapistVisible: therapistVisible !== false
+        therapistVisible: therapistVisible !== false,
+        quickLogOnly: false // a full check-in upgrades a quick-only day
       },
       create: {
         userId: req.user.id,
@@ -93,7 +115,8 @@ router.post('/daily', authenticate, async (req, res, next) => {
         mood,
         emotions,
         isPrivate: isPrivate || false,
-        therapistVisible: therapistVisible !== false
+        therapistVisible: therapistVisible !== false,
+        quickLogOnly: false
       }
     });
 
