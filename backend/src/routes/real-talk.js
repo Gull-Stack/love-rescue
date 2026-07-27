@@ -240,17 +240,24 @@ router.post('/:id/share', authenticate, async (req, res, next) => {
     }
 
     const senderName = req.user.firstName || 'Your partner';
+    // Durable in-app record first — this IS the delivery. Awaited, never
+    // swallowed: a DB failure must propagate (next(error) → 500), not turn
+    // into a success toast. The body carries the full gentle startup on
+    // purpose: the partner is the intended recipient of exactly this text.
     await req.prisma.notification.create({
       data: {
         userId: partnerId,
         type: 'REAL_TALK_SHARED',
         title: `💬 ${senderName} wants to talk`,
         body: realTalk.generatedStartup,
+        data: { url: '/real-talk', type: 'real_talk_shared', realTalkId: realTalk.id },
         read: false,
       },
-    }).catch(() => {});
+    });
 
-    // Push is best-effort — the in-app notification is the record.
+    // Push rides on top of the durable record (truncated; the in-app row is
+    // the source of truth). Its failure never flips the response.
+    let pushed = false;
     try {
       const { sendToUser } = require('../utils/pushNotifications');
       await sendToUser(partnerId, {
@@ -259,10 +266,19 @@ router.post('/:id/share', authenticate, async (req, res, next) => {
         tag: `real-talk-${realTalk.id}`,
         data: { url: '/real-talk', type: 'real_talk_shared' },
       });
-    } catch (_e) { /* push infra unavailable — fine */ }
+      pushed = true;
+    } catch (pushError) {
+      logger.warn('Real Talk push failed (in-app record saved)', {
+        userId: req.user.id, realTalkId: realTalk.id, error: pushError.message,
+      });
+    }
 
     logger.info('Real Talk shared with partner', { userId: req.user.id, realTalkId: realTalk.id });
-    res.json({ success: true, message: 'Delivered. Sometimes the hardest part is just starting.' });
+    res.json({
+      success: true,
+      pushed,
+      message: 'Sent — it\'s waiting in their Love Rescue. Sometimes the hardest part is just starting.',
+    });
   } catch (error) {
     next(error);
   }
