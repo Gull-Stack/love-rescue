@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticate, requirePremium, requireSubscription } = require('../middleware/auth');
+const { authenticate, requirePremium } = require('../middleware/auth');
 const { getFreeBusy, createCalendarEventWithMeet, cancelCalendarEvent } = require('../utils/googleCalendar');
 const { getCoursePosition } = require('../utils/coursePosition');
 const logger = require('../utils/logger');

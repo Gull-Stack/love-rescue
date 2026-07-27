@@ -106,13 +106,10 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
-// Platform admin emails (sync with backend + Layout.js)
-const PLATFORM_ADMIN_EMAILS = [
-  'josh@gullstack.com',
-  'bryce@gullstack.com',
-];
-
-// Admin Route wrapper — frontend guard for /admin (backend enforces too)
+// Admin Route wrapper — frontend guard for /admin (backend enforces too).
+// Admin identity comes ONLY from the server's isPlatformAdmin flag
+// (PLATFORM_ADMIN_EMAILS env / DB on the backend) — no client-side email
+// list to drift out of sync or leak addresses in the bundle.
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
@@ -122,10 +119,7 @@ const AdminRoute = ({ children }) => {
     );
   }
 
-  const isPlatformAdmin = user?.isPlatformAdmin ||
-    (user?.email && PLATFORM_ADMIN_EMAILS.includes(user.email.toLowerCase()));
-
-  if (!isPlatformAdmin) {
+  if (!user?.isPlatformAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
 

@@ -46,12 +46,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import XPBar from '../gamification/XPBar';
 import useSwipeNavigation from '../../hooks/useSwipeNavigation';
 
-// Platform admin emails (sync with backend)
-const PLATFORM_ADMIN_EMAILS = [
-  'josh@gullstack.com',
-  'bryce@gullstack.com',
-];
-
 // Four permanent tabs. The bar used to change membership four times over a
 // user's lifecycle, which made muscle memory impossible and left most pages
 // with no highlighted tab. These never change; each tab owns a family of
@@ -195,9 +189,8 @@ const Layout = () => {
   // Swipe navigation for mobile tab switching
   useSwipeNavigation();
 
-  // Check if user is platform admin
-  const isPlatformAdmin = user?.isPlatformAdmin ||
-    (user?.email && PLATFORM_ADMIN_EMAILS.includes(user.email.toLowerCase()));
+  // Admin identity comes only from the server flag (see AdminRoute in App.js)
+  const isPlatformAdmin = !!user?.isPlatformAdmin;
 
   // Therapist-side detection — drives distinct chrome
   const isTherapistMode = location.pathname.startsWith('/therapist');
