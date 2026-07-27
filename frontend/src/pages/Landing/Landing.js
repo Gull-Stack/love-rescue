@@ -10,7 +10,6 @@ import {
   CardContent,
   IconButton,
   Chip,
-  Avatar,
   Divider,
   useMediaQuery,
   Drawer,
@@ -33,8 +32,6 @@ import InsightsIcon from '@mui/icons-material/Insights';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import StarIcon from '@mui/icons-material/Star';
-import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
 import SecurityIcon from '@mui/icons-material/Security';
 import GroupsIcon from '@mui/icons-material/Groups';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -125,48 +122,18 @@ const steps = [
   },
 ];
 
-const testimonials = [
-  {
-    name: 'Sarah & James',
-    location: 'Portland, OR',
-    text: "After 12 years together, we'd lost our way. The daily insights and matchup analysis helped us see patterns we were blind to. Our ratio went from 2:1 to over 6:1 in two months.",
-    rating: 5,
-    avatar: 'SJ',
-  },
-  {
-    name: 'Priya & Arun',
-    location: 'Austin, TX',
-    text: "The mediated meetings were a game-changer. Having a neutral guide helped us have conversations we'd been avoiding for years. We actually look forward to our weekly sessions now.",
-    rating: 5,
-    avatar: 'PA',
-  },
-  {
-    name: 'Michael & David',
-    location: 'Chicago, IL',
-    text: "The assessment revealed I have an anxious attachment style and my partner is avoidant. Just understanding that transformed how we communicate. The personalized insights are spot-on.",
-    rating: 5,
-    avatar: 'MD',
-  },
-  {
-    name: 'Emily & Carlos',
-    location: 'Miami, FL',
-    text: "We were skeptical about an app helping our marriage, but the science-backed approach won us over. The daily videos from actual relationship researchers are incredible.",
-    rating: 5,
-    avatar: 'EC',
-  },
-];
-
 const stats = [
-  { value: '94%', label: 'of couples report improved communication within 4 weeks' },
-  { value: '5:1', label: 'average positivity ratio achieved by active users' },
+  // Product facts only — no invented outcome or usage claims. Measured
+  // results can return here when there is real, sourced data behind them.
+  { value: '10', label: 'science-based assessments to understand your patterns' },
   { value: '16', label: 'weeks of structured, science-backed content' },
-  { value: '10K+', label: 'couples building stronger relationships' },
+  { value: '5:1', label: 'the research-backed positivity ratio the program builds toward' },
+  { value: '11', label: 'relationship experts whose methods shape the course' },
 ];
 
 const navLinks = [
   { label: 'Programs', href: '#programs' },
   { label: 'How It Works', href: '#how-it-works' },
-  { label: 'Results', href: '#results' },
   { label: 'Pricing', href: '#pricing' },
 ];
 
@@ -962,119 +929,6 @@ const Landing = () => {
     </Box>
   );
 
-  // ── Testimonials ──
-  const TestimonialsSection = (
-    <Box
-      id="results"
-      sx={{
-        py: { xs: 8, md: 12 },
-        bgcolor: DARK_BG_3,
-      }}
-    >
-      <Container maxWidth="lg">
-        <Box sx={{ textAlign: 'center', mb: 8 }}>
-          <Chip
-            label="RESULTS"
-            sx={{
-              mb: 2,
-              bgcolor: 'rgba(14,159,142,0.15)',
-              color: ACCENT_TEAL,
-              fontWeight: 600,
-              fontSize: '0.7rem',
-              letterSpacing: '0.15em',
-              border: '1px solid rgba(14,159,142,0.3)',
-            }}
-          />
-          <Typography
-            variant="h2"
-            sx={{
-              color: '#fff',
-              fontWeight: 800,
-              fontSize: { xs: '2rem', md: '3rem' },
-              letterSpacing: '-0.02em',
-              mb: 2,
-            }}
-          >
-            Real Couples.{' '}
-            <Box
-              component="span"
-              sx={{
-                background: ACCENT_GRADIENT,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              Real Results.
-            </Box>
-          </Typography>
-        </Box>
-
-        <Grid container spacing={3}>
-          {testimonials.map((t) => (
-            <Grid item xs={12} sm={6} md={3} key={t.name}>
-              <Card
-                sx={{
-                  bgcolor: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  borderRadius: 4,
-                  height: '100%',
-                  transition: 'all 0.3s',
-                  '&:hover': {
-                    bgcolor: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                  },
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <FormatQuoteIcon
-                    sx={{ color: ACCENT_AMBER, fontSize: 32, opacity: 0.6, mb: 1 }}
-                  />
-                  <Typography
-                    sx={{
-                      color: 'rgba(255,255,255,0.92)',
-                      fontSize: '0.9rem',
-                      lineHeight: 1.7,
-                      mb: 3,
-                      fontStyle: 'italic',
-                    }}
-                  >
-                    "{t.text}"
-                  </Typography>
-                  <Box sx={{ display: 'flex', mb: 1 }}>
-                    {[...Array(t.rating)].map((_, i) => (
-                      <StarIcon key={i} sx={{ color: '#E08A3C', fontSize: 18 }} />
-                    ))}
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Avatar
-                      sx={{
-                        width: 36,
-                        height: 36,
-                        background: ACCENT_GRADIENT,
-                        fontSize: '0.8rem',
-                        fontWeight: 700,
-                      }}
-                    >
-                      {t.avatar}
-                    </Avatar>
-                    <Box>
-                      <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: '0.85rem' }}>
-                        {t.name}
-                      </Typography>
-                      <Typography sx={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.75rem' }}>
-                        {t.location}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      </Container>
-    </Box>
-  );
-
   // ── Pricing ──
   // NOTE: Displayed prices are defaults only. Live amounts are config-driven and
   // come from Stripe (STRIPE_PREMIUM_PRICE_ID / STRIPE_ANNUAL_PRICE_ID via
@@ -1490,7 +1344,6 @@ const Landing = () => {
       {ProgramsSection}
       {HowItWorks}
       {VideoSpotlight}
-      {TestimonialsSection}
       {PricingSection}
       {FinalCTA}
       {Footer}
