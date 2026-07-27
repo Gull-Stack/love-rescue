@@ -19,6 +19,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAuth } from '../../contexts/AuthContext';
 import { matchupApi, strategiesApi } from '../../services/api';
 import { sectionColors } from '../../theme';
+import InvitePartnerCard from '../../components/dashboard/InvitePartnerCard';
 import EmptyState from '../../components/common/EmptyState';
 import AnimatedScoreRing from '../../components/common/AnimatedScoreRing';
 import { celebrate } from '../../utils/celebrate';
@@ -86,13 +87,17 @@ const Matchup = () => {
 
   if (!relationship?.hasPartner) {
     return (
-      <EmptyState
-        emoji="💕"
-        title="Better together"
-        subtitle="When your partner joins and takes their assessments, you'll unlock your compatibility insights and a plan you can work on together."
-        ctaText="Invite your partner"
-        onCta={() => navigate('/settings')}
-      />
+      <Box>
+        <EmptyState
+          emoji="💕"
+          title="Your matchup is waiting"
+          subtitle="When your partner joins and takes their assessments, you'll unlock your compatibility insights and a plan you can work on together."
+        />
+        {/* Share-sheet invite right here — no detour to the bottom of Settings. */}
+        <Box sx={{ maxWidth: 480, mx: 'auto', px: 2 }}>
+          <InvitePartnerCard />
+        </Box>
+      </Box>
     );
   }
 

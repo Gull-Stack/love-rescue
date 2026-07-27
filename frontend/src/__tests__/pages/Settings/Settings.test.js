@@ -106,8 +106,95 @@ describe('Settings', () => {
     await waitFor(() => {
       expect(screen.getByText('Subscription')).toBeInTheDocument();
     });
-    // No subscription snapshot and no user status → FREE chip
-    expect(screen.getByText('FREE')).toBeInTheDocument();
+    // No subscription snapshot and no user status → Free chip
+    expect(screen.getByText('Free')).toBeInTheDocument();
+  });
+
+  test('subscription chip shows human-friendly labels for raw billing states', async () => {
+    paymentsApi.getSubscription.mockResolvedValue({
+      data: { status: 'past_due', isPremium: true },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Payment issue')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('PAST_DUE')).not.toBeInTheDocument();
+  });
+
+  test('subscription chip capitalizes unknown statuses instead of shouting them', async () => {
+    paymentsApi.getSubscription.mockResolvedValue({
+      data: { status: 'paused', isPremium: false },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Paused')).toBeInTheDocument();
+    });
+  });
+
+  test('gender options include Non-binary, which submits the backend value "other"', async () => {
+    renderPage();
+
+    // Emoji-free, inclusive options.
+    expect(screen.getByRole('button', { name: 'Male' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Female' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Prefer not to say' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Non-binary' }));
+
+    await waitFor(() => {
+      expect(api.patch).toHaveBeenCalledWith('/auth/update-profile', { gender: 'other' });
+    });
+    expect(await screen.findByText('Gender updated successfully')).toBeInTheDocument();
+  });
+
+  test('cancelling the subscription requires confirming a dialog first', async () => {
+    // Entitled, non-IAP, partner covered under this user's plan.
+    useAuth.mockReturnValue(createPartnerAuth());
+    paymentsApi.getSubscription.mockResolvedValue({
+      data: { status: 'active', isPremium: true },
+    });
+    paymentsApi.cancelSubscription.mockResolvedValue({ data: {} });
+
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: /^cancel$/i }));
+
+    // Dialog is warm and clear: access continues, partner is affected.
+    expect(await screen.findByText('Cancel your subscription?')).toBeInTheDocument();
+    expect(screen.getByText(/keep full access until the end of your current billing/i)).toBeInTheDocument();
+    expect(screen.getByText(/your plan covers your partner too/i)).toBeInTheDocument();
+
+    // "Keep it" backs out without cancelling.
+    fireEvent.click(screen.getByRole('button', { name: /keep it/i }));
+    expect(paymentsApi.cancelSubscription).not.toHaveBeenCalled();
+    // Wait for the dialog to fully close (MUI transition) before reopening.
+    await waitFor(() => {
+      expect(screen.queryByText('Cancel your subscription?')).not.toBeInTheDocument();
+    });
+
+    // Reopen and confirm.
+    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /cancel subscription/i }));
+
+    await waitFor(() => {
+      expect(paymentsApi.cancelSubscription).toHaveBeenCalled();
+    });
+    expect(
+      await screen.findByText(/your subscription will end at the close of the current billing period/i)
+    ).toBeInTheDocument();
+  });
+
+  test('the robot-speak System Status card is gone', async () => {
+    renderPage();
+
+    expect(screen.queryByText(/relationship os/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('System Status')).not.toBeInTheDocument();
+    expect(screen.queryByText(/active processes/i)).not.toBeInTheDocument();
+    expect(progressRingsApi.get).not.toHaveBeenCalled();
   });
 
   test('invite partner flow generates and displays a link', async () => {
@@ -293,7 +380,7 @@ describe('Settings', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('TRIAL')).toBeInTheDocument();
+      expect(screen.getByText('Trial')).toBeInTheDocument();
     });
     expect(screen.queryByText(/free trial —/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/days left/i)).not.toBeInTheDocument();

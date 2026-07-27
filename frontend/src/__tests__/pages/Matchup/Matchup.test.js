@@ -79,17 +79,18 @@ describe('Matchup', () => {
     expect(screen.getByLabelText('Loading')).toBeInTheDocument();
   });
 
-  test('without a partner, shows the "Better together" empty state that routes to settings', async () => {
+  test('without a partner, shows the "Better together" empty state with a direct invite', async () => {
     useAuth.mockReturnValue(createAuthValue()); // hasPartner: false
     matchupApi.getCurrent.mockRejectedValue(new Error('Not found'));
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Better together')).toBeInTheDocument();
+      expect(screen.getByText('Your matchup is waiting')).toBeInTheDocument();
     });
-    const inviteCta = screen.getByRole('button', { name: /invite your partner/i });
-    await userEvent.click(inviteCta);
-    expect(mockNavigate).toHaveBeenCalledWith('/settings');
+    // The invite now happens in place (share-sheet card) — no detour to
+    // the bottom of the Settings page.
+    expect(screen.getByRole('button', { name: /invite/i })).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalledWith('/settings');
   });
 
   test('shows both partners\' assessment progress when not everyone is done', async () => {

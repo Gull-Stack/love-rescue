@@ -17,6 +17,7 @@ import {
   Paper,
   Fade,
   Tooltip,
+  Alert,
   useTheme,
   alpha,
 } from '@mui/material';
@@ -903,6 +904,7 @@ const Assessments = () => {
   const theme = useTheme();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [results, setResults] = useState({ completed: [], pending: [] });
   const [expandedResults, setExpandedResults] = useState({});
 
@@ -912,11 +914,13 @@ const Assessments = () => {
   }, []); // Intentional: run once on mount
 
   const fetchResults = async () => {
+    setLoadError(false);
     try {
       const response = await assessmentsApi.getResults();
       setResults(response.data);
     } catch {
-      // Assessment results fetch failed — page will show empty state
+      // Keep the catalog visible, but be honest that progress may be missing
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -984,6 +988,21 @@ const Assessments = () => {
           Self-Discovery Assessments
         </Typography>
       </Box>
+
+      {/* Load error — the catalog stays visible, but progress may be missing */}
+      {loadError && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 3, borderRadius: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={fetchResults}>
+              Retry
+            </Button>
+          }
+        >
+          We couldn't load your progress — what you see may be incomplete.
+        </Alert>
+      )}
 
       {/* Philosophy Banner */}
       <Paper

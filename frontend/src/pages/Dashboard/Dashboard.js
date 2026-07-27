@@ -32,6 +32,7 @@ import {
 } from '../../services/api';
 import DailyInsight from '../../components/common/DailyInsight';
 import TrialCountdown from '../../components/common/TrialCountdown';
+import DunningBanner from '../../components/common/DunningBanner';
 import {
   StreakHero,
   QuickLogFAB,
@@ -271,6 +272,9 @@ const Dashboard = () => {
         overflowX: 'hidden',
       }}
     >
+      {/* Payment problem? Say so plainly, with the fix one tap away. */}
+      <DunningBanner status={user?.subscriptionStatus} />
+
       {/* Trial ending soon? A warm heads-up beats a surprise lockout. */}
       {user?.isTrial && <TrialCountdown daysLeft={user?.trialDaysRemaining} />}
 

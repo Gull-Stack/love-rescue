@@ -136,4 +136,32 @@ describe('Layout', () => {
 
     expect(screen.getByText('Therapist')).toBeInTheDocument();
   });
+
+  test('therapist users get the practice drawer, not the client journey menu', () => {
+    auth = createAuthValue({
+      user: {
+        id: 'therapist-1',
+        firstName: 'Tara',
+        lastName: 'Therapist',
+        email: 'tara@example.com',
+        role: 'therapist',
+      },
+    });
+    useAuth.mockImplementation(() => auth);
+
+    renderWithProviders(<Layout />, { initialEntries: ['/therapist'] });
+
+    // Therapist destinations
+    expect(screen.getByText('PRACTICE')).toBeInTheDocument();
+    expect(screen.getByText('Clients')).toBeInTheDocument();
+    expect(screen.getByText('Appointments')).toBeInTheDocument();
+    expect(screen.getByText('Alerts')).toBeInTheDocument();
+    expect(screen.getAllByText('Settings').length).toBeGreaterThanOrEqual(1);
+
+    // No client-side journey items
+    expect(screen.queryByText('Gratitude')).not.toBeInTheDocument();
+    expect(screen.queryByText('Journey')).not.toBeInTheDocument();
+    expect(screen.queryByText('Matchup')).not.toBeInTheDocument();
+    expect(screen.queryByText('Check-in')).not.toBeInTheDocument();
+  });
 });

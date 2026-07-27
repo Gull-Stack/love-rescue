@@ -39,6 +39,9 @@ import VideocamIcon from '@mui/icons-material/Videocam';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import PeopleIcon from '@mui/icons-material/People';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import EventIcon from '@mui/icons-material/Event';
 import { useAuth } from '../../contexts/AuthContext';
 import XPBar from '../gamification/XPBar';
 import useSwipeNavigation from '../../hooks/useSwipeNavigation';
@@ -65,6 +68,25 @@ const TAB_ROUTE_FAMILIES = [
   ['/course', '/assessments', '/strategies', '/skills', '/reports', '/weekly-review', '/transformation'],
   ['/matchup', '/gratitude', '/real-talk', '/meetings'],
   ['/settings', '/subscribe'],
+];
+
+// Therapist bottom nav — same "four permanent tabs" philosophy as the client bar.
+const THERAPIST_BOTTOM_NAV_ITEMS = [
+  { label: 'Dashboard', path: '/therapist', icon: <DashboardIcon /> },
+  { label: 'Clients', path: '/therapist/clients', icon: <PeopleIcon /> },
+  { label: 'Alerts', path: '/therapist/alerts', icon: <NotificationsIcon /> },
+  { label: 'You', path: '/therapist/settings', icon: <SettingsIcon /> },
+];
+
+// Index-aligned with THERAPIST_BOTTOM_NAV_ITEMS. NOTE: '/therapist' is a
+// prefix of every other therapist route, so the Dashboard tab (index 0) only
+// claims it via an exact match in getCurrentNavIndex — never by prefix —
+// plus the couple detail pages listed here.
+const THERAPIST_TAB_ROUTE_FAMILIES = [
+  ['/therapist/couples'],
+  ['/therapist/clients'],
+  ['/therapist/alerts'],
+  ['/therapist/settings', '/therapist/appointments'],
 ];
 
 // Side drawer grouped items
@@ -126,6 +148,40 @@ function getDrawerSections(isPlatformAdmin, userState) {
     .filter((s) => s.items.length > 0);
 }
 
+// Therapist drawer — their practice, not the client 16-week journey.
+function getTherapistDrawerSections(isPlatformAdmin) {
+  const sections = [
+    {
+      header: 'PRACTICE',
+      items: [
+        // exact: '/therapist' is a prefix of every other therapist route —
+        // highlight it only on an exact match.
+        { label: 'Dashboard', path: '/therapist', icon: <DashboardIcon />, exact: true },
+        { label: 'Clients', path: '/therapist/clients', icon: <PeopleIcon /> },
+        { label: 'Appointments', path: '/therapist/appointments', icon: <EventIcon /> },
+        { label: 'Alerts', path: '/therapist/alerts', icon: <NotificationsIcon /> },
+      ],
+    },
+    {
+      header: 'YOU',
+      items: [
+        { label: 'Settings', path: '/therapist/settings', icon: <SettingsIcon /> },
+      ],
+    },
+  ];
+
+  if (isPlatformAdmin) {
+    sections.push({
+      header: 'ADMIN',
+      items: [
+        { label: 'Admin', path: '/admin', icon: <AdminPanelSettingsIcon />, isAdmin: true },
+      ],
+    });
+  }
+
+  return sections;
+}
+
 const Layout = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -146,11 +202,17 @@ const Layout = () => {
   // Therapist-side detection — drives distinct chrome
   const isTherapistMode = location.pathname.startsWith('/therapist');
 
+  // Role-based navigation: therapists get their own drawer + tabs everywhere,
+  // regardless of which route they're currently on.
+  const isTherapist = user?.role === 'therapist';
+
   // Journey state is server-owned (computed on /auth/me) — the old
   // localStorage relay from the Dashboard left this permanently stale.
   const userState = journey?.state || 'BLANK';
-  const bottomNavItems = BOTTOM_NAV_ITEMS;
-  const drawerSections = getDrawerSections(isPlatformAdmin, userState);
+  const bottomNavItems = isTherapist ? THERAPIST_BOTTOM_NAV_ITEMS : BOTTOM_NAV_ITEMS;
+  const drawerSections = isTherapist
+    ? getTherapistDrawerSections(isPlatformAdmin)
+    : getDrawerSections(isPlatformAdmin, userState);
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -163,6 +225,15 @@ const Layout = () => {
   };
 
   const getCurrentNavIndex = () => {
+    if (isTherapist) {
+      // '/therapist' itself only ever matches exactly (Dashboard tab) — as a
+      // prefix it would swallow every other therapist route.
+      if (location.pathname === '/therapist') return 0;
+      const index = THERAPIST_TAB_ROUTE_FAMILIES.findIndex((family) =>
+        family.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))
+      );
+      return index >= 0 ? index : -1;
+    }
     const index = TAB_ROUTE_FAMILIES.findIndex((family) =>
       family.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))
     );
@@ -302,7 +373,7 @@ const Layout = () => {
               {section.items.map((item) => (
                 <ListItem key={item.path} disablePadding>
                   <ListItemButton
-                    selected={location.pathname.startsWith(item.path)}
+                    selected={item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path)}
                     onClick={() => handleNavigation(item.path)}
                     sx={{
                       mx: 1,

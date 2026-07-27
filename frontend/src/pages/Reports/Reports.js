@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -7,6 +7,7 @@ import {
   Typography,
   Button,
   CircularProgress,
+  LinearProgress,
   Grid,
   Chip,
   ToggleButton,
@@ -59,11 +60,14 @@ ChartJS.register(
 const Reports = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [period, setPeriod] = useState('7d');
   const [weekOffset, setWeekOffset] = useState(0);
+  const [reloadKey, setReloadKey] = useState(0);
   const [report, setReport] = useState(null);
   const [stats, setStats] = useState(null);
   const [error, setError] = useState('');
+  const hasLoadedOnce = useRef(false);
 
   useEffect(() => {
     document.title = 'Reports | Love Rescue';
@@ -71,7 +75,13 @@ const Reports = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
+      // Only the first load blanks the page — later fetches keep prior
+      // content visible behind a lightweight top progress bar.
+      if (hasLoadedOnce.current) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       try {
         const [reportRes, statsRes] = await Promise.all([
           reportsApi.getWeekly(weekOffset),
@@ -79,14 +89,19 @@ const Reports = () => {
         ]);
         setReport(reportRes.data.report);
         setStats(statsRes.data);
+        setError('');
       } catch (err) {
-        setError('Failed to load reports');
+        setError("We couldn't load your reports. Check your connection and try again.");
       } finally {
+        hasLoadedOnce.current = true;
         setLoading(false);
+        setRefreshing(false);
       }
     };
     fetchData();
-  }, [period, weekOffset]);
+  }, [period, weekOffset, reloadKey]);
+
+  const handleRetry = () => setReloadKey((k) => k + 1);
 
   const getTrendIcon = (trend) => {
     switch (trend) {
@@ -156,6 +171,8 @@ const Reports = () => {
     );
   }
 
+  const hasData = Boolean(report) || Boolean(stats?.chartData?.length);
+
   return (
     <Box>
       <Box sx={{ background: sectionColors.reports.gradient, mx: -3, mt: -3, px: 3, pt: 3, pb: 2, mb: 2 }}>
@@ -186,13 +203,36 @@ const Reports = () => {
         </Box>
       </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
+      {/* Lightweight refresh indicator — prior content stays visible below */}
+      {refreshing && <LinearProgress sx={{ mb: 2, borderRadius: 1 }} />}
+
+      {error && hasData && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 3 }}
+          action={
+            <Button color="inherit" size="small" onClick={handleRetry}>
+              Retry
+            </Button>
+          }
+        >
+          We couldn't refresh your reports — showing your most recent data.
         </Alert>
       )}
 
-      {!report && !stats?.chartData?.length ? (
+      {error && !hasData ? (
+        <Alert
+          severity="error"
+          sx={{ mb: 3 }}
+          action={
+            <Button color="inherit" size="small" onClick={handleRetry}>
+              Retry
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
+      ) : !hasData ? (
         <EmptyState
           emoji="📊"
           title="Your story is just beginning"
@@ -259,6 +299,14 @@ const Reports = () => {
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Avg Ratio
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                sx={{ mt: 0.5, lineHeight: 1.4 }}
+              >
+                Healthy couples average five positive interactions for every negative one.
               </Typography>
             </CardContent>
           </Card>

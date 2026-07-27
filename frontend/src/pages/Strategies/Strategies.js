@@ -18,6 +18,10 @@ import {
   ListItemText,
   Checkbox,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -39,6 +43,7 @@ const Strategies = () => {
   const [generating, setGenerating] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [strategy, setStrategy] = useState(null);
+  const [confirmNewOpen, setConfirmNewOpen] = useState(false);
   const [completedTasks, setCompletedTasks] = useState(new Set());
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -197,7 +202,7 @@ const Strategies = () => {
             variant="outlined"
             size="small"
             startIcon={<RefreshIcon />}
-            onClick={handleGenerate}
+            onClick={() => (strategy ? setConfirmNewOpen(true) : handleGenerate())}
             disabled={generating}
           >
             {generating ? 'Generating...' : 'New Strategy'}
@@ -392,6 +397,35 @@ const Strategies = () => {
           gradient={brandGradients.hero}
         />
       )}
+
+      {/* New-strategy confirmation — regenerating replaces the current plan */}
+      <Dialog
+        open={confirmNewOpen}
+        onClose={() => setConfirmNewOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Start a fresh strategy?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Your current weekly plan will be replaced (your history is kept).
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setConfirmNewOpen(false);
+              handleGenerate();
+            }}
+          >
+            New strategy
+          </Button>
+          <Button variant="contained" autoFocus onClick={() => setConfirmNewOpen(false)}>
+            Keep current plan
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

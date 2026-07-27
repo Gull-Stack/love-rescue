@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -50,6 +51,7 @@ const GRATITUDE_PROMPTS = [
 ];
 
 const Gratitude = () => {
+  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [loading, setLoading] = useState(true);
@@ -433,9 +435,18 @@ const Gratitude = () => {
                   No love note yet this week. When your partner shares their gratitudes, you'll see them here 💛
                 </Typography>
               ) : (
-                <Typography variant="body1" sx={{ color: 'text.secondary', textAlign: 'center', py: 2 }}>
-                  Connect with your partner to receive weekly love notes
-                </Typography>
+                <Box sx={{ textAlign: 'center', py: 2 }}>
+                  <Typography variant="body1" sx={{ color: 'text.secondary', mb: 1.5 }}>
+                    Connect with your partner to receive weekly love notes
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    onClick={() => navigate('/matchup')}
+                    sx={{ minHeight: 44, borderRadius: 2 }}
+                  >
+                    Invite your partner
+                  </Button>
+                </Box>
               )}
             </CardContent>
           </Card>

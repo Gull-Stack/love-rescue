@@ -170,6 +170,11 @@ describe('Strategies', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /new strategy/i }));
 
+    // A confirmation dialog guards the destructive regeneration
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Start a fresh strategy?')).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: /new strategy/i }));
+
     await waitFor(() => {
       expect(screen.getByText('New 6-week strategy generated!')).toBeInTheDocument();
     });

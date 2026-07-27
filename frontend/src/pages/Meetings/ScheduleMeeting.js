@@ -36,6 +36,7 @@ const ScheduleMeeting = () => {
 
   // Step 1: Mediator selection
   const [mediators, setMediators] = useState([]);
+  const [mediatorsLoaded, setMediatorsLoaded] = useState(false);
   const [selectedMediator, setSelectedMediator] = useState(null);
 
   // Step 2: Date + time
@@ -51,6 +52,11 @@ const ScheduleMeeting = () => {
   // Upcoming meetings
   const [meetings, setMeetings] = useState([]);
   const [loadingMeetings, setLoadingMeetings] = useState(true);
+  const [meetingsError, setMeetingsError] = useState(false);
+
+  // Cancel-meeting confirmation
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     document.title = 'Mediated Meetings | Love Rescue';
@@ -68,15 +74,18 @@ const ScheduleMeeting = () => {
       } else {
         setError('Failed to load facilitators.');
       }
+    } finally {
+      setMediatorsLoaded(true);
     }
   };
 
   const fetchMeetings = async () => {
+    setMeetingsError(false);
     try {
       const res = await meetingsApi.getUpcoming();
       setMeetings(res.data.meetings);
     } catch (err) {
-      // Silently fail
+      setMeetingsError(true);
     } finally {
       setLoadingMeetings(false);
     }
@@ -133,13 +142,19 @@ const ScheduleMeeting = () => {
     }
   };
 
-  const handleCancel = async (meetingId) => {
+  const handleCancelConfirm = async () => {
+    if (!cancelTarget) return;
+    setCancelling(true);
     try {
-      await meetingsApi.cancel(meetingId);
+      await meetingsApi.cancel(cancelTarget.id);
+      setCancelTarget(null);
       setSuccess('Meeting cancelled.');
       fetchMeetings();
     } catch (err) {
+      setCancelTarget(null);
       setError('Failed to cancel meeting.');
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -183,6 +198,28 @@ const ScheduleMeeting = () => {
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
           {error}
+        </Alert>
+      )}
+
+      {/* Upcoming-meetings load failure — small inline warning instead of silence */}
+      {meetingsError && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 3 }}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => {
+                setLoadingMeetings(true);
+                fetchMeetings();
+              }}
+            >
+              Retry
+            </Button>
+          }
+        >
+          We couldn't load your upcoming meetings. Check your connection and try again.
         </Alert>
       )}
 
@@ -251,7 +288,7 @@ const ScheduleMeeting = () => {
                     size="small"
                     color="error"
                     startIcon={<CancelIcon />}
-                    onClick={() => handleCancel(meeting.id)}
+                    onClick={() => setCancelTarget(meeting)}
                   >
                     Cancel
                   </Button>
@@ -279,10 +316,16 @@ const ScheduleMeeting = () => {
               <Typography variant="h6" gutterBottom>
                 Choose a Facilitator
               </Typography>
-              {mediators.length === 0 && !error ? (
+              {!mediatorsLoaded && !error ? (
                 <Box display="flex" justifyContent="center" p={4}>
                   <CircularProgress />
                 </Box>
+              ) : mediators.length === 0 ? (
+                !error && (
+                  <Alert severity="info">
+                    No facilitators are available right now — check back soon.
+                  </Alert>
+                )
               ) : (
                 <Grid container spacing={2}>
                   {mediators.map((mediator) => (
@@ -455,6 +498,37 @@ const ScheduleMeeting = () => {
       {/* Therapy appointments (scheduled by the user's therapist) — renders
           nothing unless the user actually has some. */}
       <TherapyAppointmentsSection />
+
+      {/* Cancel-meeting confirmation (mirrors TherapyAppointmentsSection) */}
+      <Dialog
+        open={Boolean(cancelTarget)}
+        onClose={cancelling ? undefined : () => setCancelTarget(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Cancel this meeting?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Your {cancelTarget && new Date(cancelTarget.scheduledAt).toLocaleString()} meeting with{' '}
+            {cancelTarget?.mediator?.name || 'your facilitator'} will be cancelled and both partners
+            will be notified.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCancelTarget(null)} disabled={cancelling} sx={{ minHeight: 44 }}>
+            Keep it
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleCancelConfirm}
+            disabled={cancelling}
+            sx={{ minHeight: 44 }}
+          >
+            {cancelling ? <CircularProgress size={20} /> : 'Cancel meeting'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Confirmation Dialog */}
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>

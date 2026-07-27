@@ -2,7 +2,6 @@ export { default as ActionCard } from './ActionCard';
 export { default as StreakHero } from './StreakHero';
 export { default as QuickLogFAB } from './QuickLogFAB';
 export { default as PartnerPulse } from './PartnerPulse';
-export { default as TodayCard } from './TodayCard';
 export { default as ProgressRings } from './ProgressRings';
 export { default as RelationshipHealth } from './RelationshipHealth';
 export { default as ProgressJourney } from './ProgressJourney';

@@ -18,7 +18,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  LinearProgress,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -27,7 +26,7 @@ import ShareIcon from '@mui/icons-material/Share';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useAuth } from '../../contexts/AuthContext';
-import api, { calendarApi, therapistApi, progressRingsApi, paymentsApi } from '../../services/api';
+import api, { calendarApi, therapistApi, paymentsApi } from '../../services/api';
 import { isNative, useAppleIAP } from '../../utils/platform';
 import iapService from '../../services/iapService';
 import { isPremiumUser } from '../../utils/featureGating';
@@ -51,9 +50,9 @@ const Settings = () => {
   const [legalDialog, setLegalDialog] = useState(null); // 'privacy' or 'terms'
   const [gender, setGender] = useState(user?.gender || '');
   const [biometricAvailable, setBiometricAvailable] = useState(false);
-  const [systemStatus, setSystemStatus] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [disconnectDialog, setDisconnectDialog] = useState(false);
+  const [cancelDialog, setCancelDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [passwordDialog, setPasswordDialog] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
@@ -108,10 +107,9 @@ const Settings = () => {
 
   const fetchSettings = async () => {
     try {
-      const [calRes, consentRes, ringsRes, subRes] = await Promise.all([
+      const [calRes, consentRes, subRes] = await Promise.all([
         calendarApi.getStatus().catch(() => ({ data: { connected: false } })),
         therapistApi.getConsent().catch(() => ({ data: { consent: false } })),
-        progressRingsApi.get().catch(() => ({ data: null })),
         paymentsApi.getSubscription().catch(() => ({ data: null })),
       ]);
 
@@ -121,14 +119,6 @@ const Settings = () => {
       // consented sees their toggle "off" until their partner also consents.
       setTherapistConsent(consentRes.data.myConsent ?? consentRes.data.consent);
       setSubscription(subRes.data);
-      if (ringsRes.data) {
-        const rings = ringsRes.data;
-        const connPct = rings.connection?.percent ?? 0;
-        const commPct = rings.communication?.percent ?? 0;
-        const conflictPct = rings.conflict_skill?.percent ?? 0;
-        const avg = Math.round((connPct + commPct + conflictPct) / 3);
-        setSystemStatus({ healthScore: avg, connection: connPct, communication: commPct, conflict: conflictPct });
-      }
     } catch {
       // Settings fetch failed — individual catches above provide fallback defaults
     }
@@ -228,7 +218,7 @@ const Settings = () => {
     } catch (err) {
       const code = err.response?.data?.code;
       if (code === 'CALENDAR_NOT_CONFIGURED') {
-        setError('Google Calendar integration is not yet configured. Please set up Google Cloud OAuth credentials.');
+        setError("Calendar sync isn't available right now.");
       } else {
         setError('Failed to connect calendar');
       }
@@ -295,9 +285,11 @@ const Settings = () => {
     try {
       await paymentsApi.cancelSubscription();
       await refreshSubscription();
+      setCancelDialog(false);
       setSuccess('Your subscription will end at the close of the current billing period.');
     } catch (err) {
       setError(err.response?.data?.error || 'Could not cancel your subscription.');
+      setCancelDialog(false);
     } finally {
       setLoading({ ...loading, cancel: false });
     }
@@ -370,7 +362,25 @@ const Settings = () => {
   // Subscription display values (backend snapshot first, user fallback).
   const subStatusRaw =
     subscription?.status || subscription?.tier || user?.subscriptionStatus || 'free';
-  const subStatusLabel = String(subStatusRaw).toUpperCase();
+  // Human-friendly status labels — never show raw billing states to users.
+  const SUB_STATUS_LABELS = {
+    trial: 'Trial',
+    trialing: 'Trial',
+    active: 'Active',
+    past_due: 'Payment issue',
+    unpaid: 'Payment issue',
+    canceled: 'Canceled',
+    cancelled: 'Canceled',
+    incomplete: 'Payment incomplete',
+    incomplete_expired: 'Payment incomplete',
+    free: 'Free',
+    none: 'Free',
+    premium: 'Premium',
+  };
+  const subStatusKey = String(subStatusRaw).toLowerCase();
+  const subStatusLabel =
+    SUB_STATUS_LABELS[subStatusKey] ||
+    subStatusKey.charAt(0).toUpperCase() + subStatusKey.slice(1);
   const subEntitled = isPremiumUser(subscription) || isPremiumUser(user);
   const trialLeft = subscription?.trialDaysRemaining ?? subscription?.trialDaysLeft ?? null;
   // A lapsed trial (status still 'trial'/'trialing' but 0 days left) is NOT an
@@ -383,13 +393,12 @@ const Settings = () => {
     : null;
   const coveredByPartner = subscription?.coveredByPartner === true;
   const onAppleIAP = useAppleIAP();
-  const subChipColor = coveredByPartner
-    ? 'info'
-    : subEntitled
-    ? onTrial
-      ? 'info'
-      : 'success'
-    : 'default';
+  const subChipColor =
+    subStatusLabel === 'Payment issue'
+      ? 'warning'
+      : subStatusKey === 'active' || subStatusKey === 'premium'
+      ? 'success'
+      : 'default';
 
   return (
     <Box maxWidth="md" mx="auto">
@@ -408,57 +417,6 @@ const Settings = () => {
           {error}
         </Alert>
       )}
-
-      {/* Relationship OS Header */}
-      <Typography
-        variant="overline"
-        sx={{
-          display: 'block',
-          mb: 2,
-          fontFamily: 'monospace',
-          letterSpacing: 2,
-          color: 'text.secondary',
-          fontSize: '0.75rem',
-        }}
-      >
-        RELATIONSHIP OS v2.0
-      </Typography>
-
-      {/* System Status Card */}
-      <Card sx={{ mb: 3, border: '1px solid', borderColor: 'divider' }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom sx={{ fontFamily: 'monospace' }}>
-            System Status
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="body2" color="text.secondary">Last sync</Typography>
-              <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                {user?.lastActiveAt
-                  ? (() => {
-                      const mins = Math.round((Date.now() - new Date(user.lastActiveAt).getTime()) / 60000);
-                      if (mins < 1) return 'just now';
-                      if (mins < 60) return `${mins}m ago`;
-                      const hrs = Math.round(mins / 60);
-                      if (hrs < 24) return `${hrs}h ago`;
-                      return `${Math.round(hrs / 24)}d ago`;
-                    })()
-                  : 'N/A'}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="body2" color="text.secondary">Health score</Typography>
-              <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                {systemStatus ? `${systemStatus.healthScore}%` : '—'}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="body2" color="text.secondary">Active processes</Typography>
-              <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>3</Typography>
-            </Box>
-          </Box>
-        </CardContent>
-      </Card>
 
       {/* Account Info */}
       <Card sx={{ mb: 3 }}>
@@ -486,8 +444,9 @@ const Settings = () => {
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               {[
-                { value: 'male', label: '👨 Male' },
-                { value: 'female', label: '👩 Female' },
+                { value: 'male', label: 'Male' },
+                { value: 'female', label: 'Female' },
+                { value: 'other', label: 'Non-binary' },
                 { value: 'prefer_not_to_say', label: 'Prefer not to say' },
               ].map((option) => (
                 <Button
@@ -510,7 +469,7 @@ const Settings = () => {
               ))}
             </Box>
             <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-              Used to personalize your hormonal wellness assessment
+              Optional — used to personalize a few assessments.
             </Typography>
           </Box>
           <Box>
@@ -584,7 +543,7 @@ const Settings = () => {
                 <Button
                   variant="text"
                   color="error"
-                  onClick={handleCancelSubscription}
+                  onClick={() => setCancelDialog(true)}
                   disabled={loading.cancel}
                 >
                   {loading.cancel ? <CircularProgress size={20} /> : 'Cancel'}
@@ -839,7 +798,7 @@ const Settings = () => {
           </Typography>
           <Button
             variant="outlined"
-            href={`mailto:josh@gullstack.com?subject=${encodeURIComponent(
+            href={`mailto:support@loverescue.app?subject=${encodeURIComponent(
               'Love Rescue feedback'
             )}&body=${encodeURIComponent(
               "What happened, or what would make this better for you?\n\n\n\n———\n(Sent from Love Rescue" +
@@ -871,10 +830,10 @@ const Settings = () => {
 
 
       {/* Delete Account */}
-      <Card sx={{ mb: 3, borderColor: 'error.main', borderWidth: 1, borderStyle: 'solid' }}>
+      <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Typography variant="h6" gutterBottom color="error">
-            Danger Zone
+          <Typography variant="h6" gutterBottom>
+            Delete account
           </Typography>
           <Typography variant="body2" color="text.secondary" paragraph>
             Permanently delete your account and all associated data. This action cannot be undone.
@@ -972,6 +931,47 @@ const Settings = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Cancel Subscription Confirmation Dialog */}
+      <Dialog
+        open={cancelDialog}
+        onClose={() => setCancelDialog(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Cancel your subscription?</DialogTitle>
+        <DialogContent>
+          <Typography paragraph>
+            You'll keep full access until the end of your current billing
+            period — nothing changes today.
+          </Typography>
+          {relationship?.hasPartner && !coveredByPartner && (
+            <Typography variant="body2" color="text.secondary">
+              Your plan covers your partner too, so their access will end at the
+              same time.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={handleCancelSubscription}
+            disabled={loading.cancel}
+            sx={{ minHeight: 44 }}
+          >
+            {loading.cancel ? <CircularProgress size={20} /> : 'Cancel subscription'}
+          </Button>
+          <Button
+            variant="contained"
+            autoFocus
+            onClick={() => setCancelDialog(false)}
+            sx={{ minHeight: 44 }}
+          >
+            Keep it
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Delete Account Confirmation Dialog */}
       <Dialog
         open={deleteDialog}
@@ -1027,7 +1027,7 @@ const Settings = () => {
             Love Rescue App - Privacy Policy
           </Typography>
           <Typography paragraph variant="body2">
-            <strong>Last Updated:</strong> January 2026
+            <strong>Last Updated:</strong> July 2026
           </Typography>
           <Typography paragraph variant="body2">
             <strong>1. Information We Collect</strong><br />
@@ -1091,7 +1091,7 @@ const Settings = () => {
             Love Rescue App - Terms of Service
           </Typography>
           <Typography paragraph variant="body2">
-            <strong>Last Updated:</strong> January 2026
+            <strong>Last Updated:</strong> July 2026
           </Typography>
           <Typography paragraph variant="body2">
             <strong>1. Acceptance of Terms</strong><br />

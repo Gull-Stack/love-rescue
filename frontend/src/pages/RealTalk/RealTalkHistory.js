@@ -33,17 +33,22 @@ const RealTalkHistory = () => {
   const navigate = useNavigate();
   const [realTalks, setRealTalks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [detailDialog, setDetailDialog] = useState(false);
   const [detail, setDetail] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [snackbar, setSnackbar] = useState('');
 
   const fetchHistory = useCallback(async () => {
+    setLoadError(false);
     try {
       const res = await realTalkApi.list({ limit: 50, offset: 0 });
       setRealTalks(res.data.realTalks || []);
     } catch {
-      // Graceful fallback
+      // Distinct error state — don't masquerade as "no Real Talks yet"
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -71,6 +76,7 @@ const RealTalkHistory = () => {
   };
 
   const handleDelete = async (id) => {
+    setDeleting(true);
     try {
       await realTalkApi.delete(id);
       setRealTalks(prev => prev.filter(rt => rt.id !== id));
@@ -78,6 +84,9 @@ const RealTalkHistory = () => {
       setSnackbar('Real Talk deleted');
     } catch {
       setSnackbar('Could not delete');
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
     }
   };
 
@@ -120,8 +129,31 @@ const RealTalkHistory = () => {
         </Button>
       </Box>
 
+      {/* Load error state */}
+      {loadError && (
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Typography sx={{ fontSize: '3rem', mb: 2 }}>📡</Typography>
+          <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
+            Something went wrong
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            We couldn't load your Real Talks. Check your connection and try again.
+          </Typography>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setLoading(true);
+              fetchHistory();
+            }}
+            sx={{ borderRadius: 3, textTransform: 'none', fontWeight: 600, px: 4 }}
+          >
+            Retry
+          </Button>
+        </Box>
+      )}
+
       {/* Empty state */}
-      {realTalks.length === 0 && (
+      {!loadError && realTalks.length === 0 && (
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <Typography sx={{ fontSize: '3rem', mb: 2 }}>💬</Typography>
           <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
@@ -276,7 +308,7 @@ const RealTalkHistory = () => {
             <DialogActions sx={{ px: 3, pb: 2 }}>
               <IconButton
                 aria-label="Delete entry"
-                onClick={() => handleDelete(detail.id)}
+                onClick={() => setConfirmDelete(true)}
                 color="error"
                 size="small"
               >
@@ -300,6 +332,42 @@ const RealTalkHistory = () => {
             </DialogActions>
           </>
         )}
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <Dialog
+        open={confirmDelete}
+        onClose={deleting ? undefined : () => setConfirmDelete(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Delete this Real Talk?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            This can't be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={() => detail && handleDelete(detail.id)}
+            disabled={deleting}
+            sx={{ textTransform: 'none', borderRadius: 2 }}
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
+          <Button
+            variant="contained"
+            autoFocus
+            onClick={() => setConfirmDelete(false)}
+            disabled={deleting}
+            sx={{ textTransform: 'none', borderRadius: 2 }}
+          >
+            Keep it
+          </Button>
+        </DialogActions>
       </Dialog>
 
       <Snackbar

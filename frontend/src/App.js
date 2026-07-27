@@ -57,6 +57,7 @@ const TherapistClientLinking = React.lazy(() => import('./pages/Therapist/Client
 const TherapistJoin = React.lazy(() => import('./pages/Therapist/TherapistJoin'));
 const TherapistAppointments = React.lazy(() => import('./pages/Therapist/AppointmentsPage'));
 const TherapistClientNotes = React.lazy(() => import('./pages/Therapist/ClientNotes'));
+const TherapistSettings = React.lazy(() => import('./pages/Settings/TherapistSettings'));
 
 // Admin pages (lazy loaded)
 const AdminDashboard = React.lazy(() => import('./pages/Admin'));
@@ -100,6 +101,32 @@ const PublicRoute = ({ children }) => {
 
   if (user) {
     return <Navigate to={user.role === 'therapist' ? '/therapist' : '/dashboard'} replace />;
+  }
+
+  return children;
+};
+
+// Platform admin emails (sync with backend + Layout.js)
+const PLATFORM_ADMIN_EMAILS = [
+  'josh@gullstack.com',
+  'bryce@gullstack.com',
+];
+
+// Admin Route wrapper — frontend guard for /admin (backend enforces too)
+const AdminRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <LoadingScreen />
+    );
+  }
+
+  const isPlatformAdmin = user?.isPlatformAdmin ||
+    (user?.email && PLATFORM_ADMIN_EMAILS.includes(user.email.toLowerCase()));
+
+  if (!isPlatformAdmin) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -251,14 +278,15 @@ function App() {
           <Route path="therapist/clients/:id/treatment-plan" element={<TherapistRoute><TreatmentPlanner /></TherapistRoute>} />
           <Route path="therapist/couples/:id" element={<TherapistRoute><CoupleView /></TherapistRoute>} />
           <Route path="therapist/alerts" element={<TherapistRoute><AlertsPage /></TherapistRoute>} />
+          <Route path="therapist/settings" element={<TherapistRoute><TherapistSettings /></TherapistRoute>} />
           {/* Admin routes - protected by backend + frontend checks */}
-          <Route path="admin" element={<AdminDashboard />} />
-          <Route path="admin/users" element={<AdminUsers />} />
-          <Route path="admin/users/:id" element={<AdminUserDetail />} />
-          <Route path="admin/analytics" element={<AdminAnalytics />} />
-          <Route path="admin/push" element={<AdminPushNotifications />} />
-          <Route path="admin/subscriptions" element={<AdminSubscriptions />} />
-          <Route path="admin/command-center" element={<CommandCenter />} />
+          <Route path="admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+          <Route path="admin/users/:id" element={<AdminRoute><AdminUserDetail /></AdminRoute>} />
+          <Route path="admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
+          <Route path="admin/push" element={<AdminRoute><AdminPushNotifications /></AdminRoute>} />
+          <Route path="admin/subscriptions" element={<AdminRoute><AdminSubscriptions /></AdminRoute>} />
+          <Route path="admin/command-center" element={<AdminRoute><CommandCenter /></AdminRoute>} />
         </Route>
 
         {/* Catch all — send unauthenticated to landing, authenticated to dashboard */}
