@@ -8,13 +8,13 @@
  * next-action ladders. Everything now reads this.
  */
 
+const { localDayStart } = require('./dates');
+
 const STATES = ['BLANK', 'DISCOVERING', 'BUILDING', 'PRACTICING', 'TRANSFORMED'];
 
-function startOfToday() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+// Single TZ policy lives in lib/dates.js — "today" is the server-local day,
+// matching how logs.js/gratitude.js stamp the domain `date` column.
+const startOfToday = () => localDayStart();
 
 // Consecutive-day streak ending today or yesterday (cheap: last 60 log dates).
 function computeStreak(logDates) {
@@ -103,16 +103,19 @@ function getNextAction({ assessmentsDone, hasLoggedToday, hasGratitudeToday, has
  */
 async function computeJourney(prisma, user, relationship) {
   try {
+    // "Logged today" is judged on the domain `date` column (the upsert key),
+    // NOT createdAt: a row created yesterday and upserted today, or a
+    // backdated entry, would make createdAt lie about the calendar day.
     const todayStart = startOfToday();
     const [assessmentsDone, todayLog, todayGratitude, logDates, strategy] = await Promise.all([
       prisma.assessment.count({ where: { userId: user.id } }),
       prisma.dailyLog.findFirst({
-        where: { userId: user.id, createdAt: { gte: todayStart } },
+        where: { userId: user.id, date: todayStart },
         select: { id: true },
       }),
       prisma.gratitudeEntry
         ? prisma.gratitudeEntry.findFirst({
-            where: { userId: user.id, createdAt: { gte: todayStart } },
+            where: { userId: user.id, date: todayStart },
             select: { id: true },
           })
         : null,

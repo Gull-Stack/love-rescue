@@ -13,6 +13,7 @@ const { OAuth2Client } = require('google-auth-library');
 const { authenticate } = require('../middleware/auth');
 const { resolveEntitlement } = require('../lib/entitlement');
 const { computeJourney } = require('../lib/journey');
+const { localDayStart } = require('../lib/dates');
 
 // New OAuth accounts start on the same free trial as email signups.
 const trialStart = () => {
@@ -988,12 +989,12 @@ router.get('/me', authenticate, async (req, res, next) => {
     if (relationship && relationship.user2Id) {
       const partnerRecord = relationship.user1Id === req.user.id ? relationship.user2 : relationship.user1;
       partnerLastActive = partnerRecord.lastActiveAt || null;
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
+      // Domain date, not createdAt — must agree with the check-in upsert key
+      // (see lib/dates.js for the TZ policy).
       let partnerLog = null;
       try {
         partnerLog = await req.prisma.dailyLog.findFirst({
-          where: { userId: partnerRecord.id, createdAt: { gte: todayStart } },
+          where: { userId: partnerRecord.id, date: localDayStart() },
           select: { id: true }
         });
       } catch (_e) { partnerLog = null; }

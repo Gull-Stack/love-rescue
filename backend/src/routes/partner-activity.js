@@ -41,17 +41,16 @@ router.get('/partner-status', authenticate, async (req, res) => {
       return res.json({ hasPartner: false });
     }
 
-    // Check if partner logged today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // "Logged today" uses the domain date column (the upsert key), not
+    // createdAt — see lib/dates.js for the TZ policy.
+    const today = localDayStart();
 
     const [partnerLog, userLog] = await Promise.all([
       req.prisma.dailyLog.findFirst({
-        where: { userId: partner.id, createdAt: { gte: today } },
-        orderBy: { createdAt: 'desc' }
+        where: { userId: partner.id, date: today }
       }),
       req.prisma.dailyLog.findFirst({
-        where: { userId, createdAt: { gte: today } }
+        where: { userId, date: today }
       })
     ]);
 
@@ -98,16 +97,15 @@ router.get('/matchup-score', authenticate, async (req, res) => {
       return res.json({ hasMatchup: false });
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = localDayStart();
 
-    // Get both logs from today
+    // Get both logs from today (domain date, matching the check-in upsert key)
     const [userLog, partnerLog] = await Promise.all([
       req.prisma.dailyLog.findFirst({
-        where: { userId, createdAt: { gte: today } }
+        where: { userId, date: today }
       }),
       req.prisma.dailyLog.findFirst({
-        where: { userId: partner.id, createdAt: { gte: today } }
+        where: { userId: partner.id, date: today }
       })
     ]);
 
