@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
+const { localDayStart } = require('../lib/dates');
+const { computeStreak } = require('../lib/journey');
+const { sendToUser } = require('../utils/pushNotifications');
 
 // Helper: find active relationship for user
 async function findRelationship(prisma, userId) {
@@ -194,56 +197,74 @@ router.post('/nudge-partner', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Partner not found' });
     }
 
-    // Check if already nudged today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
+    // Rate limit: one nudge per partner per local day. This check must fail
+    // CLOSED — if the lookup throws, the outer catch returns 500 rather than
+    // allowing unlimited sends.
     const existingNudge = await req.prisma.notification.findFirst({
       where: {
         userId: partner.id,
         type: 'PARTNER_NUDGE',
-        createdAt: { gte: today }
+        createdAt: { gte: localDayStart() }
       }
-    }).catch(() => null);
+    });
 
     if (existingNudge) {
       return res.status(429).json({
         error: 'Already nudged today',
+        code: 'NUDGE_LIMIT',
         message: "You've already sent a gentle reminder today. Give them some time! 💕"
       });
     }
 
-    // Create notification for partner
+    // Durable in-app record first — this IS the delivery. Awaited, never
+    // swallowed: if this write fails, the user must not see a success toast.
     await req.prisma.notification.create({
       data: {
         userId: partner.id,
         type: 'PARTNER_NUDGE',
         title: '💕 Partner Check-in',
         body: `${req.user.firstName || 'Your partner'} is thinking of you! Time to log today?`,
+        data: { url: '/daily', type: 'partner_nudge' },
         read: false
       }
-    }).catch(() => {});
+    });
+
+    // Push rides on top of the durable record. Its failure downgrades the
+    // message, not the response — the in-app row already exists.
+    let pushed = false;
+    try {
+      await sendToUser(partner.id, {
+        title: '💕 Partner Check-in',
+        body: `${req.user.firstName || 'Your partner'} is thinking of you! Time to log today?`,
+        tag: 'partner-nudge',
+        data: { url: '/daily', type: 'partner_nudge' }
+      });
+      pushed = true;
+    } catch (pushError) {
+      console.warn('Nudge push failed (in-app record saved):', pushError.message);
+    }
 
     res.json({
       success: true,
-      message: `Sent a gentle reminder to ${partner.firstName || 'your partner'}! 💕`
+      pushed,
+      message: `Reminder saved for ${partner.firstName || 'your partner'} — they'll see it in Love Rescue. 💕`
     });
   } catch (error) {
     console.error('Error sending nudge:', error);
-    res.status(500).json({ error: 'Failed to send nudge' });
+    res.status(500).json({ error: 'Failed to send nudge', code: 'NUDGE_FAILED' });
   }
 });
 
-// Helper: Get user's current streak
+// Helper: Get user's current streak from real log dates. (Previously read
+// prisma.streak — a model that does not exist — and silently returned 0.)
 async function getStreak(prisma, userId) {
-  try {
-    const streak = await prisma.streak.findUnique({
-      where: { odUserId: userId }
-    });
-    return streak?.currentStreak || 0;
-  } catch {
-    return 0;
-  }
+  const logs = await prisma.dailyLog.findMany({
+    where: { userId },
+    orderBy: { date: 'desc' },
+    take: 60,
+    select: { date: true }
+  });
+  return computeStreak(logs.map((l) => l.date));
 }
 
 // Helper: Generate appropriate nudge message based on status

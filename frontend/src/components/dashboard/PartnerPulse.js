@@ -67,7 +67,7 @@ const PartnerPulse = ({
     setSending(true);
     try {
       const res = await partnerActivityApi.nudgePartner();
-      setSnackbarMessage(res.data?.message || `💕 Sent love to ${partnerName}!`);
+      setSnackbarMessage(res.data?.message || `Reminder saved for ${partnerName} 💕`);
       setSnackbarOpen(true);
       setSent(true);
       setTimeout(() => setSent(false), 60000); // Allow sending again after 1 min
